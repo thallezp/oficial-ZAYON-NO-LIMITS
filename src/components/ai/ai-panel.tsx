@@ -7,8 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useUIStore } from "@/stores/ui-store";
 import { useActivePersona } from "@/stores/persona-store";
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport, type UIMessage } from "ai";
+import { useCopilotAction } from "@copilotkit/react-core";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils/cn";
+
 
 const suggestions = [
   "Resumir reunião desta semana",
@@ -18,18 +23,16 @@ const suggestions = [
   "Transformar dores do ICP em criativos",
 ];
 
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-}
-
-const seed: Message[] = [
+const seed: UIMessage[] = [
   {
     id: "m1",
     role: "assistant",
-    content:
-      "Estou contextualizada com a Aurora. Os 42 leads abertos foram triados — score médio 78. Quer que eu gere o roteiro do reel desta semana ou que avance no plano de lançamento?",
+    parts: [
+      {
+        type: "text",
+        text: "Olá! Sou a NEXUS AI. Estou pronta para te ajudar a gerenciar este workspace. Quer que eu faça uma varredura nos leads ou crie novas tarefas?",
+      },
+    ],
   },
 ];
 
@@ -37,30 +40,142 @@ export function AIPanel() {
   const open = useUIStore((s) => s.aiPanelOpen);
   const setOpen = useUIStore((s) => s.setAIPanelOpen);
   const persona = useActivePersona();
-  const [messages, setMessages] = React.useState<Message[]>(seed);
-  const [input, setInput] = React.useState("");
-  const [pending, setPending] = React.useState(false);
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
 
-  const send = (text?: string) => {
-    const body = (text ?? input).trim();
-    if (!body) return;
-    setMessages((m) => [...m, { id: crypto.randomUUID(), role: "user", content: body }]);
-    setInput("");
-    setPending(true);
-    setTimeout(() => {
-      setMessages((m) => [
-        ...m,
-        {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: `(simulação) Processando '${body}' no contexto de ${persona?.name ?? "workspace"}. Resultados aparecem no painel correspondente.`,
-        },
-      ]);
-      setPending(false);
-      toast.success("IA executou a ação", {
-        description: "Resultado registrado em AI History.",
+  // Register CopilotKit Actions for the agent/chat runtime
+  useCopilotAction({
+    name: "createTask",
+    description: "Cria uma nova tarefa no workspace",
+    parameters: [
+      {
+        name: "title",
+        type: "string",
+        description: "Título da tarefa",
+        required: true,
+      },
+      {
+        name: "priority",
+        type: "string",
+        description: "Prioridade: backlog, todo, doing, review, done",
+        required: false,
+      },
+      {
+        name: "dueAt",
+        type: "string",
+        description: "Data de vencimento (Formato ISO ou string legível)",
+        required: false,
+      },
+    ],
+    handler: async ({ title, priority, dueAt }) => {
+      toast.success("Copilot executou a ação: Criar Tarefa", {
+        description: `Título: "${title}" · Prioridade: ${priority || "padrão"} · Vencimento: ${dueAt || "não definido"}`,
       });
-    }, 800);
+      // Optionally run a mutation here if desired
+    },
+  });
+
+  useCopilotAction({
+    name: "qualifyLead",
+    description: "Qualifica um lead com base em análise de perfil",
+    parameters: [
+      {
+        name: "leadName",
+        type: "string",
+        description: "Nome do lead",
+        required: true,
+      },
+      {
+        name: "score",
+        type: "number",
+        description: "Score de 0 a 100",
+        required: true,
+      },
+      {
+        name: "reason",
+        type: "string",
+        description: "Motivo do score / qualificação",
+        required: true,
+      },
+    ],
+    handler: async ({ leadName, score, reason }) => {
+      toast.success("Copilot executou a ação: Qualificar Lead", {
+        description: `Lead: ${leadName} · Score: ${score} · Motivo: ${reason}`,
+      });
+    },
+  });
+
+  const storageKey = React.useMemo(() => {
+    return `nexus.chat.${activeWorkspaceId || "global"}.${persona?.id || "global"}`;
+  }, [activeWorkspaceId, persona?.id]);
+
+  const [input, setInput] = React.useState("");
+
+  const {
+    messages,
+    status,
+    sendMessage,
+    setMessages,
+  } = useChat({
+    transport: new DefaultChatTransport({
+      api: "/api/ai",
+      body: {
+        workspaceId: activeWorkspaceId,
+        personaId: persona?.id,
+      },
+    }),
+    onError: (err) => {
+      toast.error("Erro na resposta da IA", {
+        description: err.message || "Verifique se suas chaves de API estão configuradas.",
+      });
+    },
+    onFinish: () => {
+      toast.success("IA respondeu com sucesso!");
+    },
+  });
+
+  const isLoading = status === "submitted" || status === "streaming";
+
+  // Load chat history from localStorage
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        try {
+          setMessages(JSON.parse(stored));
+        } catch (e) {
+          setMessages(seed);
+        }
+      } else {
+        setMessages(seed);
+      }
+    }
+  }, [storageKey, setMessages]);
+
+  // Persist chat history to localStorage
+  React.useEffect(() => {
+    if (typeof window !== "undefined" && messages.length > 0) {
+      localStorage.setItem(storageKey, JSON.stringify(messages));
+    }
+  }, [messages, storageKey]);
+
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom of messages
+  React.useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const text = input.trim();
+    if (!text || isLoading) return;
+    sendMessage({ text });
+    setInput("");
+  };
+
+  const handleSuggestionClick = (text: string) => {
+    if (isLoading) return;
+    sendMessage({ text });
   };
 
   return (
@@ -101,13 +216,21 @@ export function AIPanel() {
               >
                 <div
                   className={cn(
-                    "max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed",
+                    "max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap",
                     m.role === "user"
                       ? "bg-primary text-primary-foreground rounded-br-md"
                       : "border border-border/60 bg-card rounded-bl-md",
                   )}
                 >
-                  {m.content}
+                  {m.parts
+                    ? m.parts.map((part, idx) => {
+                        if (part.type === "text") {
+                          return <React.Fragment key={idx}>{part.text}</React.Fragment>;
+                        }
+                        return null;
+                      })
+                    : (m as any).content}
+
                 </div>
                 {m.role === "assistant" && (
                   <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
@@ -116,13 +239,14 @@ export function AIPanel() {
                 )}
               </div>
             ))}
-            {pending && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            {isLoading && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground p-2">
                 <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
                 <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse delay-100" />
                 <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse delay-200" />
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
 
           <div className="border-t border-border/60 p-3 space-y-2">
@@ -130,7 +254,7 @@ export function AIPanel() {
               {suggestions.map((s) => (
                 <button
                   key={s}
-                  onClick={() => send(s)}
+                  onClick={() => handleSuggestionClick(s)}
                   className="shrink-0 rounded-full border border-border/60 bg-card/40 px-2.5 py-1 text-[11px] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
                 >
                   <Wand2 className="h-3 w-3 inline mr-1" />
@@ -138,28 +262,26 @@ export function AIPanel() {
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-background px-2.5 py-1.5">
+            <form
+              onSubmit={handleSubmit}
+              className="flex items-center gap-2 rounded-xl border border-border/60 bg-background px-2.5 py-1.5"
+            >
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Pergunte qualquer coisa…"
                 className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    send();
-                  }
-                }}
+                disabled={isLoading}
               />
               <Button
                 size="icon-sm"
                 variant="gradient"
-                onClick={() => send()}
-                disabled={!input.trim() || pending}
+                type="submit"
+                disabled={!input.trim() || isLoading}
               >
                 <Send className="h-3 w-3" />
               </Button>
-            </div>
+            </form>
             <p className="text-[10px] text-muted-foreground text-center">
               Toda ação é registrada em <Badge variant="outline" size="sm" className="mx-1">AI Actions</Badge>
             </p>
@@ -169,3 +291,4 @@ export function AIPanel() {
     </AnimatePresence>
   );
 }
+

@@ -70,3 +70,20 @@ export const aiActions = pgTable(
     statusIdx: index("ai_actions_status_idx").on(table.status),
   }),
 );
+
+export const aiToolCalls = pgTable(
+  "ai_tool_calls",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    actionId: uuid("action_id").references(() => aiActions.id, { onDelete: "cascade" }).notNull(),
+    toolName: text("tool_name").notNull(),
+    args: jsonb("args").notNull(),
+    result: jsonb("result"),
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    actionIdx: index("ai_tool_calls_action_idx").on(table.actionId),
+  }),
+);
+

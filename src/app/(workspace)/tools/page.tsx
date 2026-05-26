@@ -17,6 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { MOCK_TOOLS, TOOL_CATEGORIES } from "@/data";
 import { cn } from "@/lib/utils/cn";
+import { BrandLogo } from "@/components/ui/brand-logo";
+
 
 export default function ToolsPage() {
   const [search, setSearch] = React.useState("");
@@ -158,21 +160,27 @@ function ToolCard({
       <div
         className="absolute inset-0 opacity-0 group-hover:opacity-100 transition"
         style={{
-          background: `radial-gradient(at top, ${tool.brandColor ?? "#5b8cff"}30, transparent 60%)`,
+          background: `radial-gradient(at top, ${tool.brandColor ?? "#3b82f6"}30, transparent 60%)`,
         }}
       />
       <div className="relative space-y-2.5">
         <div className="flex items-start justify-between">
           <div
             className={cn(
-              "flex items-center justify-center rounded-lg font-bold text-white border border-border/60",
-              variant === "featured" ? "h-12 w-12 text-lg" : "h-9 w-9 text-sm",
+              "flex items-center justify-center rounded-lg text-white border border-border/60 transition-transform group-hover:scale-105 duration-300",
+              variant === "featured" ? "h-12 w-12" : "h-9 w-9",
             )}
             style={{
-              background: tool.brandColor ?? "#5b8cff",
+              background: tool.brandColor ?? "#3b82f6",
             }}
           >
-            {tool.name[0]}
+            <BrandLogo
+              slug={tool.iconSlug}
+              fallback={tool.name}
+              size={variant === "featured" ? 24 : 18}
+              monochrome
+              brandColor={tool.brandColor}
+            />
           </div>
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
             {tool.isFavorite && (
@@ -194,3 +202,4 @@ function ToolCard({
     </motion.a>
   );
 }
+

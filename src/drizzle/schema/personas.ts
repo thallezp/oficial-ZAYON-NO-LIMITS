@@ -32,7 +32,7 @@ export const personas = pgTable(
     dressStyle: text("dress_style"),
     forbiddenWords: jsonb("forbidden_words"),
     preferredWords: jsonb("preferred_words"),
-    references: jsonb("references"),
+    referenceLinks: jsonb("reference_links"),
     guidelines: text("guidelines"),
     ownerId: uuid("owner_id").references(() => users.id),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

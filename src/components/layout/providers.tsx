@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { usePersonaStore } from "@/stores/persona-store";
 import { CURRENT_USER, MOCK_WORKSPACES, MOCK_PERSONAS } from "@/data";
+import { CopilotKit } from "@copilotkit/react-core";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = React.useState(
@@ -31,7 +32,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+      <CopilotKit runtimeUrl="/api/copilotkit">
+        <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+      </CopilotKit>
       <Toaster
         theme="dark"
         position="bottom-right"
@@ -42,3 +45,4 @@ export function Providers({ children }: { children: React.ReactNode }) {
     </QueryClientProvider>
   );
 }
+

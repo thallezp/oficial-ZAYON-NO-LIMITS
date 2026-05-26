@@ -30,7 +30,7 @@ export const contentItems = pgTable(
     caption: text("caption"),
     visualBrief: text("visual_brief"),
     audioReference: text("audio_reference"),
-    references: jsonb("references"),
+    referenceLinks: jsonb("reference_links"),
     pillar: contentPillarEnum("pillar"),
     status: contentStatusEnum("status").default("idea").notNull(),
     scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
@@ -130,3 +130,23 @@ export const promptIterations = pgTable("prompt_iterations", {
   metrics: jsonb("metrics"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const contentComments = pgTable("content_comments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  contentItemId: uuid("content_item_id").references(() => contentItems.id, { onDelete: "cascade" }).notNull(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  comment: text("comment").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const modelingContentExamples = pgTable("modeling_content_examples", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  profileId: uuid("profile_id").references(() => modelingProfiles.id, { onDelete: "cascade" }).notNull(),
+  title: text("title").notNull(),
+  url: text("url").notNull(),
+  channel: text("channel"),
+  analysis: text("analysis"),
+  metrics: jsonb("metrics"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+

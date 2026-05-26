@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
 
 /**
  * Middleware de proteção de rotas.
@@ -32,25 +33,76 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // TODO: ligar Supabase Auth quando rodar produção real
-  // const { createServerClient } = await import("@supabase/ssr");
-  // const supabase = createServerClient(...);
-  // const { data: { session } } = await supabase.auth.getSession();
-  //
-  // if (!session && !isPublic) {
-  //   const url = req.nextUrl.clone();
-  //   url.pathname = "/login";
-  //   url.searchParams.set("next", pathname);
-  //   return NextResponse.redirect(url);
-  // }
-  //
-  // if (session && isPublic) {
-  //   const url = req.nextUrl.clone();
-  //   url.pathname = "/dashboard";
-  //   return NextResponse.redirect(url);
-  // }
+  let response = NextResponse.next({
+    request: {
+      headers: req.headers,
+    },
+  });
 
-  return NextResponse.next();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return req.cookies.get(name)?.value;
+        },
+        set(name: string, value: string, options: any) {
+          req.cookies.set({
+            name,
+            value,
+            ...options,
+          });
+          response = NextResponse.next({
+            request: {
+              headers: req.headers,
+            },
+          });
+          response.cookies.set({
+            name,
+            value,
+            ...options,
+          });
+        },
+        remove(name: string, options: any) {
+          req.cookies.set({
+            name,
+            value: "",
+            ...options,
+          });
+          response = NextResponse.next({
+            request: {
+              headers: req.headers,
+            },
+          });
+          response.cookies.set({
+            name,
+            value: "",
+            ...options,
+          });
+        },
+      },
+    },
+  );
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user && !isPublic) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("next", pathname);
+    return NextResponse.redirect(url);
+  }
+
+  if (user && isPublic) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/dashboard";
+    return NextResponse.redirect(url);
+  }
+
+  return response;
 }
 
 export const config = {
@@ -64,3 +116,4 @@ export const config = {
     "/((?!_next/static|_next/image|favicon|.*\\.(?:svg|png|jpg|jpeg|gif|webp)).*)",
   ],
 };
+

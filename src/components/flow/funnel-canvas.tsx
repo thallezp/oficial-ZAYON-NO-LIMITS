@@ -27,12 +27,14 @@ import {
   Sparkles,
   Target,
   Video,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Funnel } from "@/types";
 import { formatCompact, formatCurrency } from "@/lib/utils/format";
 import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
 
 const NODE_ICONS = {
   content: Sparkles,
@@ -162,8 +164,26 @@ function FunnelInner({ funnel, accent = "#5b8cff" }: Props) {
     [funnel.edges, accent],
   );
 
-  const [nodes, , onNodesChange] = useNodesState(initialNodes);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [selectedNode, setSelectedNode] = React.useState<Node | null>(null);
+
+  // Edit fields state
+  const [editTitle, setEditTitle] = React.useState("");
+  const [editDesc, setEditDesc] = React.useState("");
+  const [editTraffic, setEditTraffic] = React.useState(0);
+  const [editConversion, setEditConversion] = React.useState(0);
+  const [editRevenue, setEditRevenue] = React.useState(0);
+
+  React.useEffect(() => {
+    if (selectedNode) {
+      setEditTitle(selectedNode.data.title || "");
+      setEditDesc(selectedNode.data.description || "");
+      setEditTraffic(selectedNode.data.metrics?.traffic ?? 0);
+      setEditConversion(selectedNode.data.metrics?.conversion ?? 0);
+      setEditRevenue(selectedNode.data.metrics?.revenue ?? 0);
+    }
+  }, [selectedNode]);
 
   const onConnect = React.useCallback(
     (c: Connection) => {
@@ -184,6 +204,36 @@ function FunnelInner({ funnel, accent = "#5b8cff" }: Props) {
     [accent, setEdges],
   );
 
+  const onNodeClick = React.useCallback((event: React.MouseEvent, node: Node) => {
+    setSelectedNode(node);
+  }, []);
+
+  const handleSaveNode = () => {
+    if (!selectedNode) return;
+    setNodes((nds) =>
+      nds.map((n) => {
+        if (n.id === selectedNode.id) {
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              title: editTitle,
+              description: editDesc,
+              metrics: {
+                traffic: Number(editTraffic),
+                conversion: Number(editConversion),
+                revenue: Number(editRevenue),
+              },
+            },
+          };
+        }
+        return n;
+      })
+    );
+    setSelectedNode(null);
+    toast.success("Métricas do nó salvas com sucesso");
+  };
+
   return (
     <div className="relative h-[560px] rounded-xl border border-border/60 bg-card/40 overflow-hidden">
       <ReactFlow
@@ -192,6 +242,7 @@ function FunnelInner({ funnel, accent = "#5b8cff" }: Props) {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onNodeClick={onNodeClick}
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{ padding: 0.2 }}
@@ -226,12 +277,115 @@ function FunnelInner({ funnel, accent = "#5b8cff" }: Props) {
           <Button
             variant="gradient"
             size="sm"
-            onClick={() => toast.success("Novo nó adicionado")}
+            onClick={() => {
+              const id = `node-${Date.now()}`;
+              const newNode: Node = {
+                id,
+                type: "funnel",
+                position: { x: 100, y: 100 },
+                data: {
+                  title: "Novo nó",
+                  description: "Mídia paga / Tráfego",
+                  nodeType: "content",
+                  metrics: { traffic: 1000, conversion: 10, revenue: 0 },
+                  accent,
+                },
+              };
+              setNodes((nds) => [...nds, newNode]);
+              toast.success("Novo nó adicionado");
+            }}
           >
             + Nó
           </Button>
         </Panel>
       </ReactFlow>
+
+      {/* Editor Drawer */}
+      <AnimatePresence>
+        {selectedNode && (
+          <motion.div
+            initial={{ x: 300, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 300, opacity: 0 }}
+            className="absolute top-0 right-0 z-30 flex h-full w-[280px] flex-col border-l border-border/60 bg-card/95 backdrop-blur-md p-4 space-y-4 shadow-xl overflow-y-auto"
+          >
+            <div className="flex items-center justify-between border-b border-border/60 pb-2">
+              <div>
+                <h3 className="font-semibold text-sm">Editar Nó</h3>
+                <p className="text-[10px] text-muted-foreground">ID: {selectedNode.id}</p>
+              </div>
+              <Button variant="ghost" size="icon-sm" onClick={() => setSelectedNode(null)}>
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+
+            <div className="space-y-3 flex-1 text-xs">
+              <div className="space-y-1.5">
+                <label className="text-muted-foreground font-medium">Título</label>
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full rounded-md border border-border/60 bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/60"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-muted-foreground font-medium">Descrição</label>
+                <textarea
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                  className="w-full h-16 rounded-md border border-border/60 bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/60 resize-none"
+                />
+              </div>
+
+              <div className="border-t border-border/40 my-2 pt-2 space-y-2">
+                <p className="font-semibold text-[10px] text-muted-foreground uppercase tracking-wider">Métricas do Nó</p>
+                
+                <div className="space-y-1.5">
+                  <label className="text-muted-foreground font-medium">Tráfego (Cliques)</label>
+                  <input
+                    type="number"
+                    value={editTraffic}
+                    onChange={(e) => setEditTraffic(Number(e.target.value))}
+                    className="w-full rounded-md border border-border/60 bg-background px-3 py-1.5 text-xs text-foreground outline-none focus:border-primary/60"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-muted-foreground font-medium">Taxa de Conversão (%)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={editConversion}
+                    onChange={(e) => setEditConversion(Number(e.target.value))}
+                    className="w-full rounded-md border border-border/60 bg-background px-3 py-1.5 text-xs text-foreground outline-none focus:border-primary/60"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-muted-foreground font-medium">Receita Estimada (R$)</label>
+                  <input
+                    type="number"
+                    value={editRevenue}
+                    onChange={(e) => setEditRevenue(Number(e.target.value))}
+                    className="w-full rounded-md border border-border/60 bg-background px-3 py-1.5 text-xs text-foreground outline-none focus:border-primary/60"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-border/60 flex gap-2">
+              <Button variant="outline" size="sm" className="flex-1" onClick={() => setSelectedNode(null)}>
+                Cancelar
+              </Button>
+              <Button variant="gradient" size="sm" className="flex-1" onClick={handleSaveNode}>
+                Salvar
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -243,3 +397,4 @@ export function FunnelCanvas(props: Props) {
     </ReactFlowProvider>
   );
 }
+

@@ -29,6 +29,8 @@ import { usePersonaFromRoute } from "@/components/personas/persona-resolver";
 import { MOCK_LEADS } from "@/data";
 import { formatCurrency, initials, relativeTime } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
+import { LeadDetailDrawer } from "@/components/tables/lead-detail-drawer";
+import type { Lead } from "@/types";
 
 const statusVariant = {
   open: "outline",
@@ -45,6 +47,7 @@ export default function LeadsPage() {
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const [expanded, setExpanded] = React.useState<string | null>(null);
+  const [drawerLead, setDrawerLead] = React.useState<Lead | null>(null);
 
   const leads = allLeads.filter(
     (l) =>
@@ -270,13 +273,20 @@ export default function LeadsPage() {
                                   </Badge>
                                 )}
                                 <div className="flex gap-2 pt-2">
-                                  <Button size="sm" variant="outline">
-                                    Abordar
+                                  <Button
+                                    size="sm"
+                                    variant="gradient"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDrawerLead(l);
+                                    }}
+                                  >
+                                    Abrir detalhes <ArrowUpRight className="h-3 w-3" />
                                   </Button>
                                   <Button size="sm" variant="outline">
                                     Criar tarefa
                                   </Button>
-                                  <Button size="sm" variant="gradient">
+                                  <Button size="sm" variant="outline">
                                     <Wand2 className="h-3 w-3" /> Resposta IA
                                   </Button>
                                 </div>
@@ -293,6 +303,12 @@ export default function LeadsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <LeadDetailDrawer
+        lead={drawerLead}
+        open={!!drawerLead}
+        onOpenChange={(o) => !o && setDrawerLead(null)}
+      />
     </div>
   );
 }

@@ -1,14 +1,62 @@
 "use client";
 
-import Link from "next/link";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowRight, Sparkles, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { acceptInviteAction } from "@/server/actions/auth";
 
-export default function InvitePage() {
+function InviteContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token") || "";
+
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) {
+      toast.error("Token de convite ausente na URL.");
+      return;
+    }
+    if (!name || !password) {
+      toast.error("Por favor, preencha todos os campos.");
+      return;
+    }
+    if (password.length < 12) {
+      toast.error("A senha deve conter no mínimo 12 caracteres.");
+      return;
+    }
+
+    setLoading(true);
+    const formData = new FormData();
+    formData.append("token", token);
+    formData.append("name", name);
+    formData.append("password", password);
+
+    try {
+      const res = await acceptInviteAction(formData);
+      if (res?.error) {
+        toast.error(res.error);
+      } else {
+        toast.success("Convite aceito com sucesso!");
+        router.push("/dashboard");
+        router.refresh();
+      }
+    } catch (err) {
+      toast.error("Erro ao aceitar convite.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       <div className="relative hidden lg:flex flex-col justify-between overflow-hidden border-r border-border/60 mesh-bg p-12">
@@ -26,7 +74,7 @@ export default function InvitePage() {
             <span className="block text-primary">NEXUS HQ</span>
           </h1>
           <p className="text-sm text-muted-foreground">
-            Alex Vega te convidou como editor. Crie sua senha para entrar no
+            A equipe te convidou como membro. Crie seu perfil e senha para entrar no
             workspace.
           </p>
         </motion.div>
@@ -42,20 +90,35 @@ export default function InvitePage() {
           className="relative w-full max-w-sm space-y-5 panel-strong p-8"
         >
           <h2 className="text-xl font-semibold tracking-tight">Aceitar convite</h2>
-          <form className="space-y-3" onSubmit={(e) => e.preventDefault()}>
+          <form className="space-y-3" onSubmit={handleSubmit}>
             <div className="space-y-1.5">
               <Label htmlFor="name">Nome completo</Label>
-              <Input id="name" placeholder="Como te chamam" />
+              <Input
+                id="name"
+                placeholder="Como te chamam"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password">Senha</Label>
-              <Input id="password" type="password" placeholder="mínimo 12 caracteres" />
+              <Input
+                id="password"
+                type="password"
+                placeholder="mínimo 12 caracteres"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </div>
-            <Button variant="gradient" size="lg" className="w-full" asChild>
-              <Link href="/dashboard">
-                Entrar no workspace
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+            <Button
+              type="submit"
+              variant="gradient"
+              size="lg"
+              className="w-full text-white"
+              disabled={loading}
+            >
+              {loading ? "Aceitando..." : "Entrar no workspace"}
+              <ArrowRight className="h-4 w-4" />
             </Button>
           </form>
           <p className="text-[11px] text-muted-foreground text-center">
@@ -66,3 +129,16 @@ export default function InvitePage() {
     </div>
   );
 }
+
+export default function InvitePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-muted-foreground text-sm">Carregando...</div>
+      </div>
+    }>
+      <InviteContent />
+    </Suspense>
+  );
+}
+

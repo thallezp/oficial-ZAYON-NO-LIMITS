@@ -61,3 +61,28 @@ export const toolRecents = pgTable("tool_recents", {
   userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   openedAt: timestamp("opened_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const toolTags = pgTable("tool_tags", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  toolId: uuid("tool_id").references(() => tools.id, { onDelete: "cascade" }).notNull(),
+  tag: text("tag").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const toolEmbeds = pgTable("tool_embeds", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  toolId: uuid("tool_id").references(() => tools.id, { onDelete: "cascade" }).notNull(),
+  url: text("url").notNull(),
+  config: jsonb("config"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const toolLinks = pgTable("tool_links", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  toolId: uuid("tool_id").references(() => tools.id, { onDelete: "cascade" }).notNull(),
+  title: text("title").notNull(),
+  url: text("url").notNull(),
+  icon: text("icon"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+

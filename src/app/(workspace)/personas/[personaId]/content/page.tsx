@@ -4,6 +4,7 @@ import * as React from "react";
 import { motion } from "framer-motion";
 import {
   Calendar as CalendarIcon,
+  Clock,
   Filter,
   Image as ImageIcon,
   KanbanSquare,
@@ -18,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ContentTimeline } from "@/components/workspace/content-timeline";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PersonaHero } from "@/components/personas/persona-hero";
 import { usePersonaFromRoute } from "@/components/personas/persona-resolver";
@@ -112,6 +114,9 @@ export default function ContentStudioPage() {
           </TabsTrigger>
           <TabsTrigger value="list">
             <ListChecks className="h-3.5 w-3.5" /> Lista
+          </TabsTrigger>
+          <TabsTrigger value="timeline">
+            <Clock className="h-3.5 w-3.5" /> Timeline
           </TabsTrigger>
         </TabsList>
 
@@ -248,6 +253,10 @@ export default function ContentStudioPage() {
               </tbody>
             </table>
           </div>
+        </TabsContent>
+
+        <TabsContent value="timeline">
+          <ContentTimeline items={content} accent={persona.accent} />
         </TabsContent>
 
         <TabsContent value="list">

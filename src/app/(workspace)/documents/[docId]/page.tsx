@@ -18,9 +18,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { RichEditor } from "@/components/editor/rich-editor";
-import { MOCK_DOCUMENTS, MOCK_USERS, MOCK_PERSONAS } from "@/data";
+import { MOCK_DOCUMENTS, MOCK_PERSONAS } from "@/data";
 import { initials, relativeTime } from "@/lib/utils/format";
 import { toast } from "sonner";
+import { RoomProvider, useOthers, useUpdateMyPresence } from "@/lib/liveblocks";
 
 const SAMPLE_HTML = `
 <h1>Posicionamento · Aurora Voss</h1>
@@ -52,14 +53,16 @@ const SAMPLE_HTML = `
 <p>Filmes 35mm · tons quentes · enquadramentos generosos · ritmo lento.</p>
 `;
 
-export default function DocumentDetailPage() {
-  const params = useParams<{ docId: string }>();
+function CollaborativeDocumentContent({ docId }: { docId: string }) {
   const doc =
-    MOCK_DOCUMENTS.find((d) => d.id === params?.docId) ?? MOCK_DOCUMENTS[0];
+    MOCK_DOCUMENTS.find((d) => d.id === docId) ?? MOCK_DOCUMENTS[0];
   const persona = MOCK_PERSONAS.find((p) => p.id === doc.personaId);
 
   const [saving, setSaving] = React.useState(false);
   const [savedAt, setSavedAt] = React.useState<Date>(new Date());
+
+  const others = useOthers();
+  const updateMyPresence = useUpdateMyPresence();
 
   const onChange = React.useCallback(() => {
     setSaving(true);
@@ -69,6 +72,20 @@ export default function DocumentDetailPage() {
     }, 800);
     return () => clearTimeout(id);
   }, []);
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    updateMyPresence({ cursor: { x, y } });
+  };
+
+  const handlePointerLeave = () => {
+    updateMyPresence({ cursor: null });
+  };
+
+  const onlineNames = others.map((o) => o.info?.name || "Membro NEXUS").join(", ");
+  const presenceText = onlineNames ? ` · ${onlineNames}` : "";
 
   return (
     <div className="space-y-6">
@@ -147,9 +164,12 @@ export default function DocumentDetailPage() {
 
         <div className="flex items-center gap-2">
           <div className="flex -space-x-2">
-            {MOCK_USERS.slice(0, 3).map((u) => (
-              <Avatar key={u.id} size="sm" className="ring-2 ring-background">
-                <AvatarFallback>{initials(u.fullName)}</AvatarFallback>
+            <Avatar size="sm" className="ring-2 ring-background">
+              <AvatarFallback>Você</AvatarFallback>
+            </Avatar>
+            {others.map(({ connectionId, info }) => (
+              <Avatar key={connectionId} size="sm" className="ring-2 ring-background">
+                <AvatarFallback>{initials(info?.name || "M")}</AvatarFallback>
               </Avatar>
             ))}
           </div>
@@ -178,12 +198,52 @@ export default function DocumentDetailPage() {
 
       <div className="flex items-center gap-2 text-[11px] text-muted-foreground border-b border-border/60 pb-2">
         <Users className="h-3 w-3 text-success" />
-        3 pessoas online · Marina · Lucas · você
+        {others.length + 1} {others.length === 0 ? "pessoa online" : "pessoas online"} · você{presenceText}
       </div>
 
-      <div className="mx-auto max-w-3xl pb-24">
+      <div
+        className="relative mx-auto max-w-3xl pb-24"
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
+      >
+        {/* Render live cursors */}
+        {others.map(({ connectionId, presence, info }) => {
+          if (!presence?.cursor) return null;
+          return (
+            <div
+              key={connectionId}
+              className="absolute pointer-events-none transition-transform duration-75 z-50"
+              style={{
+                left: presence.cursor.x,
+                top: presence.cursor.y,
+              }}
+            >
+              <svg
+                className="h-5 w-5 text-brand-500 fill-current"
+                viewBox="0 0 20 20"
+              >
+                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V19a1 1 0 002 0v-3.429a1 1 0 00.725-.976l5 1.43a1 1 0 001.169-1.41l-7-14z" />
+              </svg>
+              <span className="ml-3 rounded bg-brand-500 px-1.5 py-0.5 text-[9px] text-white font-medium whitespace-nowrap shadow-md">
+                {info?.name || "Membro"}
+              </span>
+            </div>
+          );
+        })}
         <RichEditor initialContent={SAMPLE_HTML} onChange={onChange} />
       </div>
     </div>
   );
 }
+
+export default function DocumentDetailPage() {
+  const params = useParams<{ docId: string }>();
+  const docId = params?.docId || "global-doc";
+
+  return (
+    <RoomProvider id={`room-${docId}`} initialPresence={{ cursor: null, typing: false }}>
+      <CollaborativeDocumentContent docId={docId} />
+    </RoomProvider>
+  );
+}
+

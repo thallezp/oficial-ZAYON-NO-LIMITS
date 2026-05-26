@@ -77,6 +77,21 @@ export type SalesCopyRow = InferSelectModel<typeof s.salesCopies>;
 export type AIThreadRow = InferSelectModel<typeof s.aiThreads>;
 export type AIMessageRow = InferSelectModel<typeof s.aiMessages>;
 export type AIActionRow = InferSelectModel<typeof s.aiActions>;
+export type AIToolCallRow = InferSelectModel<typeof s.aiToolCalls>;
+
+// New Tables
+export type RoleRow = InferSelectModel<typeof s.roles>;
+export type PermissionRow = InferSelectModel<typeof s.permissions>;
+export type CommentRow = InferSelectModel<typeof s.comments>;
+export type MentionRow = InferSelectModel<typeof s.mentions>;
+export type PresenceSessionRow = InferSelectModel<typeof s.presenceSessions>;
+export type TaskLabelRow = InferSelectModel<typeof s.taskLabels>;
+export type DocumentBlockRow = InferSelectModel<typeof s.documentBlocks>;
+export type ToolTagRow = InferSelectModel<typeof s.toolTags>;
+export type ToolEmbedRow = InferSelectModel<typeof s.toolEmbeds>;
+export type ToolLinkRow = InferSelectModel<typeof s.toolLinks>;
+export type ContentCommentRow = InferSelectModel<typeof s.contentComments>;
+export type ModelingContentExampleRow = InferSelectModel<typeof s.modelingContentExamples>;
 
 // Insert types — úteis em mutations
 export type NewTask = InferInsertModel<typeof s.tasks>;
@@ -92,3 +107,17 @@ export type NewFlow = InferInsertModel<typeof s.flows>;
 export type NewSalesFunnel = InferInsertModel<typeof s.salesFunnels>;
 export type NewActivityLog = InferInsertModel<typeof s.activityLogs>;
 export type NewAIAction = InferInsertModel<typeof s.aiActions>;
+export type NewRole = InferInsertModel<typeof s.roles>;
+export type NewPermission = InferInsertModel<typeof s.permissions>;
+export type NewComment = InferInsertModel<typeof s.comments>;
+export type NewMention = InferInsertModel<typeof s.mentions>;
+export type NewPresenceSession = InferInsertModel<typeof s.presenceSessions>;
+export type NewTaskLabel = InferInsertModel<typeof s.taskLabels>;
+export type NewDocumentBlock = InferInsertModel<typeof s.documentBlocks>;
+export type NewToolTag = InferInsertModel<typeof s.toolTags>;
+export type NewToolEmbed = InferInsertModel<typeof s.toolEmbeds>;
+export type NewToolLink = InferInsertModel<typeof s.toolLinks>;
+export type NewContentComment = InferInsertModel<typeof s.contentComments>;
+export type NewModelingContentExample = InferInsertModel<typeof s.modelingContentExamples>;
+export type NewAIToolCall = InferInsertModel<typeof s.aiToolCalls>;
+

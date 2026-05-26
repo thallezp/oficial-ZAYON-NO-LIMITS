@@ -1,14 +1,53 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowRight, Github, KeyRound, Mail, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { loginAction } from "@/server/actions/auth";
 
-export default function LoginPage() {
+function LoginContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      toast.error("Por favor, preencha todos os campos.");
+      return;
+    }
+
+    setLoading(true);
+    const formData = new FormData();
+    formData.append("email", email);
+    formData.append("password", password);
+
+    try {
+      const res = await loginAction(formData);
+      if (res?.error) {
+        toast.error(res.error);
+      } else {
+        toast.success("Login efetuado com sucesso!");
+        const nextUrl = searchParams.get("next") || "/dashboard";
+        router.push(nextUrl);
+        router.refresh();
+      }
+    } catch (err) {
+      toast.error("Ocorreu um erro ao fazer login.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       <div className="relative hidden lg:flex flex-col justify-between overflow-hidden border-r border-border/60 mesh-bg p-12">
@@ -72,7 +111,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <form className="space-y-3" onSubmit={(e) => e.preventDefault()}>
+          <form className="space-y-3" onSubmit={handleLogin}>
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
               <div className="relative">
@@ -82,6 +121,8 @@ export default function LoginPage() {
                   type="email"
                   placeholder="voce@equipe.com"
                   className="pl-9"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
             </div>
@@ -94,14 +135,20 @@ export default function LoginPage() {
                   type="password"
                   placeholder="••••••••"
                   className="pl-9"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
             </div>
-            <Button variant="gradient" size="lg" className="w-full" asChild>
-              <Link href="/dashboard">
-                Entrar
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+            <Button
+              type="submit"
+              variant="gradient"
+              size="lg"
+              className="w-full text-white"
+              disabled={loading}
+            >
+              {loading ? "Entrando..." : "Entrar"}
+              <ArrowRight className="h-4 w-4" />
             </Button>
           </form>
 
@@ -122,3 +169,16 @@ export default function LoginPage() {
     </div>
   );
 }
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-muted-foreground text-sm">Carregando...</div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
