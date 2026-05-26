@@ -19,13 +19,20 @@ import { CURRENT_USER, MOCK_WORKSPACES, MOCK_PERSONAS } from "@/data";
  *   NEXT_PUBLIC_ENABLE_COPILOT=true
  *   OPENAI_API_KEY=sk-...
  */
-const CopilotProvider = React.lazy(() =>
-  import("@copilotkit/react-core").then((m) => ({
+const CopilotProvider = React.lazy(async () => {
+  const [{ CopilotKit }, { CopilotActionsRegistry }] = await Promise.all([
+    import("@copilotkit/react-core"),
+    import("@/components/ai/copilot-actions"),
+  ]);
+  return {
     default: ({ children }: { children: React.ReactNode }) => (
-      <m.CopilotKit runtimeUrl="/api/copilotkit">{children}</m.CopilotKit>
+      <CopilotKit runtimeUrl="/api/copilotkit">
+        <CopilotActionsRegistry />
+        {children}
+      </CopilotKit>
     ),
-  })),
-);
+  };
+});
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = React.useState(

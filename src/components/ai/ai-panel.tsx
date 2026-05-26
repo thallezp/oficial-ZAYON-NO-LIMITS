@@ -10,7 +10,6 @@ import { useActivePersona } from "@/stores/persona-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { useCopilotAction } from "@copilotkit/react-core";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils/cn";
 
@@ -42,67 +41,9 @@ export function AIPanel() {
   const persona = useActivePersona();
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
 
-  // Register CopilotKit Actions for the agent/chat runtime
-  useCopilotAction({
-    name: "createTask",
-    description: "Cria uma nova tarefa no workspace",
-    parameters: [
-      {
-        name: "title",
-        type: "string",
-        description: "Título da tarefa",
-        required: true,
-      },
-      {
-        name: "priority",
-        type: "string",
-        description: "Prioridade: backlog, todo, doing, review, done",
-        required: false,
-      },
-      {
-        name: "dueAt",
-        type: "string",
-        description: "Data de vencimento (Formato ISO ou string legível)",
-        required: false,
-      },
-    ],
-    handler: async ({ title, priority, dueAt }) => {
-      toast.success("Copilot executou a ação: Criar Tarefa", {
-        description: `Título: "${title}" · Prioridade: ${priority || "padrão"} · Vencimento: ${dueAt || "não definido"}`,
-      });
-      // Optionally run a mutation here if desired
-    },
-  });
-
-  useCopilotAction({
-    name: "qualifyLead",
-    description: "Qualifica um lead com base em análise de perfil",
-    parameters: [
-      {
-        name: "leadName",
-        type: "string",
-        description: "Nome do lead",
-        required: true,
-      },
-      {
-        name: "score",
-        type: "number",
-        description: "Score de 0 a 100",
-        required: true,
-      },
-      {
-        name: "reason",
-        type: "string",
-        description: "Motivo do score / qualificação",
-        required: true,
-      },
-    ],
-    handler: async ({ leadName, score, reason }) => {
-      toast.success("Copilot executou a ação: Qualificar Lead", {
-        description: `Lead: ${leadName} · Score: ${score} · Motivo: ${reason}`,
-      });
-    },
-  });
+  // CopilotKit actions são registradas em <CopilotActionsRegistry/> dentro
+  // do Providers (que só monta o CopilotKit quando NEXT_PUBLIC_ENABLE_COPILOT
+  // está ativo). Isso evita "useCopilotKit must be used within Provider".
 
   const storageKey = React.useMemo(() => {
     return `nexus.chat.${activeWorkspaceId || "global"}.${persona?.id || "global"}`;
