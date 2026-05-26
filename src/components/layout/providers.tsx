@@ -7,7 +7,25 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { usePersonaStore } from "@/stores/persona-store";
 import { CURRENT_USER, MOCK_WORKSPACES, MOCK_PERSONAS } from "@/data";
-import { CopilotKit } from "@copilotkit/react-core";
+
+/**
+ * CopilotKit é carregado lazy e só monta quando a flag
+ * `NEXT_PUBLIC_ENABLE_COPILOT=true` está ativa. Em modo demo,
+ * sem chave OPENAI no servidor, o endpoint /api/copilotkit quebraria
+ * com Unhandled Rejection (process exit 128), o que vaza pro client
+ * como "Application error".
+ *
+ * Para ligar em produção, basta setar:
+ *   NEXT_PUBLIC_ENABLE_COPILOT=true
+ *   OPENAI_API_KEY=sk-...
+ */
+const CopilotProvider = React.lazy(() =>
+  import("@copilotkit/react-core").then((m) => ({
+    default: ({ children }: { children: React.ReactNode }) => (
+      <m.CopilotKit runtimeUrl="/api/copilotkit">{children}</m.CopilotKit>
+    ),
+  })),
+);
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = React.useState(
@@ -30,11 +48,23 @@ export function Providers({ children }: { children: React.ReactNode }) {
     setPersonas(MOCK_PERSONAS);
   }, [bootstrap, setPersonas]);
 
+  const enableCopilot =
+    process.env.NEXT_PUBLIC_ENABLE_COPILOT === "true" &&
+    process.env.NEXT_PUBLIC_USE_MOCK_DATA !== "true";
+
+  const content = (
+    <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+  );
+
   return (
     <QueryClientProvider client={queryClient}>
-      <CopilotKit runtimeUrl="/api/copilotkit">
-        <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
-      </CopilotKit>
+      {enableCopilot ? (
+        <React.Suspense fallback={content}>
+          <CopilotProvider>{content}</CopilotProvider>
+        </React.Suspense>
+      ) : (
+        content
+      )}
       <Toaster
         theme="dark"
         position="bottom-right"
@@ -45,4 +75,3 @@ export function Providers({ children }: { children: React.ReactNode }) {
     </QueryClientProvider>
   );
 }
-
