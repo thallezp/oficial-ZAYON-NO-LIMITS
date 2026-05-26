@@ -193,7 +193,7 @@ export function SidebarContent() {
 
 export function Sidebar() {
   return (
-    <aside className="hidden lg:flex h-screen w-[260px] shrink-0 flex-col border-r border-border/60 bg-surface/40 backdrop-blur-xl">
+    <aside className="hidden lg:flex h-screen w-[260px] shrink-0 flex-col border-r border-border/60 bg-background/60 backdrop-blur-xl">
       <SidebarContent />
     </aside>
   );

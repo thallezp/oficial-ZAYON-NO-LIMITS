@@ -35,3 +35,5 @@ pnpm-debug.log*
 coverage
 *.tsbuildinfo
 next-env.d.ts
+
+.vercel

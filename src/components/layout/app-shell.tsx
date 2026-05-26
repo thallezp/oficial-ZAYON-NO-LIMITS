@@ -9,7 +9,7 @@ import { EnvironmentBanner } from "./environment-banner";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen mesh-bg">
+    <div className="flex min-h-screen bg-background">
       <Sidebar />
       <div className="flex min-h-screen flex-1 flex-col min-w-0">
         <EnvironmentBanner />
