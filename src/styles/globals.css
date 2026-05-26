@@ -1,0 +1,197 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 224 71% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 71% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 71% 4%;
+    --primary: 230 100% 62%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 9% 16%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 220 14% 96%;
+    --accent-foreground: 220 9% 16%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 230 100% 62%;
+    --radius: 0.75rem;
+    --surface: 0 0% 100%;
+    --surface-1: 220 14% 98%;
+    --surface-2: 220 13% 95%;
+    --surface-3: 220 13% 91%;
+  }
+
+  .dark {
+    --background: 226 30% 4%;
+    --foreground: 220 14% 96%;
+    --card: 226 24% 7%;
+    --card-foreground: 220 14% 96%;
+    --popover: 226 28% 6%;
+    --popover-foreground: 220 14% 96%;
+    --primary: 230 100% 70%;
+    --primary-foreground: 226 30% 4%;
+    --secondary: 226 18% 12%;
+    --secondary-foreground: 220 14% 96%;
+    --muted: 226 18% 10%;
+    --muted-foreground: 220 9% 60%;
+    --accent: 226 18% 14%;
+    --accent-foreground: 220 14% 96%;
+    --destructive: 0 72% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 71% 50%;
+    --success-foreground: 226 30% 4%;
+    --warning: 38 92% 56%;
+    --warning-foreground: 226 30% 4%;
+    --info: 199 89% 60%;
+    --info-foreground: 226 30% 4%;
+    --border: 226 18% 14%;
+    --input: 226 18% 14%;
+    --ring: 230 100% 70%;
+    --surface: 226 24% 6%;
+    --surface-1: 226 22% 8%;
+    --surface-2: 226 20% 10%;
+    --surface-3: 226 18% 13%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body {
+    @apply h-full;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    @apply bg-primary/30 text-foreground;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-border;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/40;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-card/60 backdrop-blur-xl border border-border/60;
+  }
+
+  .glass-strong {
+    background: linear-gradient(
+      180deg,
+      hsl(var(--surface-1) / 0.8) 0%,
+      hsl(var(--surface) / 0.9) 100%
+    );
+    @apply backdrop-blur-2xl border border-border/60;
+  }
+
+  .panel {
+    @apply rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm;
+  }
+
+  .panel-strong {
+    @apply rounded-xl border border-border bg-card shadow-soft;
+  }
+
+  .surface {
+    background-color: hsl(var(--surface));
+  }
+
+  .shine {
+    background-image: linear-gradient(
+      110deg,
+      transparent 35%,
+      hsl(var(--foreground) / 0.06) 50%,
+      transparent 65%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 3s linear infinite;
+  }
+
+  .ring-glow {
+    box-shadow:
+      0 0 0 1px hsl(var(--border)),
+      0 12px 48px -16px hsl(var(--primary) / 0.5);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(to right, hsl(var(--border) / 0.4) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--border) / 0.4) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  .dot-bg {
+    background-image: radial-gradient(
+      hsl(var(--border)) 1px,
+      transparent 1px
+    );
+    background-size: 16px 16px;
+  }
+
+  .mesh-bg {
+    background:
+      radial-gradient(at 0% 0%, hsl(var(--primary) / 0.12) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsl(280 80% 60% / 0.08) 0px, transparent 50%),
+      radial-gradient(at 50% 100%, hsl(var(--info) / 0.06) 0px, transparent 50%);
+  }
+
+  .bg-card-elevated {
+    background: linear-gradient(
+      180deg,
+      hsl(var(--surface-1)) 0%,
+      hsl(var(--card)) 100%
+    );
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
