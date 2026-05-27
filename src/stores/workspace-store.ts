@@ -29,7 +29,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         })),
     }),
     {
-      name: "nexus.workspace",
+      name: "zayon.workspace",
       partialize: (state) => ({ activeWorkspaceId: state.activeWorkspaceId }),
     },
   ),

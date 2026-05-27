@@ -28,7 +28,7 @@ export default function ForgotPasswordPage() {
           animate={{ opacity: 1, y: 0 }}
           className="relative space-y-4 max-w-md"
         >
-          <Badge variant="primary">NEXUS</Badge>
+          <Badge variant="primary">ZAYON</Badge>
           <h1 className="text-3xl font-semibold tracking-tight">
             Recupere o acesso.
           </h1>
@@ -37,7 +37,7 @@ export default function ForgotPasswordPage() {
           </p>
         </motion.div>
         <div className="relative text-xs text-muted-foreground">
-          © {new Date().getFullYear()} NEXUS
+          © {new Date().getFullYear()} ZAYON
         </div>
       </div>
 

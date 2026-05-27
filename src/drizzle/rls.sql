@@ -1,5 +1,5 @@
 -- ============================================================
--- NEXUS Workspace OS · Row Level Security policies
+-- ZAYON No Limits · Row Level Security policies
 -- ============================================================
 -- Aplicar apos rodar `drizzle-kit push`. Tabelas-raiz carregam
 -- workspace_id diretamente; tabelas-filhas herdam o acesso da

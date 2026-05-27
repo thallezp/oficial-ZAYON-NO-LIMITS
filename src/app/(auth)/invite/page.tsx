@@ -62,7 +62,7 @@ function InviteContent() {
       <div className="relative hidden lg:flex flex-col justify-between overflow-hidden border-r border-border/60 mesh-bg p-12">
         <div className="absolute inset-0 grid-bg opacity-30" />
         <Badge variant="primary" className="w-fit">
-          <Sparkles className="h-3 w-3" /> Convite NEXUS
+          <Sparkles className="h-3 w-3" /> Convite ZAYON
         </Badge>
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -71,7 +71,7 @@ function InviteContent() {
         >
           <h1 className="text-3xl font-semibold tracking-tight">
             Você foi convidado para
-            <span className="block text-primary">NEXUS HQ</span>
+            <span className="block text-primary">ZAYON HQ</span>
           </h1>
           <p className="text-sm text-muted-foreground">
             A equipe te convidou como membro. Crie seu perfil e senha para entrar no

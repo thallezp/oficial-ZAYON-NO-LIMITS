@@ -41,6 +41,7 @@ import {
   MOCK_TOOLS,
   MOCK_LEADS,
   MOCK_CONTENT,
+  MOCK_PERSONAS,
 } from "@/data";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils/cn";
@@ -80,6 +81,8 @@ export function CommandMenu() {
   const activeId = usePersonaStore((s) => s.activePersonaId);
   const setActivePersona = usePersonaStore((s) => s.setActivePersona);
   const openQuickCreate = useQuickCreate((s) => s.openWith);
+  const defaultPersonaId =
+    activeId ?? personas[0]?.id ?? MOCK_PERSONAS[0]?.id ?? "";
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -283,9 +286,7 @@ export function CommandMenu() {
               {MOCK_LEADS.slice(0, 4).map((l) => (
                 <CmdItem
                   key={l.id}
-                  onSelect={() =>
-                    go(`/personas/${l.personaId ?? "p_aurora"}/leads`)
-                  }
+                  onSelect={() => go(`/personas/${l.personaId ?? defaultPersonaId}/leads`)}
                   icon={<Activity className="h-4 w-4" />}
                   label={l.name ?? "(sem nome)"}
                   trailing={l.status}
@@ -297,9 +298,7 @@ export function CommandMenu() {
               {MOCK_CONTENT.slice(0, 4).map((c) => (
                 <CmdItem
                   key={c.id}
-                  onSelect={() =>
-                    go(`/personas/${c.personaId ?? "p_aurora"}/content`)
-                  }
+                  onSelect={() => go(`/personas/${c.personaId ?? defaultPersonaId}/content`)}
                   icon={<ImageIcon className="h-4 w-4" />}
                   label={c.title}
                   trailing={c.channel}
@@ -308,7 +307,7 @@ export function CommandMenu() {
             </Command.Group>
           </Command.List>
           <div className="flex items-center justify-between border-t border-border/60 px-4 py-2 text-[10px] text-muted-foreground">
-            <span>NEXUS Command Menu</span>
+            <span>ZAYON Command Menu</span>
             <span className="flex items-center gap-2">
               <span className="flex items-center gap-1">
                 <kbd className="text-foreground">↑↓</kbd> navegar

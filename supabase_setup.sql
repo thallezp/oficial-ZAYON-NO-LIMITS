@@ -1155,3 +1155,16 @@ alter publication supabase_realtime add table public.financial_transactions;
 alter publication supabase_realtime add table public.notifications;
 alter publication supabase_realtime add table public.activity_logs;
 alter publication supabase_realtime add table public.presence_sessions;
+
+-- 7. Expõe tabelas/funções ao Data API explicitamente
+-- Importante: desde 28/04/2026 o Supabase pode deixar novas tabelas de public
+-- invisíveis para supabase-js/PostgREST sem GRANT explícito.
+grant usage on schema public to anon, authenticated, service_role;
+grant select, insert, update, delete on all tables in schema public to anon, authenticated, service_role;
+grant usage, select on all sequences in schema public to anon, authenticated, service_role;
+
+alter default privileges for role postgres in schema public
+grant select, insert, update, delete on tables to anon, authenticated, service_role;
+
+alter default privileges for role postgres in schema public
+grant usage, select on sequences to anon, authenticated, service_role;

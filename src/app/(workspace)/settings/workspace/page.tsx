@@ -136,7 +136,7 @@ export default function WorkspaceSettingsPage() {
         <CardContent className="space-y-3">
           <div className="space-y-1.5">
             <Label>Domínios confiáveis</Label>
-            <Input defaultValue="nexus.team, equipe.nexus.team" />
+            <Input defaultValue="zayon.team, equipe.zayon.team" />
             <p className="text-[11px] text-muted-foreground">
               Apenas emails desses domínios podem ser convidados.
             </p>

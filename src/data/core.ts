@@ -1,45 +1,45 @@
-import type { User, Workspace } from "@/types";
+﻿import type { User, Workspace } from "@/types";
 
 export const MOCK_USERS: User[] = [
   {
-    id: "u_owner",
-    email: "alex@nexus.team",
+    id: "22222222-2222-2222-2222-222222222201",
+    email: "alex@zayon.team",
     fullName: "Alex Vega",
     role: "owner",
     online: true,
     avatarUrl: "",
   },
   {
-    id: "u_strat",
-    email: "marina@nexus.team",
+    id: "22222222-2222-2222-2222-222222222202",
+    email: "marina@zayon.team",
     fullName: "Marina Castro",
     role: "admin",
     online: true,
   },
   {
-    id: "u_copy",
-    email: "lucas@nexus.team",
+    id: "22222222-2222-2222-2222-222222222203",
+    email: "lucas@zayon.team",
     fullName: "Lucas Hoffman",
     role: "editor",
     online: false,
   },
   {
-    id: "u_design",
-    email: "sofia@nexus.team",
+    id: "22222222-2222-2222-2222-222222222204",
+    email: "sofia@zayon.team",
     fullName: "Sofia Marques",
     role: "editor",
     online: true,
   },
   {
-    id: "u_video",
-    email: "rafael@nexus.team",
+    id: "22222222-2222-2222-2222-222222222205",
+    email: "rafael@zayon.team",
     fullName: "Rafael Tavares",
     role: "editor",
     online: false,
   },
   {
-    id: "u_fin",
-    email: "joana@nexus.team",
+    id: "22222222-2222-2222-2222-222222222206",
+    email: "joana@zayon.team",
     fullName: "Joana Almeida",
     role: "financeiro",
     online: true,
@@ -50,10 +50,10 @@ export const CURRENT_USER = MOCK_USERS[0];
 
 export const MOCK_WORKSPACES: Workspace[] = [
   {
-    id: "ws_nexus",
-    name: "NEXUS HQ",
-    slug: "nexus",
-    description: "Operação principal — equipe interna",
+    id: "11111111-1111-1111-1111-111111111111",
+    name: "ZAYON HQ",
+    slug: "zayon",
+    description: "OperaÃ§Ã£o principal â€” equipe interna",
     ownerId: MOCK_USERS[0].id,
     plan: "Premium",
     createdAt: "2025-01-12T10:00:00Z",
@@ -71,3 +71,4 @@ export const MOCK_WORKSPACES: Workspace[] = [
 
 export const userById = (id?: string) =>
   MOCK_USERS.find((u) => u.id === id) ?? MOCK_USERS[0];
+

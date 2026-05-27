@@ -35,7 +35,7 @@ export function FullCalendarView({
   onDateClick,
 }: Props) {
   return (
-    <div className="nexus-fullcalendar">
+    <div className="zayon-fullcalendar">
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView={initialView}
@@ -61,7 +61,7 @@ export function FullCalendarView({
         }}
       />
       <style jsx global>{`
-        .nexus-fullcalendar .fc {
+        .zayon-fullcalendar .fc {
           font-family: inherit;
           --fc-border-color: hsl(var(--border) / 0.6);
           --fc-page-bg-color: transparent;
@@ -69,13 +69,13 @@ export function FullCalendarView({
           --fc-today-bg-color: hsl(var(--primary) / 0.08);
           --fc-event-text-color: hsl(var(--foreground));
         }
-        .nexus-fullcalendar .fc-toolbar-title {
+        .zayon-fullcalendar .fc-toolbar-title {
           font-size: 1.1rem;
           font-weight: 600;
           letter-spacing: -0.01em;
           text-transform: capitalize;
         }
-        .nexus-fullcalendar .fc .fc-button {
+        .zayon-fullcalendar .fc .fc-button {
           background: hsl(var(--card) / 0.6);
           color: hsl(var(--foreground));
           border: 1px solid hsl(var(--border) / 0.6);
@@ -85,16 +85,16 @@ export function FullCalendarView({
           text-transform: capitalize;
           box-shadow: none;
         }
-        .nexus-fullcalendar .fc .fc-button:hover {
+        .zayon-fullcalendar .fc .fc-button:hover {
           background: hsl(var(--accent));
         }
-        .nexus-fullcalendar .fc .fc-button-primary:not(:disabled).fc-button-active,
-        .nexus-fullcalendar .fc .fc-button-primary:not(:disabled):active {
+        .zayon-fullcalendar .fc .fc-button-primary:not(:disabled).fc-button-active,
+        .zayon-fullcalendar .fc .fc-button-primary:not(:disabled):active {
           background: hsl(var(--primary));
           color: hsl(var(--primary-foreground));
           border-color: hsl(var(--primary));
         }
-        .nexus-fullcalendar .fc-col-header-cell {
+        .zayon-fullcalendar .fc-col-header-cell {
           background: hsl(var(--surface-1) / 0.5);
           text-transform: uppercase;
           font-size: 0.65rem;
@@ -103,31 +103,31 @@ export function FullCalendarView({
           font-weight: 600;
           padding: 0.5rem 0;
         }
-        .nexus-fullcalendar .fc-daygrid-day-number,
-        .nexus-fullcalendar .fc-timegrid-axis-cushion,
-        .nexus-fullcalendar .fc-timegrid-slot-label-cushion {
+        .zayon-fullcalendar .fc-daygrid-day-number,
+        .zayon-fullcalendar .fc-timegrid-axis-cushion,
+        .zayon-fullcalendar .fc-timegrid-slot-label-cushion {
           color: hsl(var(--muted-foreground));
           font-size: 0.7rem;
         }
-        .nexus-fullcalendar .fc-day-today .fc-daygrid-day-number {
+        .zayon-fullcalendar .fc-day-today .fc-daygrid-day-number {
           color: hsl(var(--primary));
           font-weight: 600;
         }
-        .nexus-fullcalendar .fc-event {
+        .zayon-fullcalendar .fc-event {
           border: none;
           border-radius: 0.4rem;
           padding: 0.15rem 0.4rem;
           font-size: 0.7rem;
           backdrop-filter: blur(8px);
         }
-        .nexus-fullcalendar .fc-daygrid-event-dot {
+        .zayon-fullcalendar .fc-daygrid-event-dot {
           display: none;
         }
-        .nexus-fullcalendar .fc-scrollgrid {
+        .zayon-fullcalendar .fc-scrollgrid {
           border-radius: 0.5rem;
           overflow: hidden;
         }
-        .nexus-fullcalendar .fc-timegrid-now-indicator-line {
+        .zayon-fullcalendar .fc-timegrid-now-indicator-line {
           border-color: hsl(var(--primary));
         }
       `}</style>

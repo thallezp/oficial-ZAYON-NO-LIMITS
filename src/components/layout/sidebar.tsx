@@ -35,6 +35,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Kbd } from "@/components/ui/kbd";
+import { MOCK_PERSONAS } from "@/data";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 import { PersonaSwitcher } from "./persona-switcher";
 import { useUIStore } from "@/stores/ui-store";
@@ -147,9 +148,12 @@ function NavGroup({
 export function SidebarContent() {
   const pathname = usePathname();
   const setCommandOpen = useUIStore((s) => s.setCommandOpen);
+  const personas = usePersonaStore((s) => s.personas);
   const activePersonaId = usePersonaStore((s) => s.activePersonaId);
   const openQuickCreate = useQuickCreate((s) => s.openWith);
-  const personaItems = personaNav(activePersonaId ?? "p_aurora");
+  const defaultPersonaId =
+    activePersonaId ?? personas[0]?.id ?? MOCK_PERSONAS[0]?.id ?? "";
+  const personaItems = personaNav(defaultPersonaId);
 
   return (
     <>

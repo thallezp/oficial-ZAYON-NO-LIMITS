@@ -1,4 +1,4 @@
-# Deploy do NEXUS Workspace OS
+# Deploy do ZAYON No Limits
 
 Dois caminhos: **A) Demo Vercel rápido** (15 min, sem backend real) · **B) Produção real** (~2-4h conectando Supabase, queries reais, auth).
 
@@ -26,10 +26,10 @@ Se quebrar no install, rode `npm install --legacy-peer-deps`.
 cd "C:\Users\Malog\Desktop\01- Projetos\Z - NO LIMITS"
 git init
 git add .
-git commit -m "feat: NEXUS Workspace OS initial"
+git commit -m "feat: ZAYON No Limits initial"
 git branch -M main
-# crie um repo vazio em github.com/seu-user/nexus-workspace-os
-git remote add origin https://github.com/SEU_USER/nexus-workspace-os.git
+# crie um repo vazio em github.com/seu-user/zayon-no-limits
+git remote add origin https://github.com/SEU_USER/zayon-no-limits.git
 git push -u origin main
 ```
 
@@ -44,7 +44,7 @@ git push -u origin main
    ```
 5. Deploy
 
-Em ~2 min você tem a URL `nexus-workspace-os.vercel.app` funcionando completamente em modo demo.
+Em ~2 min você tem a URL `zayon-no-limits.vercel.app` funcionando completamente em modo demo.
 
 ---
 
@@ -53,7 +53,7 @@ Em ~2 min você tem a URL `nexus-workspace-os.vercel.app` funcionando completame
 ### B.1 — Criar projeto Supabase
 
 1. https://supabase.com/dashboard → **New Project**
-2. Nome: `nexus-workspace-os` · senha forte · região São Paulo (`sa-east-1`)
+2. Nome: `zayon-no-limits` · senha forte · região São Paulo (`sa-east-1`)
 3. Aguardar ~2 min provisionar
 4. Em **Settings → API**, copiar:
    - `Project URL` → vai em `NEXT_PUBLIC_SUPABASE_URL`
@@ -86,10 +86,10 @@ No Supabase **SQL Editor**, abrir `src/drizzle/rls.sql`, copiar inteiro, **Run**
 Em **Authentication → Providers**:
 - Habilitar **Email** (sign up restrito a domínios da sua equipe se quiser)
 - Em **URL Configuration**, adicionar:
-  - Site URL: `https://nexus-workspace-os.vercel.app`
-  - Redirect URLs: `https://nexus-workspace-os.vercel.app/**`
+  - Site URL: `https://zayon-no-limits.vercel.app`
+  - Redirect URLs: `https://zayon-no-limits.vercel.app/**`
 
-Em **Authentication → Email Templates**, customizar para a marca NEXUS (opcional).
+Em **Authentication → Email Templates**, customizar para a marca ZAYON (opcional).
 
 ### B.5 — Habilitar Realtime
 
@@ -168,7 +168,7 @@ export async function POST(req: Request) {
   const { messages, context } = await req.json();
   const result = await streamText({
     model: anthropic("claude-opus-4-7"),
-    system: `Você é o assistente NEXUS. Contexto: ${JSON.stringify(context)}`,
+    system: `Você é o assistente ZAYON. Contexto: ${JSON.stringify(context)}`,
     messages,
   });
   return result.toDataStreamResponse();
@@ -199,7 +199,7 @@ Re-deploy.
 
 URL para configurar no Apps Script ou Zapier:
 ```
-POST https://nexus-workspace-os.vercel.app/api/webhooks/leads
+POST https://zayon-no-limits.vercel.app/api/webhooks/leads
 Content-Type: application/json
 
 {

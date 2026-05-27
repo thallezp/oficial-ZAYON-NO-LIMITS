@@ -11,7 +11,7 @@ export default function NotFound() {
         </div>
         <div className="space-y-1.5">
           <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            404 · NEXUS
+            404 · ZAYON
           </p>
           <h1 className="text-2xl font-semibold tracking-tight">
             Página fora do mapa

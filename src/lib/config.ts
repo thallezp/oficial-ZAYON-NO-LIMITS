@@ -1,5 +1,5 @@
 /**
- * Configuração runtime do NEXUS.
+ * Configuração runtime do ZAYON.
  *
  * `useMockData` é true quando:
  *   - `NEXT_PUBLIC_USE_MOCK_DATA=true`, ou
@@ -13,6 +13,9 @@
 export const config = {
   supabase: {
     url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    publishableKey:
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
   },
@@ -36,7 +39,7 @@ export const config = {
 };
 
 export const hasSupabase = Boolean(
-  config.supabase.url && config.supabase.anonKey,
+  config.supabase.url && config.supabase.publishableKey,
 );
 
 export const hasDatabase = Boolean(config.database.url);

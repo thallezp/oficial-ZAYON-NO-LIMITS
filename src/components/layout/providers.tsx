@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { usePersonaStore } from "@/stores/persona-store";
 import { CURRENT_USER, MOCK_WORKSPACES, MOCK_PERSONAS } from "@/data";
+import type { Persona, User, Workspace } from "@/types";
 
 /**
  * CopilotKit é carregado lazy e só monta quando a flag
@@ -51,8 +52,57 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const setPersonas = usePersonaStore((s) => s.setPersonas);
 
   React.useEffect(() => {
-    bootstrap({ workspaces: MOCK_WORKSPACES, user: CURRENT_USER });
-    setPersonas(MOCK_PERSONAS);
+    const useMock =
+      process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true" ||
+      !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      (!process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY &&
+        !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+
+    if (useMock) {
+      bootstrap({ workspaces: MOCK_WORKSPACES, user: CURRENT_USER });
+      setPersonas(MOCK_PERSONAS);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadBootstrap = async () => {
+      try {
+        const res = await fetch("/api/bootstrap", {
+          credentials: "include",
+          cache: "no-store",
+        });
+
+        if (!res.ok) {
+          throw new Error(`bootstrap_failed_${res.status}`);
+        }
+
+        const payload = (await res.json()) as {
+          user: User;
+          workspaces: Workspace[];
+          personas: Persona[];
+        };
+
+        if (cancelled) return;
+
+        bootstrap({
+          workspaces: payload.workspaces,
+          user: payload.user,
+        });
+        setPersonas(payload.personas);
+      } catch (error) {
+        console.error("Erro ao carregar bootstrap real do Supabase:", error);
+        if (cancelled) return;
+        bootstrap({ workspaces: MOCK_WORKSPACES, user: CURRENT_USER });
+        setPersonas(MOCK_PERSONAS);
+      }
+    };
+
+    void loadBootstrap();
+
+    return () => {
+      cancelled = true;
+    };
   }, [bootstrap, setPersonas]);
 
   const enableCopilot =

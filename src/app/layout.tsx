@@ -17,12 +17,12 @@ const mono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "NEXUS Workspace OS",
-    template: "%s · NEXUS",
+    default: "ZAYON No Limits",
+    template: "%s · ZAYON",
   },
   description:
     "Sistema operacional interno premium. Workspace + Persona Ops em um único lugar.",
-  applicationName: "NEXUS Workspace OS",
+  applicationName: "ZAYON No Limits",
 };
 
 export const viewport: Viewport = {

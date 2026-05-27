@@ -39,6 +39,7 @@ import {
 import { formatCompact, formatCurrency, initials, relativeTime } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import { toast } from "sonner";
+import { usePersonaStore } from "@/stores/persona-store";
 import {
   DndContext,
   closestCenter,
@@ -144,6 +145,8 @@ function SortableWidget({ id, children }: SortableWidgetProps) {
 export default function DashboardPage() {
   const [widgets, setWidgets] = React.useState<Widget[]>(DEFAULT_WIDGETS);
   const [mounted, setMounted] = React.useState(false);
+  const personas = usePersonaStore((s) => s.personas);
+  const defaultPersonaId = personas[0]?.id ?? MOCK_PERSONAS[0]?.id ?? "";
 
   const todayTasks = MOCK_TASKS.filter(
     (t) => t.status !== "done" && t.priority !== "low",
@@ -151,7 +154,7 @@ export default function DashboardPage() {
 
   React.useEffect(() => {
     setMounted(true);
-    const saved = localStorage.getItem("nexus.dashboard.widgets");
+    const saved = localStorage.getItem("zayon.dashboard.widgets");
     if (saved) {
       try {
         setWidgets(JSON.parse(saved));
@@ -173,7 +176,7 @@ export default function DashboardPage() {
         const oldIndex = items.findIndex((i) => i.id === active.id);
         const newIndex = items.findIndex((i) => i.id === over.id);
         const next = arrayMove(items, oldIndex, newIndex);
-        localStorage.setItem("nexus.dashboard.widgets", JSON.stringify(next));
+        localStorage.setItem("zayon.dashboard.widgets", JSON.stringify(next));
         return next;
       });
       toast.success("Ordem dos widgets atualizada no painel");
@@ -182,7 +185,7 @@ export default function DashboardPage() {
 
   const handleResetLayout = () => {
     setWidgets(DEFAULT_WIDGETS);
-    localStorage.removeItem("nexus.dashboard.widgets");
+    localStorage.removeItem("zayon.dashboard.widgets");
     toast.success("Layout original restaurado");
   };
 
@@ -231,7 +234,7 @@ export default function DashboardPage() {
                 <p className="text-xs text-muted-foreground mt-1">Cada persona é uma unidade de negócio independente.</p>
               </div>
               <Button variant="ghost" size="sm" asChild>
-                <Link href="/personas/p_aurora/overview">Ver todas <ArrowUpRight className="h-3.5 w-3.5" /></Link>
+                <Link href={`/personas/${defaultPersonaId}/overview`}>Ver todas <ArrowUpRight className="h-3.5 w-3.5" /></Link>
               </Button>
             </CardHeader>
             <CardContent className="grid sm:grid-cols-2 gap-3">
@@ -313,7 +316,7 @@ export default function DashboardPage() {
                 <div key={a.id} className="flex items-start gap-3">
                   {a.actor ? (<Avatar size="sm"><AvatarFallback>{initials(a.actor.fullName)}</AvatarFallback></Avatar>) : (<div className="flex h-7 w-7 items-center justify-center rounded-full border border-border/60 bg-gradient-to-br from-brand-500/40 to-brand-700/40 text-white"><Bot className="h-3.5 w-3.5" /></div>)}
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs leading-relaxed"><span className="font-medium">{a.actor?.fullName ?? "NEXUS AI"}</span> <span className="text-muted-foreground">{a.action}</span></p>
+                    <p className="text-xs leading-relaxed"><span className="font-medium">{a.actor?.fullName ?? "ZAYON AI"}</span> <span className="text-muted-foreground">{a.action}</span></p>
                     {a.payload && <p className="text-[10px] text-muted-foreground truncate">{Object.values(a.payload).join(" · ")}</p>}
                     <p className="text-[10px] text-muted-foreground/60 mt-0.5">{relativeTime(a.createdAt)}</p>
                   </div>
@@ -414,7 +417,7 @@ export default function DashboardPage() {
               <p className="text-xs text-muted-foreground mt-1">Diga o que precisa que a IA executa no sistema · roteiros, copy, qualificação de leads, calendário, funis.</p>
             </CardHeader>
             <CardContent className="relative mt-auto">
-              <Button variant="gradient" size="sm" className="w-full"><Bot className="h-4 w-4" /> Abrir NEXUS AI</Button>
+              <Button variant="gradient" size="sm" className="w-full"><Bot className="h-4 w-4" /> Abrir ZAYON AI</Button>
             </CardContent>
           </Card>
         );
@@ -431,7 +434,7 @@ export default function DashboardPage() {
         badge={<Badge variant="primary">premium</Badge>}
         actions={
           <>
-            {mounted && localStorage.getItem("nexus.dashboard.widgets") && (
+            {mounted && localStorage.getItem("zayon.dashboard.widgets") && (
               <Button variant="ghost" size="sm" onClick={handleResetLayout}>Restaurar Painel</Button>
             )}
             <Button variant="outline" size="sm"><Sparkles className="h-3.5 w-3.5" /> Personalizar</Button>

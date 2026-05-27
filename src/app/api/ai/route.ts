@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const systemPrompt = `Você é a NEXUS AI, assistente integrada ao Workspace OS.
+  const systemPrompt = `Você é a ZAYON AI, assistente integrada ao Workspace OS.
 Contexto Operacional:
 - Workspace ID: ${workspaceId || "global"}
 - Persona ID: ${personaId || "nenhuma"}

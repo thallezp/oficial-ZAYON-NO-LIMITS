@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { loginAction } from "@/server/actions/auth";
+import { loginAction } from "./actions";
 
 function LoginContent() {
   const router = useRouter();
@@ -57,7 +57,7 @@ function LoginContent() {
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-glow">
               <Sparkles className="h-4 w-4" />
             </div>
-            <div className="font-semibold tracking-tight">NEXUS</div>
+            <div className="font-semibold tracking-tight">ZAYON</div>
             <Badge variant="primary" size="sm">
               Workspace OS
             </Badge>
@@ -90,7 +90,7 @@ function LoginContent() {
           </ul>
         </motion.div>
         <div className="relative text-xs text-muted-foreground">
-          © {new Date().getFullYear()} NEXUS — sistema interno
+          © {new Date().getFullYear()} ZAYON — sistema interno
         </div>
       </div>
 
@@ -181,4 +181,3 @@ export default function LoginPage() {
     </Suspense>
   );
 }
-

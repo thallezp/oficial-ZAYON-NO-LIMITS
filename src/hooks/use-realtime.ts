@@ -43,7 +43,7 @@ export function useRealtime<T extends Record<string, any> = Record<string, any>>
 
     const supabase = supabaseBrowser();
     const channel: RealtimeChannel = supabase
-      .channel(`nexus-rt-${table}-${filter ?? "all"}`)
+      .channel(`zayon-rt-${table}-${filter ?? "all"}`)
       .on(
         "postgres_changes" as any,
         { event, schema, table, filter } as any,

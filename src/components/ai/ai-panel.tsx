@@ -29,7 +29,7 @@ const seed: UIMessage[] = [
     parts: [
       {
         type: "text",
-        text: "Olá! Sou a NEXUS AI. Estou pronta para te ajudar a gerenciar este workspace. Quer que eu faça uma varredura nos leads ou crie novas tarefas?",
+        text: "Olá! Sou a ZAYON AI. Estou pronta para te ajudar a gerenciar este workspace. Quer que eu faça uma varredura nos leads ou crie novas tarefas?",
       },
     ],
   },
@@ -46,7 +46,7 @@ export function AIPanel() {
   // está ativo). Isso evita "useCopilotKit must be used within Provider".
 
   const storageKey = React.useMemo(() => {
-    return `nexus.chat.${activeWorkspaceId || "global"}.${persona?.id || "global"}`;
+    return `zayon.chat.${activeWorkspaceId || "global"}.${persona?.id || "global"}`;
   }, [activeWorkspaceId, persona?.id]);
 
   const [input, setInput] = React.useState("");
@@ -135,7 +135,7 @@ export function AIPanel() {
                 <Bot className="h-3.5 w-3.5" />
               </div>
               <div>
-                <p className="text-sm font-semibold">NEXUS AI</p>
+                <p className="text-sm font-semibold">ZAYON AI</p>
                 <p className="text-[10px] text-muted-foreground">
                   contexto: {persona?.name ?? "workspace global"}
                 </p>

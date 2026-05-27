@@ -84,7 +84,7 @@ function CollaborativeDocumentContent({ docId }: { docId: string }) {
     updateMyPresence({ cursor: null });
   };
 
-  const onlineNames = others.map((o) => o.info?.name || "Membro NEXUS").join(", ");
+  const onlineNames = others.map((o) => o.info?.name || "Membro ZAYON").join(", ");
   const presenceText = onlineNames ? ` · ${onlineNames}` : "";
 
   return (
@@ -137,7 +137,7 @@ function CollaborativeDocumentContent({ docId }: { docId: string }) {
                     {initials(doc.author?.fullName ?? "AV")}
                   </AvatarFallback>
                 </Avatar>
-                {doc.author?.fullName ?? "Equipe NEXUS"}
+                {doc.author?.fullName ?? "Equipe ZAYON"}
               </span>
               <span>·</span>
               <span>Atualizado {relativeTime(doc.updatedAt)}</span>

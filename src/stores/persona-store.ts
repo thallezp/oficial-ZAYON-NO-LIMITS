@@ -47,7 +47,7 @@ export const usePersonaStore = create<PersonaState>()(
         })),
     }),
     {
-      name: "nexus.persona",
+      name: "zayon.persona",
       partialize: (state) => ({ activePersonaId: state.activePersonaId }),
     },
   ),

@@ -85,7 +85,7 @@ export default function ActivityLogPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm leading-relaxed">
                     <span className="font-medium">
-                      {a.actor?.fullName ?? "NEXUS"}
+                      {a.actor?.fullName ?? "ZAYON"}
                     </span>{" "}
                     <span className="text-muted-foreground">{a.action}</span>
                   </p>

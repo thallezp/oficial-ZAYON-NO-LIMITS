@@ -212,7 +212,7 @@ export async function GET(
   return new NextResponse(csvContent, {
     headers: {
       "content-type": "text/csv; charset=utf-8",
-      "content-disposition": `attachment; filename=nexus-${type}-${Date.now()}.csv`,
+      "content-disposition": `attachment; filename=zayon-${type}-${Date.now()}.csv`,
     },
   });
 }

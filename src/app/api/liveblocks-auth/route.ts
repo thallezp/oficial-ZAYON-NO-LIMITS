@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   // 2. Criar sessão do Liveblocks
   const session = liveblocks.prepareSession(user.id, {
     userInfo: {
-      name: user.user_metadata?.full_name || user.email || "Membro NEXUS",
+      name: user.user_metadata?.full_name || user.email || "Membro ZAYON",
       avatar: user.user_metadata?.avatar_url || "",
     },
   });

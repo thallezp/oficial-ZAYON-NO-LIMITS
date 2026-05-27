@@ -49,7 +49,7 @@ export default function SettingsPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Email</Label>
-                <Input defaultValue="alex@nexus.team" type="email" />
+                <Input defaultValue="alex@zayon.team" type="email" />
               </div>
               <div className="space-y-1.5">
                 <Label>Função</Label>
@@ -70,16 +70,16 @@ export default function SettingsPage() {
         <TabsContent value="workspace">
           <Card>
             <CardHeader>
-              <CardTitle>Workspace · NEXUS HQ</CardTitle>
+              <CardTitle>Workspace · ZAYON HQ</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
                 <Label>Nome do workspace</Label>
-                <Input defaultValue="NEXUS HQ" />
+                <Input defaultValue="ZAYON HQ" />
               </div>
               <div className="space-y-1.5">
                 <Label>Slug</Label>
-                <Input defaultValue="nexus" />
+                <Input defaultValue="zayon" />
               </div>
               <div className="flex items-center justify-between rounded-lg border border-border/60 bg-card-elevated px-4 py-3">
                 <div>

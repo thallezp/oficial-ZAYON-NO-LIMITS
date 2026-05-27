@@ -1,4 +1,4 @@
-# NEXUS Workspace OS — começar
+# ZAYON No Limits — começar
 
 Sistema operacional interno premium. Workspace global + Persona Ops.
 
@@ -20,7 +20,7 @@ Acessar `http://localhost:3000`. A raiz redireciona para `/dashboard`. O login m
 ## Atalhos
 
 - `⌘K` / `Ctrl+K` — Command Menu global (busca tudo, executa ações, troca de persona, dispara IA, cria entidades)
-- topo direito · botão IA — abre painel lateral **NEXUS AI** contextual
+- topo direito · botão IA — abre painel lateral **ZAYON AI** contextual
 - sidebar · seletor de persona — troca contexto em todas as páginas de Persona Ops
 - topo direito · sino — popover de notificações (com unread badge)
 - mobile · ícone menu — abre sidebar em drawer
