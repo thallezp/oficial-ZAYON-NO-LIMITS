@@ -10,7 +10,8 @@ type Entity =
   | "transaction"
   | "persona"
   | "flow"
-  | "tool";
+  | "tool"
+  | "project";
 
 interface QuickCreateState {
   open: boolean;

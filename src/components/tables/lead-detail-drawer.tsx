@@ -33,6 +33,7 @@ import type { Lead } from "@/types";
 import { initials, relativeTime, formatCurrency } from "@/lib/utils/format";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils/cn";
+import { useUpdateLeadMutation } from "@/hooks/use-queries";
 
 const statusVariant = {
   open: "outline",
@@ -61,6 +62,7 @@ export function LeadDetailDrawer({ lead, open, onOpenChange }: Props) {
   const [activeStatus, setActiveStatus] = React.useState<Lead["status"] | null>(
     null,
   );
+  const updateLeadMutation = useUpdateLeadMutation();
 
   React.useEffect(() => {
     if (lead) setActiveStatus(lead.status);
@@ -70,6 +72,34 @@ export function LeadDetailDrawer({ lead, open, onOpenChange }: Props) {
 
   const score = lead.score ?? 0;
   const currentIndex = statusFlow.indexOf(activeStatus as any);
+
+  const handleStatusChange = async (newStatus: Lead["status"]) => {
+    try {
+      setActiveStatus(newStatus);
+      await updateLeadMutation.mutateAsync({
+        id: lead.id,
+        input: { status: newStatus },
+      });
+      toast.success(`Lead movido para ${newStatus}`);
+    } catch (e: any) {
+      toast.error("Erro ao atualizar status: " + e.message);
+    }
+  };
+
+  const handleAddNote = async () => {
+    if (!note.trim()) return;
+    try {
+      const updatedNotes = lead.notes ? `${lead.notes}\n${note}` : note;
+      await updateLeadMutation.mutateAsync({
+        id: lead.id,
+        input: { notes: updatedNotes },
+      });
+      toast.success("Nota adicionada com sucesso!");
+      setNote("");
+    } catch (e: any) {
+      toast.error("Erro ao adicionar nota: " + e.message);
+    }
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -88,15 +118,15 @@ export function LeadDetailDrawer({ lead, open, onOpenChange }: Props) {
                 {lead.campaign} · {lead.source}
               </SheetDescription>
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                <Badge size="sm" variant={statusVariant[lead.status]}>
-                  {lead.status}
+                <Badge size="sm" variant={statusVariant[activeStatus || lead.status] || "outline"}>
+                  {activeStatus || lead.status}
                 </Badge>
                 <Badge size="sm" variant="ghost">
                   score {score}
                 </Badge>
                 {lead.convertedValue && (
                   <Badge size="sm" variant="success">
-                    {formatCurrency(lead.convertedValue)}
+                    {formatCurrency(Number(lead.convertedValue))}
                   </Badge>
                 )}
               </div>
@@ -118,10 +148,7 @@ export function LeadDetailDrawer({ lead, open, onOpenChange }: Props) {
               return (
                 <button
                   key={s}
-                  onClick={() => {
-                    setActiveStatus(s);
-                    toast.success(`Movido para ${s}`);
-                  }}
+                  onClick={() => handleStatusChange(s)}
                   className={cn(
                     "flex-1 rounded-md px-2 py-1.5 text-[10px] font-medium transition",
                     reached
@@ -172,7 +199,7 @@ export function LeadDetailDrawer({ lead, open, onOpenChange }: Props) {
             <InfoRow
               icon={<UserIcon className="h-3 w-3" />}
               label="Responsável"
-              value={lead.responsible.fullName}
+              value={(lead.responsible as any).fullName || lead.responsible}
             />
           )}
           <InfoRow
@@ -194,7 +221,7 @@ export function LeadDetailDrawer({ lead, open, onOpenChange }: Props) {
           <h3 className="text-sm font-semibold flex items-center gap-2">
             <Sparkles className="h-3.5 w-3.5 text-primary" /> Respostas do form
           </h3>
-          {lead.answers?.map((a, i) => (
+          {(lead as any).answers?.map((a: any, i: number) => (
             <div
               key={i}
               className="rounded-lg border border-border/60 bg-card-elevated px-3 py-2"
@@ -270,7 +297,7 @@ export function LeadDetailDrawer({ lead, open, onOpenChange }: Props) {
             <MessageSquare className="h-3.5 w-3.5 text-primary" /> Notas
           </h3>
           {lead.notes && (
-            <div className="rounded-lg border border-border/60 bg-card-elevated px-3 py-2 text-xs text-muted-foreground">
+            <div className="rounded-lg border border-border/60 bg-card-elevated px-3 py-2 text-xs text-muted-foreground whitespace-pre-line">
               {lead.notes}
             </div>
           )}
@@ -285,10 +312,7 @@ export function LeadDetailDrawer({ lead, open, onOpenChange }: Props) {
               size="sm"
               variant="gradient"
               disabled={!note.trim()}
-              onClick={() => {
-                toast.success("Nota adicionada");
-                setNote("");
-              }}
+              onClick={handleAddNote}
             >
               Salvar
             </Button>

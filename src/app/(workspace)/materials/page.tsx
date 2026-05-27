@@ -19,6 +19,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MOCK_MATERIALS } from "@/data";
 import { cn } from "@/lib/utils/cn";
+import { isMockModeClient } from "@/lib/mock-mode-client";
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useQuickCreate } from "@/stores/quick-create-store";
+import { useMaterials, useCreateMaterialMutation } from "@/hooks/use-queries";
+import { UploadDropzone } from "@/lib/uploadthing";
+import { toast } from "sonner";
 
 const typeIcon = {
   video: FileVideo,
@@ -46,12 +52,19 @@ const folders = [
 ];
 
 export default function MaterialsPage() {
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const { data: dbMaterials = [] } = useMaterials(activeWorkspaceId);
+  const createMaterialMutation = useCreateMaterialMutation();
+
   const [search, setSearch] = React.useState("");
-  const items = MOCK_MATERIALS.filter(
-    (m) =>
+  const items =
+    isMockModeClient && dbMaterials.length === 0 ? MOCK_MATERIALS : dbMaterials;
+
+  const filteredItems = items.filter(
+    (m: any) =>
       !search ||
       m.title.toLowerCase().includes(search.toLowerCase()) ||
-      m.tags?.some((t) => t.toLowerCase().includes(search.toLowerCase())),
+      m.tags?.some((t: string) => t.toLowerCase().includes(search.toLowerCase())),
   );
 
   return (
@@ -61,10 +74,10 @@ export default function MaterialsPage() {
         description="Upload, organização e vínculos. PDFs, vídeos, imagens, prints, áudios — todos rastreáveis."
         actions={
           <>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => toast.info("Use a área de dropzone abaixo para fazer upload")}>
               <Upload className="h-3.5 w-3.5" /> Upload
             </Button>
-            <Button variant="gradient" size="sm">
+            <Button variant="gradient" size="sm" onClick={() => toast.success("Criar pasta")}>
               <Plus className="h-4 w-4" /> Nova pasta
             </Button>
           </>
@@ -104,8 +117,8 @@ export default function MaterialsPage() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
-            {items.map((m) => {
-              const Icon = typeIcon[m.fileType];
+            {filteredItems.map((m: any) => {
+              const Icon = typeIcon[m.fileType as keyof typeof typeIcon] || FilePdf;
               return (
                 <Card
                   key={m.id}
@@ -129,7 +142,7 @@ export default function MaterialsPage() {
                     <div>
                       <p className="text-xs font-medium truncate">{m.title}</p>
                       <div className="mt-1 flex items-center justify-between text-[10px] text-muted-foreground">
-                        <span>{formatBytes(m.sizeBytes)}</span>
+                        <span>{formatBytes(m.sizeBytes || undefined)}</span>
                         <span>{m.tags?.[0]}</span>
                       </div>
                     </div>
@@ -138,13 +151,27 @@ export default function MaterialsPage() {
               );
             })}
 
-            <button className="rounded-xl border-2 border-dashed border-border/60 bg-card/20 flex flex-col items-center justify-center gap-2 py-10 transition hover:border-primary/40 hover:bg-card/40">
-              <Upload className="h-5 w-5 text-muted-foreground" />
-              <span className="text-xs font-medium">Arraste arquivos aqui</span>
-              <Badge variant="ghost" size="sm">
-                ou clique para selecionar
-              </Badge>
-            </button>
+            <div className="rounded-xl border-2 border-dashed border-border/60 bg-card/20 p-4 transition hover:border-primary/40 flex flex-col items-center justify-center min-h-[160px]">
+              <UploadDropzone
+                endpoint="materials"
+                onClientUploadComplete={(res) => {
+                  res?.forEach((file) => {
+                    createMaterialMutation.mutate({
+                      workspaceId: activeWorkspaceId,
+                      title: file.name,
+                      fileUrl: file.url,
+                      fileType: file.name.split(".").pop() || "other",
+                      sizeBytes: file.size,
+                    });
+                  });
+                  toast.success("Arquivos enviados com sucesso!");
+                }}
+                onUploadError={(error: Error) => {
+                  toast.error(`Erro no upload: ${error.message}`);
+                }}
+                className="ut-label:text-xs ut-label:text-muted-foreground ut-allowed-content:text-[10px] ut-button:bg-primary/20 ut-button:text-primary ut-button:hover:bg-primary/30 ut-button:text-xs ut-button:py-1 ut-button:px-3 ut-button:h-auto border-0 p-0 m-0"
+              />
+            </div>
           </div>
         </div>
       </div>

@@ -17,24 +17,46 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { MOCK_TOOLS, TOOL_CATEGORIES } from "@/data";
 import { cn } from "@/lib/utils/cn";
+import { isMockModeClient } from "@/lib/mock-mode-client";
 import { BrandLogo } from "@/components/ui/brand-logo";
-
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useTools, useToggleToolFavoriteMutation } from "@/hooks/use-queries";
+import { useQuickCreate } from "@/stores/quick-create-store";
+import { toast } from "sonner";
 
 export default function ToolsPage() {
   const [search, setSearch] = React.useState("");
   const [category, setCategory] = React.useState<string>("Todas");
 
-  const tools = MOCK_TOOLS.filter(
-    (t) =>
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const { data: dbTools = [] } = useTools(activeWorkspaceId);
+  const toggleFavoriteMutation = useToggleToolFavoriteMutation();
+  const { openWith } = useQuickCreate();
+
+  const allTools = isMockModeClient && dbTools.length === 0 ? MOCK_TOOLS : dbTools;
+
+  const tools = allTools.filter(
+    (t: any) =>
       (category === "Todas" || t.category === category) &&
       (!search ||
         t.name.toLowerCase().includes(search.toLowerCase()) ||
         t.description?.toLowerCase().includes(search.toLowerCase()) ||
-        t.tags?.some((tag) => tag.toLowerCase().includes(search.toLowerCase()))),
+        (t as any).tags?.some((tag: string) => tag.toLowerCase().includes(search.toLowerCase()))),
   );
 
-  const pinned = MOCK_TOOLS.filter((t) => t.isPinned);
-  const favorites = MOCK_TOOLS.filter((t) => t.isFavorite && !t.isPinned);
+  const pinned = allTools.filter((t: any) => t.isPinned);
+  const favorites = allTools.filter((t: any) => t.isFavorite && !t.isPinned);
+
+  const handleToggleFavorite = async (e: React.MouseEvent, toolId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await toggleFavoriteMutation.mutateAsync(toolId);
+      toast.success("Favoritos atualizados!");
+    } catch (err: any) {
+      toast.error("Erro ao favoritar ferramenta: " + err.message);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -46,7 +68,7 @@ export default function ToolsPage() {
             <Button variant="outline" size="sm">
               <Filter className="h-3.5 w-3.5" /> Filtros
             </Button>
-            <Button variant="gradient" size="sm">
+            <Button variant="gradient" size="sm" onClick={() => openWith("tool")}>
               <Plus className="h-4 w-4" /> Adicionar ferramenta
             </Button>
           </>
@@ -72,8 +94,8 @@ export default function ToolsPage() {
               <span>{c}</span>
               <span className="text-[10px]">
                 {c === "Todas"
-                  ? MOCK_TOOLS.length
-                  : MOCK_TOOLS.filter((t) => t.category === c).length}
+                  ? allTools.length
+                  : allTools.filter((t: any) => t.category === c).length}
               </span>
             </button>
           ))}
@@ -99,8 +121,8 @@ export default function ToolsPage() {
                 </h3>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                {pinned.map((t) => (
-                  <ToolCard key={t.id} tool={t} variant="featured" />
+                {pinned.map((t: any) => (
+                  <ToolCard key={t.id} tool={t} variant="featured" onToggleFavorite={handleToggleFavorite} />
                 ))}
               </div>
             </section>
@@ -115,8 +137,8 @@ export default function ToolsPage() {
                 </h3>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                {favorites.map((t) => (
-                  <ToolCard key={t.id} tool={t} />
+                {favorites.map((t: any) => (
+                  <ToolCard key={t.id} tool={t} onToggleFavorite={handleToggleFavorite} />
                 ))}
               </div>
             </section>
@@ -127,8 +149,8 @@ export default function ToolsPage() {
               {category === "Todas" ? "Todas as ferramentas" : category}
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-              {tools.map((t) => (
-                <ToolCard key={t.id} tool={t} />
+              {tools.map((t: any) => (
+                <ToolCard key={t.id} tool={t} onToggleFavorite={handleToggleFavorite} />
               ))}
             </div>
           </section>
@@ -141,9 +163,11 @@ export default function ToolsPage() {
 function ToolCard({
   tool,
   variant = "default",
+  onToggleFavorite,
 }: {
-  tool: (typeof MOCK_TOOLS)[number];
+  tool: any;
   variant?: "default" | "featured";
+  onToggleFavorite?: (e: React.MouseEvent, toolId: string) => void;
 }) {
   return (
     <motion.a
@@ -182,11 +206,22 @@ function ToolCard({
               brandColor={tool.brandColor}
             />
           </div>
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-            {tool.isFavorite && (
-              <Star className="h-3 w-3 text-warning fill-warning" />
-            )}
-            <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+          <div className="flex items-center gap-1.5 z-20">
+            <button
+              onClick={(e) => onToggleFavorite?.(e, tool.id)}
+              className="p-1 rounded hover:bg-white/10 transition"
+              title={tool.isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+            >
+              <Star
+                className={cn(
+                  "h-3.5 w-3.5 transition",
+                  tool.isFavorite
+                    ? "text-warning fill-warning"
+                    : "text-muted-foreground hover:text-warning"
+                )}
+              />
+            </button>
+            <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition" />
           </div>
         </div>
         <div className="space-y-0.5">
@@ -202,4 +237,3 @@ function ToolCard({
     </motion.a>
   );
 }
-

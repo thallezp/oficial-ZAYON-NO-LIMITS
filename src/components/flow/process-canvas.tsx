@@ -70,11 +70,21 @@ const nodeTypes = { step: StepNode };
 interface Props {
   initialNodes: Node[];
   initialEdges: Edge[];
+  onSave?: (nodes: Node[], edges: Edge[]) => Promise<void> | void;
 }
 
-function ProcessInner({ initialNodes, initialEdges }: Props) {
-  const [nodes, , onNodesChange] = useNodesState(initialNodes);
+function ProcessInner({ initialNodes, initialEdges, onSave }: Props) {
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    setNodes(initialNodes);
+  }, [initialNodes, setNodes]);
+
+  React.useEffect(() => {
+    setEdges(initialEdges);
+  }, [initialEdges, setEdges]);
 
   const onConnect = React.useCallback(
     (c: Connection) => {
@@ -94,8 +104,27 @@ function ProcessInner({ initialNodes, initialEdges }: Props) {
     [setEdges],
   );
 
+  const handleSave = async () => {
+    if (!onSave) return;
+    setIsSaving(true);
+    try {
+      await onSave(nodes, edges);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
-    <div className="h-[560px] rounded-xl border border-border/60 bg-card/40 overflow-hidden">
+    <div className="h-[560px] rounded-xl border border-border/60 bg-card/40 overflow-hidden relative">
+      {onSave && (
+        <button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="absolute top-4 right-4 z-10 flex items-center gap-1.5 rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground px-3.5 py-2 text-xs font-semibold shadow-md disabled:opacity-50 transition"
+        >
+          {isSaving ? "Salvando..." : "Salvar Alterações"}
+        </button>
+      )}
       <ReactFlow
         nodes={nodes}
         edges={edges}

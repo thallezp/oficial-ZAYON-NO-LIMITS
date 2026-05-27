@@ -10,23 +10,43 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { MOCK_PROJECTS, MOCK_PERSONAS } from "@/data";
 import { initials } from "@/lib/utils/format";
+import { isMockModeClient } from "@/lib/mock-mode-client";
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useQuickCreate } from "@/stores/quick-create-store";
+import { useProjects, usePersonas } from "@/hooks/use-queries";
 
 export default function ProjectsPage() {
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const openQuickCreate = useQuickCreate((s) => s.setOpen);
+  const openWith = useQuickCreate((s) => s.openWith);
+
+  const { data: dbProjects = [] } = useProjects(activeWorkspaceId);
+  const { data: dbPersonas = [] } = usePersonas(activeWorkspaceId);
+
+  const projects = isMockModeClient && dbProjects.length === 0 ? MOCK_PROJECTS : dbProjects;
+  const personas =
+    isMockModeClient && dbPersonas.length === 0 ? MOCK_PERSONAS : dbPersonas;
+
+  const handleCreateProject = () => {
+    openWith("project");
+    openQuickCreate(true);
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Projetos"
         description="Iniciativas de longo prazo · podem ser globais ou vinculadas a uma persona."
         actions={
-          <Button variant="gradient" size="sm">
+          <Button variant="gradient" size="sm" onClick={handleCreateProject}>
             <Plus className="h-4 w-4" /> Novo projeto
           </Button>
         }
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-        {MOCK_PROJECTS.map((p, i) => {
-          const persona = MOCK_PERSONAS.find((x) => x.id === p.personaId);
+        {projects.map((p: any, i: number) => {
+          const persona = personas.find((x: any) => x.id === p.personaId);
           return (
             <motion.div
               key={p.id}
@@ -79,7 +99,7 @@ export default function ProjectsPage() {
 
                   <div className="flex items-center justify-between">
                     <div className="flex -space-x-2">
-                      {p.members?.slice(0, 4).map((m) => (
+                      {p.members?.slice(0, 4).map((m: any) => (
                         <Avatar key={m.id} size="xs" className="ring-2 ring-card">
                           <AvatarFallback>
                             {initials(m.fullName)}
@@ -96,7 +116,10 @@ export default function ProjectsPage() {
             </motion.div>
           );
         })}
-        <button className="rounded-xl border-2 border-dashed border-border/60 bg-card/20 flex flex-col items-center justify-center gap-2 py-10 transition hover:border-primary/40 hover:bg-card/40">
+        <button
+          onClick={handleCreateProject}
+          className="rounded-xl border-2 border-dashed border-border/60 bg-card/20 flex flex-col items-center justify-center gap-2 py-10 transition hover:border-primary/40 hover:bg-card/40"
+        >
           <Plus className="h-5 w-5 text-muted-foreground" />
           <span className="text-sm font-medium">Criar novo projeto</span>
           <Badge variant="ghost" size="sm">

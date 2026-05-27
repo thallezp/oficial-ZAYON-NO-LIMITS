@@ -9,18 +9,34 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PersonaHero } from "@/components/personas/persona-hero";
 import { usePersonaFromRoute } from "@/components/personas/persona-resolver";
 import { MOCK_CONTENT } from "@/data";
+import { isMockModeClient } from "@/lib/mock-mode-client";
 import { formatCompact, relativeTime } from "@/lib/utils/format";
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useContent } from "@/hooks/use-queries";
+import { useQuickCreate } from "@/stores/quick-create-store";
+import { useRealtimeContent } from "@/hooks/use-realtime";
 
 const weekdays = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 const slots = ["12h", "18h", "20h"];
 
 export default function InstagramPage() {
   const persona = usePersonaFromRoute();
-  const items = MOCK_CONTENT.filter(
-    (c) => c.personaId === persona.id && c.channel === "instagram",
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const { data: dbContent = [] } = useContent(activeWorkspaceId, persona.id);
+  const { openWith } = useQuickCreate();
+
+  useRealtimeContent(activeWorkspaceId ?? undefined, persona.id);
+
+  const allContent =
+    isMockModeClient && dbContent.length === 0
+      ? MOCK_CONTENT.filter((c) => c.personaId === persona.id)
+      : dbContent;
+
+  const items = allContent.filter(
+    (c: any) => c.channel === "instagram",
   );
-  const reels = items.filter((c) => c.contentType === "reel" || c.contentType === "feed" || c.contentType === "carousel");
-  const stories = items.filter((c) => c.contentType === "story");
+  const reels = items.filter((c: any) => c.contentType === "reel" || c.contentType === "feed" || c.contentType === "carousel");
+  const stories = items.filter((c: any) => c.contentType === "story");
 
   return (
     <div className="space-y-6">
@@ -33,7 +49,7 @@ export default function InstagramPage() {
             <Button variant="outline" size="sm">
               <Sparkles className="h-3.5 w-3.5" /> Gerar pauta
             </Button>
-            <Button variant="gradient" size="sm">
+            <Button variant="gradient" size="sm" onClick={() => openWith("content")}>
               <Plus className="h-4 w-4" /> Novo post
             </Button>
           </>
@@ -102,7 +118,7 @@ export default function InstagramPage() {
 
         <TabsContent value="reels">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {reels.map((r) => (
+            {reels.map((r: any) => (
               <Card key={r.id} className="overflow-hidden hover:border-primary/40 transition group">
                 <div
                   className="aspect-[4/5] relative flex items-end p-3"
@@ -162,7 +178,7 @@ export default function InstagramPage() {
               </p>
             </CardHeader>
             <CardContent className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {stories.map((s) => (
+              {stories.map((s: any) => (
                 <div
                   key={s.id}
                   className="aspect-[9/16] rounded-xl p-3 flex flex-col justify-between relative overflow-hidden"

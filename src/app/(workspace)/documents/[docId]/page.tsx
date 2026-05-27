@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   ChevronRight,
+  FileText,
   History,
   MessageSquare,
   Share2,
@@ -17,11 +18,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { EmptyState } from "@/components/ui/empty-state";
 import { RichEditor } from "@/components/editor/rich-editor";
 import { MOCK_DOCUMENTS, MOCK_PERSONAS } from "@/data";
+import { isMockModeClient } from "@/lib/mock-mode-client";
 import { initials, relativeTime } from "@/lib/utils/format";
 import { toast } from "sonner";
 import { RoomProvider, useOthers, useUpdateMyPresence } from "@/lib/liveblocks";
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useDocument, usePersonas, useUpdateDocumentContentMutation } from "@/hooks/use-queries";
 
 const SAMPLE_HTML = `
 <h1>Posicionamento · Aurora Voss</h1>
@@ -54,24 +59,57 @@ const SAMPLE_HTML = `
 `;
 
 function CollaborativeDocumentContent({ docId }: { docId: string }) {
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const { data: dbDoc } = useDocument(docId);
+  const { data: dbPersonas = [] } = usePersonas(activeWorkspaceId);
+
   const doc =
-    MOCK_DOCUMENTS.find((d) => d.id === docId) ?? MOCK_DOCUMENTS[0];
-  const persona = MOCK_PERSONAS.find((p) => p.id === doc.personaId);
+    dbDoc ||
+    (isMockModeClient
+      ? MOCK_DOCUMENTS.find((d) => d.id === docId) || MOCK_DOCUMENTS[0]
+      : null);
+  const personas =
+    isMockModeClient && dbPersonas.length === 0 ? MOCK_PERSONAS : dbPersonas;
+
+  if (!doc) {
+    return (
+      <EmptyState
+        icon={<FileText className="h-5 w-5" />}
+        title="Documento nao encontrado"
+        description="Este documento nao existe no workspace atual ou voce nao tem acesso a ele."
+        action={
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/documents">
+              <ArrowLeft className="h-3.5 w-3.5" /> Voltar para documentos
+            </Link>
+          </Button>
+        }
+      />
+    );
+  }
+
+  const persona = personas.find((p: any) => p.id === doc.personaId);
 
   const [saving, setSaving] = React.useState(false);
   const [savedAt, setSavedAt] = React.useState<Date>(new Date());
 
   const others = useOthers();
   const updateMyPresence = useUpdateMyPresence();
+  const updateContentMutation = useUpdateDocumentContentMutation();
 
-  const onChange = React.useCallback(() => {
+  const onChange = React.useCallback((html: string) => {
     setSaving(true);
-    const id = setTimeout(() => {
-      setSaving(false);
-      setSavedAt(new Date());
-    }, 800);
-    return () => clearTimeout(id);
-  }, []);
+    const handler = setTimeout(async () => {
+      try {
+        await updateContentMutation.mutateAsync({ id: docId, content: html });
+        setSaving(false);
+        setSavedAt(new Date());
+      } catch (err) {
+        setSaving(false);
+      }
+    }, 1000);
+    return () => clearTimeout(handler);
+  }, [docId, updateContentMutation]);
 
   const handlePointerMove = (e: React.PointerEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -124,7 +162,7 @@ function CollaborativeDocumentContent({ docId }: { docId: string }) {
                 <Star className="h-4 w-4 text-warning fill-warning" />
               )}
               {persona && <Badge variant="outline">{persona.name}</Badge>}
-              {doc.tags?.map((t) => (
+              {doc.tags?.map((t: string) => (
                 <Badge key={t} variant="ghost" size="sm">
                   #{t}
                 </Badge>
@@ -230,7 +268,16 @@ function CollaborativeDocumentContent({ docId }: { docId: string }) {
             </div>
           );
         })}
-        <RichEditor initialContent={SAMPLE_HTML} onChange={onChange} />
+        <RichEditor
+          initialContent={
+            typeof doc.content === "string"
+              ? doc.content
+              : isMockModeClient
+                ? SAMPLE_HTML
+                : ""
+          }
+          onChange={onChange}
+        />
       </div>
     </div>
   );
@@ -246,4 +293,3 @@ export default function DocumentDetailPage() {
     </RoomProvider>
   );
 }
-

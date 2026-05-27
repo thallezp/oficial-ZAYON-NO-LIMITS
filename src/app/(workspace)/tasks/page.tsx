@@ -25,7 +25,13 @@ import { MOCK_TASKS } from "@/data";
 import type { Task, TaskStatus } from "@/types";
 import { initials, relativeTime } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
+import { isMockModeClient } from "@/lib/mock-mode-client";
 import { toast } from "sonner";
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useQuickCreate } from "@/stores/quick-create-store";
+import { useTasks, useUpdateTaskStatusAndPositionMutation } from "@/hooks/use-queries";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRealtimeTasks } from "@/hooks/use-realtime";
 
 const columns: KanbanColumn<TaskStatus>[] = [
   { id: "backlog", label: "Backlog", tone: "bg-muted/40" },
@@ -51,9 +57,29 @@ const statusColor: Record<string, "primary" | "outline" | "warning" | "success" 
 };
 
 export default function TasksPage() {
-  const [tasks, setTasks] = React.useState<Task[]>(MOCK_TASKS as Task[]);
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const openQuickCreate = useQuickCreate((s) => s.setOpen);
+  const openWith = useQuickCreate((s) => s.openWith);
+
+  const { data: dbTasks = [] } = useTasks(activeWorkspaceId);
+  const updateStatusMutation = useUpdateTaskStatusAndPositionMutation();
+  const queryClient = useQueryClient();
+
+  useRealtimeTasks(activeWorkspaceId ?? undefined, () => {
+    queryClient.invalidateQueries({ queryKey: ["tasks"] });
+  });
+
+  const [tasks, setTasks] = React.useState<Task[]>([]);
   const [search, setSearch] = React.useState("");
   const [selectedTask, setSelectedTask] = React.useState<Task | null>(null);
+
+  React.useEffect(() => {
+    if (isMockModeClient && dbTasks.length === 0) {
+      setTasks(MOCK_TASKS as Task[]);
+      return;
+    }
+    setTasks(dbTasks as Task[]);
+  }, [dbTasks]);
 
   const filteredTasks = React.useMemo(
     () =>
@@ -162,7 +188,10 @@ export default function TasksPage() {
             <Button
               variant="gradient"
               size="sm"
-              onClick={() => toast.success("Nova tarefa · abra o modal de criação")}
+              onClick={() => {
+                openWith("task");
+                openQuickCreate(true);
+              }}
             >
               <Plus className="h-4 w-4" /> Nova tarefa
             </Button>
@@ -211,12 +240,25 @@ export default function TasksPage() {
             columns={columns}
             items={filteredTasks}
             onChange={(next) => {
+              const oldTasks = [...tasks];
               setTasks((current) => {
                 const map = new Map(next.map((t) => [t.id, t]));
                 return current.map((t) => map.get(t.id) ?? t);
               });
+              next.forEach((newTask) => {
+                const oldTask = oldTasks.find((t) => t.id === newTask.id);
+                if (oldTask && oldTask.status !== newTask.status) {
+                  updateStatusMutation.mutate({
+                    id: newTask.id,
+                    status: newTask.status,
+                  });
+                }
+              });
             }}
-            onAdd={(col) => toast.success(`Criar tarefa em ${col}`)}
+            onAdd={(col) => {
+              openWith("task");
+              openQuickCreate(true);
+            }}
             renderCard={(t) => (
               <div
                 className="rounded-lg border border-border/60 bg-card-elevated p-2.5 hover:border-primary/40"

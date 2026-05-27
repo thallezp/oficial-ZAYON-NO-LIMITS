@@ -20,8 +20,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { MOCK_NOTIFICATIONS } from "@/data";
+import { isMockModeClient } from "@/lib/mock-mode-client";
 import { relativeTime } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useNotifications } from "@/hooks/use-queries";
 import { toast } from "sonner";
 
 const ICONS = {
@@ -33,7 +36,18 @@ const ICONS = {
 } as const;
 
 export function NotificationsPopover() {
-  const [unread, setUnread] = React.useState(MOCK_NOTIFICATIONS.length);
+  const user = useWorkspaceStore((s) => s.user);
+  const { data: dbNotifications = [] } = useNotifications(user?.id);
+  const notifications =
+    isMockModeClient && dbNotifications.length === 0
+      ? MOCK_NOTIFICATIONS
+      : dbNotifications;
+  const unreadCount = notifications.filter((n: any) => !n.readAt).length;
+  const [unread, setUnread] = React.useState(unreadCount);
+
+  React.useEffect(() => {
+    setUnread(unreadCount);
+  }, [unreadCount]);
 
   return (
     <Popover>
@@ -86,7 +100,7 @@ export function NotificationsPopover() {
 
           <TabsContent value="all" className="mt-2">
             <div className="max-h-96 overflow-y-auto divide-y divide-border/60">
-              {MOCK_NOTIFICATIONS.map((n, i) => {
+              {notifications.map((n: any, i: number) => {
                 const Icon = ICONS[n.type as keyof typeof ICONS] ?? Activity;
                 const isUnread = i < unread;
                 return (
@@ -129,8 +143,8 @@ export function NotificationsPopover() {
 
           <TabsContent value="ai" className="mt-2">
             <div className="max-h-96 overflow-y-auto divide-y divide-border/60">
-              {MOCK_NOTIFICATIONS.filter((n) => n.type === "ai.action").map(
-                (n) => (
+              {notifications.filter((n: any) => n.type === "ai.action").map(
+                (n: any) => (
                   <div key={n.id} className="flex items-start gap-3 px-4 py-3">
                     <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/15 text-primary">
                       <Bot className="h-3.5 w-3.5" />

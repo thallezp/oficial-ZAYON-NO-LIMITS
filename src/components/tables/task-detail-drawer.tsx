@@ -28,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MOCK_USERS } from "@/data";
+import { isMockModeClient } from "@/lib/mock-mode-client";
 import { initials, relativeTime } from "@/lib/utils/format";
 import type { Task } from "@/types";
 import { cn } from "@/lib/utils/cn";
@@ -69,6 +70,9 @@ interface Props {
 
 export function TaskDetailDrawer({ task, open, onOpenChange }: Props) {
   const [comment, setComment] = React.useState("");
+  const subtasks = isMockModeClient ? sampleSubtasks : [];
+  const comments = isMockModeClient ? sampleComments : [];
+  const attachments = isMockModeClient ? ["mood-aurora.pdf", "broll-001.mp4"] : [];
 
   if (!task) return null;
 
@@ -166,18 +170,24 @@ export function TaskDetailDrawer({ task, open, onOpenChange }: Props) {
             </Button>
           </div>
           <div className="space-y-1.5">
-            {sampleSubtasks.map((s) => (
-              <div
-                key={s.id}
-                className={cn(
-                  "flex items-center gap-2 rounded-lg border border-border/60 bg-card-elevated px-3 py-2 text-sm",
-                  s.done && "opacity-60",
-                )}
-              >
-                <Checkbox defaultChecked={s.done} />
-                <span className={cn(s.done && "line-through")}>{s.title}</span>
-              </div>
-            ))}
+            {subtasks.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border/60 bg-card/30 px-3 py-3 text-xs text-muted-foreground">
+                Nenhuma subtarefa real cadastrada.
+              </p>
+            ) : (
+              subtasks.map((s) => (
+                <div
+                  key={s.id}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg border border-border/60 bg-card-elevated px-3 py-2 text-sm",
+                    s.done && "opacity-60",
+                  )}
+                >
+                  <Checkbox defaultChecked={s.done} />
+                  <span className={cn(s.done && "line-through")}>{s.title}</span>
+                </div>
+              ))
+            )}
           </div>
         </section>
 
@@ -188,7 +198,12 @@ export function TaskDetailDrawer({ task, open, onOpenChange }: Props) {
             <Paperclip className="h-3.5 w-3.5 text-primary" /> Anexos
           </h3>
           <div className="flex flex-wrap gap-2">
-            {["mood-aurora.pdf", "broll-001.mp4"].map((f) => (
+            {attachments.length === 0 && (
+              <span className="rounded-lg border border-dashed border-border/60 bg-card/30 px-3 py-2 text-xs text-muted-foreground">
+                Nenhum anexo real.
+              </span>
+            )}
+            {attachments.map((f) => (
               <Badge key={f} variant="outline" className="gap-1.5">
                 <Paperclip className="h-3 w-3" /> {f}
               </Badge>
@@ -206,24 +221,30 @@ export function TaskDetailDrawer({ task, open, onOpenChange }: Props) {
             <MessageSquare className="h-3.5 w-3.5 text-primary" /> Comentários
           </h3>
           <div className="space-y-3">
-            {sampleComments.map((c) => (
-              <div key={c.id} className="flex gap-2">
-                <Avatar size="sm">
-                  <AvatarFallback>{initials(c.user.fullName)}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 rounded-lg border border-border/60 bg-card-elevated px-3 py-2">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-xs font-medium">
-                      {c.user.fullName}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {relativeTime(c.createdAt)}
-                    </span>
+            {comments.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border/60 bg-card/30 px-3 py-3 text-xs text-muted-foreground">
+                Nenhum comentario real cadastrado.
+              </p>
+            ) : (
+              comments.map((c) => (
+                <div key={c.id} className="flex gap-2">
+                  <Avatar size="sm">
+                    <AvatarFallback>{initials(c.user.fullName)}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 rounded-lg border border-border/60 bg-card-elevated px-3 py-2">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-xs font-medium">
+                        {c.user.fullName}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {relativeTime(c.createdAt)}
+                      </span>
+                    </div>
+                    <p className="text-sm">{c.body}</p>
                   </div>
-                  <p className="text-sm">{c.body}</p>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
           <div className="flex gap-2">
             <Textarea

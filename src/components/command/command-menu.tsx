@@ -32,9 +32,18 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { isMockModeClient } from "@/lib/mock-mode-client";
 import { useUIStore } from "@/stores/ui-store";
 import { usePersonaStore } from "@/stores/persona-store";
+import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useQuickCreate } from "@/stores/quick-create-store";
+import {
+  useContent,
+  useDocuments,
+  useLeads,
+  useTasks,
+  useTools,
+} from "@/hooks/use-queries";
 import {
   MOCK_TASKS,
   MOCK_DOCUMENTS,
@@ -77,12 +86,29 @@ export function CommandMenu() {
   const router = useRouter();
   const open = useUIStore((s) => s.commandOpen);
   const setOpen = useUIStore((s) => s.setCommandOpen);
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
   const personas = usePersonaStore((s) => s.personas);
   const activeId = usePersonaStore((s) => s.activePersonaId);
   const setActivePersona = usePersonaStore((s) => s.setActivePersona);
   const openQuickCreate = useQuickCreate((s) => s.openWith);
+  const setAIPanelOpen = useUIStore((s) => s.setAIPanelOpen);
+  const { data: dbTasks = [] } = useTasks(activeWorkspaceId);
+  const { data: dbDocuments = [] } = useDocuments(activeWorkspaceId);
+  const { data: dbTools = [] } = useTools(activeWorkspaceId);
+  const { data: dbLeads = [] } = useLeads(activeWorkspaceId);
+  const { data: dbContent = [] } = useContent(activeWorkspaceId, activeId);
   const defaultPersonaId =
-    activeId ?? personas[0]?.id ?? MOCK_PERSONAS[0]?.id ?? "";
+    activeId ??
+    personas[0]?.id ??
+    (isMockModeClient ? MOCK_PERSONAS[0]?.id : "") ??
+    "";
+  const taskItems = isMockModeClient && dbTasks.length === 0 ? MOCK_TASKS : dbTasks;
+  const documentItems =
+    isMockModeClient && dbDocuments.length === 0 ? MOCK_DOCUMENTS : dbDocuments;
+  const toolItems = isMockModeClient && dbTools.length === 0 ? MOCK_TOOLS : dbTools;
+  const leadItems = isMockModeClient && dbLeads.length === 0 ? MOCK_LEADS : dbLeads;
+  const contentItems =
+    isMockModeClient && dbContent.length === 0 ? MOCK_CONTENT : dbContent;
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -108,8 +134,9 @@ export function CommandMenu() {
 
   const runAIAction = (label: string) => {
     setOpen(false);
+    setAIPanelOpen(true);
     toast.success(`IA acionada: ${label}`, {
-      description: "A ação foi enviada para processamento.",
+      description: "O painel da IA foi aberto para processar sua solicitação.",
     });
   };
 
@@ -245,7 +272,7 @@ export function CommandMenu() {
             )}
 
             <Command.Group heading="Tarefas">
-              {MOCK_TASKS.slice(0, 6).map((t) => (
+              {taskItems.slice(0, 6).map((t: any) => (
                 <CmdItem
                   key={t.id}
                   onSelect={() => go("/tasks")}
@@ -257,7 +284,7 @@ export function CommandMenu() {
             </Command.Group>
 
             <Command.Group heading="Documentos">
-              {MOCK_DOCUMENTS.slice(0, 4).map((d) => (
+              {documentItems.slice(0, 4).map((d: any) => (
                 <CmdItem
                   key={d.id}
                   onSelect={() => go("/documents")}
@@ -268,7 +295,7 @@ export function CommandMenu() {
             </Command.Group>
 
             <Command.Group heading="Ferramentas">
-              {MOCK_TOOLS.slice(0, 6).map((t) => (
+              {toolItems.slice(0, 6).map((t: any) => (
                 <CmdItem
                   key={t.id}
                   onSelect={() => {
@@ -283,7 +310,7 @@ export function CommandMenu() {
             </Command.Group>
 
             <Command.Group heading="Leads recentes">
-              {MOCK_LEADS.slice(0, 4).map((l) => (
+              {leadItems.slice(0, 4).map((l: any) => (
                 <CmdItem
                   key={l.id}
                   onSelect={() => go(`/personas/${l.personaId ?? defaultPersonaId}/leads`)}
@@ -295,7 +322,7 @@ export function CommandMenu() {
             </Command.Group>
 
             <Command.Group heading="Conteúdo">
-              {MOCK_CONTENT.slice(0, 4).map((c) => (
+              {contentItems.slice(0, 4).map((c: any) => (
                 <CmdItem
                   key={c.id}
                   onSelect={() => go(`/personas/${c.personaId ?? defaultPersonaId}/content`)}

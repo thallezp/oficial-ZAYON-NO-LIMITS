@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Cog, Key, Shield, Sparkles, User } from "lucide-react";
+import { Building2, Cog, Key, Shield, Sparkles, User, Database } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,26 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useSanitizeDatabaseEncodingMutation } from "@/hooks/use-queries";
+import { toast } from "sonner";
 
 export default function SettingsPage() {
+  const sanitizeMutation = useSanitizeDatabaseEncodingMutation();
+  const isSanitizing = sanitizeMutation.isPending;
+
+  const handleSanitize = async () => {
+    try {
+      const res = await sanitizeMutation.mutateAsync();
+      if (res?.ok) {
+        toast.success("Encoding do banco de dados higienizado com sucesso!");
+      } else {
+        toast.error("Erro ou rodando em modo MOCK. Nenhuma alteração feita.");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao higienizar banco de dados.");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -98,6 +116,33 @@ export default function SettingsPage() {
                   </p>
                 </div>
                 <Switch defaultChecked />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="h-5 w-5 text-indigo-500" />
+                Manutenção do Banco de Dados
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between rounded-lg border border-border/60 bg-card-elevated px-4 py-3">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium">Higienizar Encoding</p>
+                  <p className="text-xs text-muted-foreground max-w-md">
+                    Corrige caracteres corrompidos com acentuação inválida (UTF-8) em Ferramentas, Personas e Projetos no banco de dados.
+                  </p>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleSanitize}
+                  disabled={isSanitizing}
+                >
+                  {isSanitizing ? "Corrigindo..." : "Corrigir Encoding"}
+                </Button>
               </div>
             </CardContent>
           </Card>

@@ -20,6 +20,7 @@ export interface User {
   avatarUrl?: string;
   role: Role;
   online?: boolean;
+  metadata?: Record<string, any>;
 }
 
 export type PersonaStatus = "active" | "building" | "paused" | "archived";

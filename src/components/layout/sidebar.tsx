@@ -42,6 +42,7 @@ import { useUIStore } from "@/stores/ui-store";
 import { usePersonaStore } from "@/stores/persona-store";
 import { useQuickCreate } from "@/stores/quick-create-store";
 import { cn } from "@/lib/utils/cn";
+import { isMockModeClient } from "@/lib/mock-mode-client";
 
 type NavItem = {
   href: string;
@@ -152,7 +153,10 @@ export function SidebarContent() {
   const activePersonaId = usePersonaStore((s) => s.activePersonaId);
   const openQuickCreate = useQuickCreate((s) => s.openWith);
   const defaultPersonaId =
-    activePersonaId ?? personas[0]?.id ?? MOCK_PERSONAS[0]?.id ?? "";
+    activePersonaId ??
+    personas[0]?.id ??
+    (isMockModeClient ? MOCK_PERSONAS[0]?.id : "") ??
+    "";
   const personaItems = personaNav(defaultPersonaId);
 
   return (

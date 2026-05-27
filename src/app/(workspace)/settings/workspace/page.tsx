@@ -10,10 +10,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { EmptyState } from "@/components/ui/empty-state";
+import { useTeam } from "@/hooks/use-queries";
+import { isMockModeClient } from "@/lib/mock-mode-client";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { MOCK_USERS } from "@/data";
 import { initials } from "@/lib/utils/format";
 import { toast } from "sonner";
+import type { User } from "@/types";
 
 const roleColor = {
   owner: "primary",
@@ -24,9 +28,13 @@ const roleColor = {
 } as const;
 
 export default function WorkspaceSettingsPage() {
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
   const workspace = useWorkspaceStore((s) =>
     s.workspaces.find((w) => w.id === s.activeWorkspaceId) ?? s.workspaces[0],
   );
+  const { data: dbTeam = [] } = useTeam(activeWorkspaceId);
+  const team: User[] =
+    isMockModeClient && dbTeam.length === 0 ? MOCK_USERS : dbTeam;
 
   return (
     <div className="space-y-6">
@@ -77,23 +85,32 @@ export default function WorkspaceSettingsPage() {
           </Button>
         </CardHeader>
         <CardContent className="p-0 divide-y divide-border/60">
-          {MOCK_USERS.map((u) => (
-            <div key={u.id} className="flex items-center gap-4 p-4">
-              <Avatar size="md">
-                <AvatarFallback>{initials(u.fullName)}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium">{u.fullName}</p>
-                <p className="text-xs text-muted-foreground">{u.email}</p>
+          {team.length === 0 ? (
+            <EmptyState
+              icon={<Users className="h-5 w-5" />}
+              title="Nenhum membro carregado"
+              description="Os membros reais aparecem aqui assim que o workspace estiver vinculado no Supabase."
+              className="border-0 bg-transparent"
+            />
+          ) : (
+            team.map((u) => (
+              <div key={u.id} className="flex items-center gap-4 p-4">
+                <Avatar size="md">
+                  <AvatarFallback>{initials(u.fullName)}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium">{u.fullName}</p>
+                  <p className="text-xs text-muted-foreground">{u.email}</p>
+                </div>
+                <Badge size="sm" variant={roleColor[u.role]}>
+                  {u.role}
+                </Badge>
+                <Button variant="ghost" size="sm">
+                  Editar
+                </Button>
               </div>
-              <Badge size="sm" variant={roleColor[u.role]}>
-                {u.role}
-              </Badge>
-              <Button variant="ghost" size="sm">
-                Editar
-              </Button>
-            </div>
-          ))}
+            ))
+          )}
         </CardContent>
       </Card>
 

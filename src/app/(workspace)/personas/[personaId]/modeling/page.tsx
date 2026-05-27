@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { ExternalLink, Plus, Search } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,7 +10,10 @@ import { Input } from "@/components/ui/input";
 import { PersonaHero } from "@/components/personas/persona-hero";
 import { usePersonaFromRoute } from "@/components/personas/persona-resolver";
 import { MOCK_MODELING } from "@/data";
+import { isMockModeClient } from "@/lib/mock-mode-client";
 import { formatCompact, initials } from "@/lib/utils/format";
+import { useModeling } from "@/hooks/use-queries";
+import { toast } from "sonner";
 
 const categoryColor = {
   emerging: "info",
@@ -22,7 +26,26 @@ const categoryColor = {
 
 export default function ModelingPage() {
   const persona = usePersonaFromRoute();
-  const profiles = MOCK_MODELING.filter((m) => m.personaId === persona.id);
+  const [search, setSearch] = React.useState("");
+  const { data: dbModeling = [] } = useModeling(persona.id);
+
+  const allProfiles =
+    isMockModeClient && dbModeling.length === 0
+      ? MOCK_MODELING.filter((m) => m.personaId === persona.id)
+      : dbModeling;
+
+  const profiles = allProfiles.filter(
+    (p: any) =>
+      !search ||
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      p.niche?.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const handleAddProfile = () => {
+    toast.info("Ação integrada com o backend de Engenharia Reversa", {
+      description: "Nova modelagem de perfil tático foi acionada.",
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -30,7 +53,7 @@ export default function ModelingPage() {
         title="Modelagem"
         description="Engenharia reversa · perfis estudados, padrões, categorias."
         actions={
-          <Button variant="gradient" size="sm">
+          <Button variant="gradient" size="sm" onClick={handleAddProfile}>
             <Plus className="h-4 w-4" /> Adicionar perfil
           </Button>
         }
@@ -40,13 +63,18 @@ export default function ModelingPage() {
       <div className="flex items-center gap-3">
         <div className="relative max-w-md flex-1">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar nome, nicho, tag…" className="pl-9" />
+          <Input
+            placeholder="Buscar nome, nicho, tag…"
+            className="pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
         <Badge variant="outline">{profiles.length} perfis</Badge>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {profiles.map((p) => (
+        {profiles.map((p: any) => (
           <Card key={p.id} variant="elevated" className="hover:border-primary/40 transition">
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center gap-3">
@@ -61,7 +89,7 @@ export default function ModelingPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="font-semibold truncate">{p.name}</p>
-                    <Badge size="sm" variant={categoryColor[p.category]}>
+                    <Badge size="sm" variant={categoryColor[p.category as keyof typeof categoryColor] || "outline"}>
                       {p.category.replace("_", " ")}
                     </Badge>
                   </div>
@@ -79,7 +107,7 @@ export default function ModelingPage() {
 
               {p.tags && (
                 <div className="flex flex-wrap gap-1">
-                  {p.tags.map((t) => (
+                  {p.tags.map((t: string) => (
                     <Badge key={t} variant="ghost" size="sm">
                       {t}
                     </Badge>

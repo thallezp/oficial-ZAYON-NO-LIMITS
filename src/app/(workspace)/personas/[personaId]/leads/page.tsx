@@ -27,10 +27,17 @@ import { StatCard } from "@/components/ui/stat-card";
 import { PersonaHero } from "@/components/personas/persona-hero";
 import { usePersonaFromRoute } from "@/components/personas/persona-resolver";
 import { MOCK_LEADS } from "@/data";
+import { isMockModeClient } from "@/lib/mock-mode-client";
 import { formatCurrency, initials, relativeTime } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import { LeadDetailDrawer } from "@/components/tables/lead-detail-drawer";
 import type { Lead } from "@/types";
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useLeads } from "@/hooks/use-queries";
+import { useQuickCreate } from "@/stores/quick-create-store";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRealtimeLeads } from "@/hooks/use-realtime";
 
 const statusVariant = {
   open: "outline",
@@ -43,23 +50,35 @@ const statusVariant = {
 
 export default function LeadsPage() {
   const persona = usePersonaFromRoute();
-  const allLeads = MOCK_LEADS.filter((l) => l.personaId === persona.id);
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const { data: dbLeads = [] } = useLeads(activeWorkspaceId, persona.id);
+  const { openWith } = useQuickCreate();
+  const queryClient = useQueryClient();
+
+  useRealtimeLeads(activeWorkspaceId ?? undefined, persona.id, () => {
+    queryClient.invalidateQueries({ queryKey: ["leads"] });
+  });
+
+  const allLeads =
+    isMockModeClient && dbLeads.length === 0
+      ? MOCK_LEADS.filter((l) => l.personaId === persona.id)
+      : dbLeads;
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const [expanded, setExpanded] = React.useState<string | null>(null);
   const [drawerLead, setDrawerLead] = React.useState<Lead | null>(null);
 
   const leads = allLeads.filter(
-    (l) =>
+    (l: any) =>
       (statusFilter === "all" || l.status === statusFilter) &&
       (!search ||
         l.name?.toLowerCase().includes(search.toLowerCase()) ||
         l.email?.toLowerCase().includes(search.toLowerCase())),
   );
 
-  const converted = allLeads.filter((l) => l.status === "converted");
+  const converted = allLeads.filter((l: any) => l.status === "converted");
   const totalRevenue = converted.reduce(
-    (sum, l) => sum + (l.convertedValue ?? 0),
+    (sum: number, l: any) => sum + (l.convertedValue ?? 0),
     0,
   );
 
@@ -70,14 +89,22 @@ export default function LeadsPage() {
         description="CRM por persona · Google Sheets, webhooks, Supabase realtime."
         actions={
           <>
-            <Button variant="outline" size="sm">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (activeWorkspaceId) {
+                  window.open(`/api/exports/leads?workspaceId=${activeWorkspaceId}&personaId=${persona.id}`, "_blank");
+                }
+              }}
+            >
               <Download className="h-3.5 w-3.5" /> CSV
             </Button>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => toast.info("A IA está analisando os leads...")}>
               <Wand2 className="h-3.5 w-3.5" /> Qualificar com IA
             </Button>
-            <Button variant="gradient" size="sm">
-              <Plus className="h-4 w-4" /> Conectar planilha
+            <Button variant="gradient" size="sm" onClick={() => openWith("lead")}>
+              <Plus className="h-4 w-4" /> Novo Lead
             </Button>
           </>
         }
@@ -94,7 +121,7 @@ export default function LeadsPage() {
         <StatCard
           label="Qualificados"
           value={String(
-            allLeads.filter((l) => l.status === "qualified" || l.status === "converted").length,
+            allLeads.filter((l: any) => l.status === "qualified" || l.status === "converted").length,
           )}
           delta={22.7}
           icon={<Sparkles className="h-4 w-4" />}
@@ -111,7 +138,7 @@ export default function LeadsPage() {
           label="Score médio"
           value={String(
             Math.round(
-              allLeads.reduce((s, l) => s + (l.score ?? 0), 0) /
+              allLeads.reduce((s: number, l: any) => s + (l.score ?? 0), 0) /
                 Math.max(allLeads.length, 1),
             ),
           )}
@@ -161,7 +188,7 @@ export default function LeadsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
-                {leads.map((l) => {
+                {leads.map((l: any) => {
                   const isOpen = expanded === l.id;
                   return (
                     <React.Fragment key={l.id}>
@@ -220,7 +247,7 @@ export default function LeadsPage() {
                           </div>
                         </td>
                         <td className="px-3 py-2.5">
-                          <Badge size="sm" variant={statusVariant[l.status]}>
+                          <Badge size="sm" variant={statusVariant[l.status as keyof typeof statusVariant] || "outline"}>
                             {l.status}
                           </Badge>
                         </td>
@@ -249,7 +276,7 @@ export default function LeadsPage() {
                                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
                                   Respostas do form
                                 </p>
-                                {l.answers?.map((a, i) => (
+                                {l.answers?.map((a: any, i: number) => (
                                   <div key={i}>
                                     <p className="text-[11px] text-muted-foreground">
                                       {a.question}

@@ -15,6 +15,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MOCK_FLOWS, MOCK_PERSONAS } from "@/data";
 import { relativeTime } from "@/lib/utils/format";
+import { isMockModeClient } from "@/lib/mock-mode-client";
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useFlows, usePersonas } from "@/hooks/use-queries";
+import { useQuickCreate } from "@/stores/quick-create-store";
 
 const iconMap = {
   Workflow: WorkflowIcon,
@@ -24,6 +28,15 @@ const iconMap = {
 };
 
 export default function FlowsPage() {
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const { openWith } = useQuickCreate();
+  const { data: dbFlows = [] } = useFlows(activeWorkspaceId);
+  const { data: dbPersonas = [] } = usePersonas(activeWorkspaceId);
+
+  const flows = isMockModeClient && dbFlows.length === 0 ? MOCK_FLOWS : dbFlows;
+  const personas =
+    isMockModeClient && dbPersonas.length === 0 ? MOCK_PERSONAS : dbPersonas;
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -34,7 +47,7 @@ export default function FlowsPage() {
             <Button variant="outline" size="sm">
               <Sparkles className="h-3.5 w-3.5" /> Templates
             </Button>
-            <Button variant="gradient" size="sm">
+            <Button variant="gradient" size="sm" onClick={() => openWith("flow")}>
               <Plus className="h-4 w-4" /> Novo flow
             </Button>
           </>
@@ -42,9 +55,9 @@ export default function FlowsPage() {
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-        {MOCK_FLOWS.map((f, i) => {
+        {flows.map((f: any, i: number) => {
           const Icon = iconMap[f.icon as keyof typeof iconMap] ?? WorkflowIcon;
-          const persona = MOCK_PERSONAS.find((p) => p.id === f.personaId);
+          const persona = personas.find((p: any) => p.id === f.personaId);
           return (
             <motion.div
               key={f.id}
@@ -57,7 +70,7 @@ export default function FlowsPage() {
                 <div
                   className="absolute inset-0 opacity-0 group-hover:opacity-100 transition"
                   style={{
-                    background: `radial-gradient(at top right, ${f.color}25, transparent 60%)`,
+                    background: `radial-gradient(at top right, ${f.color || "#5b8cff"}25, transparent 60%)`,
                   }}
                 />
                 <CardContent className="p-5 space-y-4 relative">
@@ -65,8 +78,8 @@ export default function FlowsPage() {
                     <div
                       className="flex h-10 w-10 items-center justify-center rounded-xl"
                       style={{
-                        background: `${f.color}30`,
-                        color: f.color,
+                        background: `${f.color || "#5b8cff"}30`,
+                        color: f.color || "#5b8cff",
                       }}
                     >
                       <Icon className="h-4 w-4" />
@@ -84,7 +97,7 @@ export default function FlowsPage() {
                   </div>
 
                   <div className="flex items-center justify-between text-[11px] text-muted-foreground border-t border-border/60 pt-3">
-                    <span>{f.nodeCount} nós</span>
+                    <span>{(f as any).nodeCount ?? 0} nós</span>
                     {persona && (
                       <Badge variant="ghost" size="sm">
                         {persona.name}

@@ -125,9 +125,10 @@ const nodeTypes = { funnel: FunnelNodeView };
 interface Props {
   funnel: Funnel;
   accent?: string;
+  onSave?: (nodes: Node[], edges: Edge[]) => Promise<void> | void;
 }
 
-function FunnelInner({ funnel, accent = "#5b8cff" }: Props) {
+function FunnelInner({ funnel, accent = "#5b8cff", onSave }: Props) {
   const initialNodes: Node[] = React.useMemo(
     () =>
       funnel.nodes.map((n) => ({
@@ -166,6 +167,25 @@ function FunnelInner({ funnel, accent = "#5b8cff" }: Props) {
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    setNodes(initialNodes);
+  }, [initialNodes, setNodes]);
+
+  React.useEffect(() => {
+    setEdges(initialEdges);
+  }, [initialEdges, setEdges]);
+
+  const handleSave = async () => {
+    if (!onSave) return;
+    setIsSaving(true);
+    try {
+      await onSave(nodes, edges);
+    } finally {
+      setIsSaving(false);
+    }
+  };
   const [selectedNode, setSelectedNode] = React.useState<Node | null>(null);
 
   // Edit fields state
@@ -267,6 +287,17 @@ function FunnelInner({ funnel, accent = "#5b8cff" }: Props) {
           pannable
         />
         <Panel position="top-right" className="flex gap-1.5">
+          {onSave && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleSave}
+              disabled={isSaving}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {isSaving ? "Salvando..." : "Salvar Funil"}
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"

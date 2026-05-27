@@ -9,7 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { PersonaHero } from "@/components/personas/persona-hero";
 import { usePersonaFromRoute } from "@/components/personas/persona-resolver";
 import { MOCK_FUNNEL_AURORA } from "@/data";
+import { isMockModeClient } from "@/lib/mock-mode-client";
 import { formatPercent } from "@/lib/utils/format";
+import { useFunnel, useSaveFunnelDataMutation } from "@/hooks/use-queries";
+import { toast } from "sonner";
 
 const FunnelCanvas = dynamic(
   () => import("@/components/flow/funnel-canvas").then((m) => m.FunnelCanvas),
@@ -18,7 +21,70 @@ const FunnelCanvas = dynamic(
 
 export default function FunnelPage() {
   const persona = usePersonaFromRoute();
-  const funnel = MOCK_FUNNEL_AURORA;
+  const { data: dbFunnel, isLoading } = useFunnel(persona.id);
+  const saveMutation = useSaveFunnelDataMutation();
+
+  if (isLoading) {
+    return (
+      <div className="h-[400px] flex items-center justify-center">
+        <div className="text-sm text-muted-foreground animate-pulse">Carregando funil...</div>
+      </div>
+    );
+  }
+
+  const funnel = dbFunnel || (isMockModeClient ? MOCK_FUNNEL_AURORA : null);
+
+  if (!funnel) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Funil de Vendas"
+          description="Nenhum funil real cadastrado para esta persona."
+          actions={
+            <Button variant="gradient" size="sm">
+              <Plus className="h-4 w-4" /> Criar funil
+            </Button>
+          }
+        />
+        <PersonaHero persona={persona} pageBadge="funil" />
+        <Card>
+          <CardContent className="py-16 text-center text-sm text-muted-foreground">
+            Crie o primeiro funil para conectar canais, etapas e metricas reais.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const handleSave = async (nodes: any[], edges: any[]) => {
+    if (!funnel.id) {
+      toast.error("ID do funil não disponível");
+      return;
+    }
+    try {
+      await saveMutation.mutateAsync({
+        funnelId: funnel.id,
+        nodes: nodes.map((n) => ({
+          id: n.id,
+          type: n.data?.nodeType || n.type || "custom",
+          title: n.data?.title || "",
+          description: n.data?.description || "",
+          position: n.position,
+          data: n.data || null,
+        })),
+        edges: edges.map((e) => ({
+          id: e.id,
+          source: e.source,
+          target: e.target,
+          label: e.label || null,
+          data: e.data || null,
+        })),
+      });
+      toast.success("Funil salvo com sucesso!");
+    } catch (e: any) {
+      toast.error("Erro ao salvar funil: " + e.message);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -45,11 +111,11 @@ export default function FunnelPage() {
             <p className="text-xs text-muted-foreground">{funnel.description}</p>
           </div>
           <Badge variant="success">
-            conversão · {formatPercent((funnel.conversionRate ?? 0) / 100)}
+            conversão · {formatPercent((Number(funnel.conversionRate) ?? 0) / 100)}
           </Badge>
         </CardHeader>
         <CardContent>
-          <FunnelCanvas funnel={funnel} accent={persona.accent} />
+          <FunnelCanvas funnel={funnel as any} accent={persona.accent} onSave={handleSave} />
         </CardContent>
       </Card>
 

@@ -9,8 +9,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { MOCK_TASKS, MOCK_CONTENT, MOCK_BILLS } from "@/data";
+import { isMockModeClient } from "@/lib/mock-mode-client";
 import { toast } from "sonner";
 import type { CalendarEvent } from "@/components/calendar/full-calendar";
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useQuickCreate } from "@/stores/quick-create-store";
+import { useTasks, useContent, useBills } from "@/hooks/use-queries";
 
 const FullCalendarView = dynamic(
   () => import("@/components/calendar/full-calendar").then((m) => m.FullCalendarView),
@@ -24,9 +28,22 @@ const tagColors = {
 } as const;
 
 export default function CalendarPage() {
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const openQuickCreate = useQuickCreate((s) => s.setOpen);
+  const openWith = useQuickCreate((s) => s.openWith);
+
+  const { data: dbTasks = [] } = useTasks(activeWorkspaceId);
+  const { data: dbContent = [] } = useContent(activeWorkspaceId);
+  const { data: dbBills = [] } = useBills(activeWorkspaceId);
+
+  const tasks = isMockModeClient && dbTasks.length === 0 ? MOCK_TASKS : dbTasks;
+  const content =
+    isMockModeClient && dbContent.length === 0 ? MOCK_CONTENT : dbContent;
+  const bills = isMockModeClient && dbBills.length === 0 ? MOCK_BILLS : dbBills;
+
   const events = React.useMemo<CalendarEvent[]>(() => {
-    const taskEvents: CalendarEvent[] = MOCK_TASKS.filter((t) => t.dueAt).map(
-      (t) => ({
+    const taskEvents: CalendarEvent[] = tasks.filter((t: any) => t.dueAt).map(
+      (t: any) => ({
         id: `task-${t.id}`,
         title: `📋 ${t.title}`,
         start: t.dueAt!,
@@ -35,10 +52,10 @@ export default function CalendarPage() {
         extendedProps: { type: "task" },
       }) as CalendarEvent,
     );
-    const contentEvents: CalendarEvent[] = MOCK_CONTENT.filter(
-      (c) => c.scheduledAt,
+    const contentEvents: CalendarEvent[] = content.filter(
+      (c: any) => c.scheduledAt,
     ).map(
-      (c) => ({
+      (c: any) => ({
         id: `content-${c.id}`,
         title: `🎬 ${c.title}`,
         start: c.scheduledAt!,
@@ -47,8 +64,8 @@ export default function CalendarPage() {
         extendedProps: { type: "content" },
       }) as CalendarEvent,
     );
-    const billEvents: CalendarEvent[] = MOCK_BILLS.map(
-      (b) => ({
+    const billEvents: CalendarEvent[] = bills.map(
+      (b: any) => ({
         id: `bill-${b.id}`,
         title: `💸 ${b.name}`,
         start: b.dueAt,
@@ -59,7 +76,7 @@ export default function CalendarPage() {
       }) as CalendarEvent,
     );
     return [...taskEvents, ...contentEvents, ...billEvents];
-  }, []);
+  }, [tasks, content, bills]);
 
   return (
     <div className="space-y-6">
@@ -71,7 +88,14 @@ export default function CalendarPage() {
             <Button variant="outline" size="sm">
               <Sparkles className="h-3.5 w-3.5" /> Sugerir agendamento
             </Button>
-            <Button variant="gradient" size="sm">
+            <Button
+              variant="gradient"
+              size="sm"
+              onClick={() => {
+                openWith("task");
+                openQuickCreate(true);
+              }}
+            >
               <Plus className="h-4 w-4" /> Novo evento
             </Button>
           </>
@@ -101,11 +125,10 @@ export default function CalendarPage() {
                 onEventClick={(id) =>
                   toast.success(`Evento ${id} · abrir detalhes`)
                 }
-                onDateClick={(date) =>
-                  toast.success(
-                    `Criar evento em ${date.toLocaleDateString("pt-BR")}`,
-                  )
-                }
+                onDateClick={(date) => {
+                  openWith("task");
+                  openQuickCreate(true);
+                }}
               />
             </CardContent>
           </Card>
@@ -143,4 +166,3 @@ export default function CalendarPage() {
     </div>
   );
 }
-

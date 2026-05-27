@@ -17,13 +17,34 @@ import { Textarea } from "@/components/ui/textarea";
 import { PersonaHero } from "@/components/personas/persona-hero";
 import { usePersonaFromRoute } from "@/components/personas/persona-resolver";
 import { MOCK_PROMPT_CHAINS } from "@/data";
+import { isMockModeClient } from "@/lib/mock-mode-client";
 import type { PromptChain } from "@/types";
 import { relativeTime } from "@/lib/utils/format";
+import { usePrompts } from "@/hooks/use-queries";
+import { toast } from "sonner";
 
 export default function PromptsPage() {
   const persona = usePersonaFromRoute();
-  const chains = MOCK_PROMPT_CHAINS.filter((c) => c.personaId === persona.id);
-  const [active, setActive] = React.useState<PromptChain>(chains[0]);
+  const { data: dbPrompts = [] } = usePrompts(persona.id);
+  const chains =
+    isMockModeClient && dbPrompts.length === 0
+      ? MOCK_PROMPT_CHAINS.filter((c) => c.personaId === persona.id)
+      : dbPrompts;
+
+  const [activeId, setActiveId] = React.useState<string | null>(null);
+  const active = chains.find((c: any) => c.id === activeId) || chains[0];
+
+  React.useEffect(() => {
+    if (chains.length > 0 && !activeId) {
+      setActiveId(chains[0].id);
+    }
+  }, [chains, activeId]);
+
+  const handleNewChain = () => {
+    toast.info("Ação integrada com o Prompt Editor", {
+      description: "Nova cadeia de prompts iniciada.",
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -31,7 +52,7 @@ export default function PromptsPage() {
         title="Prompt Chains"
         description="Banco de prompts encadeados por persona. Cada cadeia é uma sequência ordenada de instruções."
         actions={
-          <Button variant="gradient" size="sm">
+          <Button variant="gradient" size="sm" onClick={handleNewChain}>
             <Plus className="h-4 w-4" /> Nova cadeia
           </Button>
         }
@@ -47,10 +68,10 @@ export default function PromptsPage() {
       ) : (
         <div className="grid grid-cols-12 gap-6">
           <aside className="col-span-12 lg:col-span-4 space-y-2">
-            {chains.map((c) => (
+            {chains.map((c: any) => (
               <button
                 key={c.id}
-                onClick={() => setActive(c)}
+                onClick={() => setActiveId(c.id)}
                 className={`w-full rounded-xl border p-3 text-left transition ${
                   c.id === active.id
                     ? "border-primary/60 bg-primary/5"
@@ -115,7 +136,7 @@ export default function PromptsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  {active.chain.map((step, i) => (
+                  {active.chain.map((step: any, i: number) => (
                     <motion.div
                       key={step.id}
                       initial={{ opacity: 0, x: -4 }}

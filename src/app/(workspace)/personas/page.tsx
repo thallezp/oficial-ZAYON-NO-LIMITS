@@ -9,6 +9,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MOCK_PERSONAS } from "@/data";
 import { initials, formatCompact, formatCurrency } from "@/lib/utils/format";
+import { isMockModeClient } from "@/lib/mock-mode-client";
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import { usePersonas } from "@/hooks/use-queries";
+import { useQuickCreate } from "@/stores/quick-create-store";
 
 const statusVariant = {
   active: "success",
@@ -18,20 +22,27 @@ const statusVariant = {
 } as const;
 
 export default function PersonasIndexPage() {
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const { data: dbPersonas = [] } = usePersonas(activeWorkspaceId);
+  const { openWith } = useQuickCreate();
+
+  const personas =
+    isMockModeClient && dbPersonas.length === 0 ? MOCK_PERSONAS : dbPersonas;
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Personas"
         description="Cada persona opera como uma unidade de negócio · identidade, conteúdo, funil, finance e leads próprios."
         actions={
-          <Button variant="gradient" size="sm">
+          <Button variant="gradient" size="sm" onClick={() => openWith("persona")}>
             <Plus className="h-4 w-4" /> Nova persona
           </Button>
         }
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-        {MOCK_PERSONAS.map((p, i) => (
+        {personas.map((p: any, i: number) => (
           <motion.div
             key={p.id}
             initial={{ opacity: 0, y: 6 }}
@@ -43,7 +54,7 @@ export default function PersonasIndexPage() {
                 <div
                   className="absolute inset-0 opacity-30 group-hover:opacity-60 transition"
                   style={{
-                    background: `radial-gradient(at top right, ${p.accent}, transparent 70%)`,
+                    background: `radial-gradient(at top right, ${p.accent || "#3b82f6"}, transparent 70%)`,
                   }}
                 />
                 <CardContent className="relative p-5 space-y-4">
@@ -51,12 +62,12 @@ export default function PersonasIndexPage() {
                     <div
                       className="flex h-14 w-14 items-center justify-center rounded-2xl text-base font-bold text-white shadow-glow"
                       style={{
-                        background: `linear-gradient(135deg, ${p.accent}, #2a3ef5)`,
+                        background: `linear-gradient(135deg, ${p.accent || "#3b82f6"}, #2a3ef5)`,
                       }}
                     >
                       {initials(p.name)}
                     </div>
-                    <Badge size="sm" variant={statusVariant[p.status]}>
+                    <Badge size="sm" variant={statusVariant[p.status as keyof typeof statusVariant] || "outline"}>
                       {p.status}
                     </Badge>
                   </div>
@@ -74,19 +85,19 @@ export default function PersonasIndexPage() {
                     <div>
                       <p className="text-muted-foreground">Receita</p>
                       <p className="num font-semibold">
-                        {formatCurrency(p.metrics?.revenuePeriod ?? 0)}
+                        {formatCurrency((p as any).metrics?.revenuePeriod ?? 0)}
                       </p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Seguidores</p>
                       <p className="num font-semibold">
-                        {formatCompact(p.metrics?.followers ?? 0)}
+                        {formatCompact((p as any).metrics?.followers ?? 0)}
                       </p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Leads</p>
                       <p className="num font-semibold">
-                        {p.metrics?.leads ?? 0}
+                        {(p as any).metrics?.leads ?? 0}
                       </p>
                     </div>
                   </div>
@@ -105,7 +116,10 @@ export default function PersonasIndexPage() {
           </motion.div>
         ))}
 
-        <button className="rounded-xl border-2 border-dashed border-border/60 bg-card/20 flex flex-col items-center justify-center gap-2 py-10 transition hover:border-primary/40 hover:bg-card/40">
+        <button
+          onClick={() => openWith("persona")}
+          className="rounded-xl border-2 border-dashed border-border/60 bg-card/20 flex flex-col items-center justify-center gap-2 py-10 transition hover:border-primary/40 hover:bg-card/40 w-full"
+        >
           <Plus className="h-5 w-5 text-muted-foreground" />
           <span className="text-sm font-medium">Criar nova persona</span>
           <Badge variant="ghost" size="sm">

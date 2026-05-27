@@ -17,6 +17,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PersonaHero } from "@/components/personas/persona-hero";
 import { usePersonaFromRoute } from "@/components/personas/persona-resolver";
 import { MOCK_ICP_PAINS } from "@/data";
+import { isMockModeClient } from "@/lib/mock-mode-client";
+import { useIcpPains } from "@/hooks/use-queries";
 
 const categoryStyle = {
   pain: "danger",
@@ -46,7 +48,11 @@ const phases = [
 
 export default function LaunchPage() {
   const persona = usePersonaFromRoute();
-  const pains = MOCK_ICP_PAINS.filter((p) => p.personaId === persona.id);
+  const { data: dbPains = [] } = useIcpPains(persona.id);
+  const pains =
+    isMockModeClient && dbPains.length === 0
+      ? MOCK_ICP_PAINS.filter((p) => p.personaId === persona.id)
+      : dbPains;
 
   return (
     <div className="space-y-6">
@@ -121,7 +127,7 @@ export default function LaunchPage() {
               </Button>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {pains.map((p) => (
+              {pains.map((p: any) => (
                 <Card
                   key={p.id}
                   variant="elevated"
@@ -129,8 +135,8 @@ export default function LaunchPage() {
                 >
                   <CardContent className="p-4 space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <Badge size="sm" variant={categoryStyle[p.category]}>
-                        {labelMap[p.category]}
+                      <Badge size="sm" variant={categoryStyle[p.category as keyof typeof categoryStyle]}>
+                        {labelMap[p.category as keyof typeof labelMap]}
                       </Badge>
                       <Badge size="sm" variant="ghost">
                         intensidade {p.intensity}
@@ -138,7 +144,7 @@ export default function LaunchPage() {
                     </div>
                     <p className="text-sm leading-relaxed">"{p.body}"</p>
                     <div className="flex flex-wrap gap-1">
-                      {p.tags?.map((t) => (
+                      {p.tags?.map((t: string) => (
                         <Badge key={t} size="sm" variant="ghost">
                           #{t}
                         </Badge>

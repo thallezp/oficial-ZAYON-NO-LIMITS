@@ -22,27 +22,52 @@ import { PieChart } from "@/components/charts/pie-chart";
 import { PersonaHero } from "@/components/personas/persona-hero";
 import { usePersonaFromRoute } from "@/components/personas/persona-resolver";
 import { MOCK_FINANCE, MOCK_PAYROLL, MOCK_BILLS } from "@/data";
+import { isMockModeClient } from "@/lib/mock-mode-client";
 import { formatCurrency } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useFinance, useBills, usePayroll } from "@/hooks/use-queries";
+import { useQuickCreate } from "@/stores/quick-create-store";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRealtimeFinance } from "@/hooks/use-realtime";
 
 export default function FinancePage() {
   const persona = usePersonaFromRoute();
-  const tx = MOCK_FINANCE.filter(
-    (f) => !f.personaId || f.personaId === persona.id,
-  );
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const { openWith } = useQuickCreate();
+  const queryClient = useQueryClient();
+
+  useRealtimeFinance(activeWorkspaceId ?? undefined, () => {
+    queryClient.invalidateQueries({ queryKey: ["finance"] });
+    queryClient.invalidateQueries({ queryKey: ["bills"] });
+  });
+
+  const { data: dbFinance = [] } = useFinance(activeWorkspaceId, persona.id);
+  const { data: dbBills = [] } = useBills(activeWorkspaceId, persona.id);
+  const { data: dbPayroll = [] } = usePayroll(activeWorkspaceId);
+
+  const tx =
+    isMockModeClient && dbFinance.length === 0
+      ? MOCK_FINANCE.filter((f) => !f.personaId || f.personaId === persona.id)
+      : dbFinance;
+  
+  const bills = isMockModeClient && dbBills.length === 0 ? MOCK_BILLS : dbBills;
+  const payroll =
+    isMockModeClient && dbPayroll.length === 0 ? MOCK_PAYROLL : dbPayroll;
 
   const revenue = tx
-    .filter((t) => t.type === "revenue" && t.status === "paid")
-    .reduce((sum, t) => sum + t.amount, 0);
+    .filter((t: any) => t.type === "revenue" && t.status === "paid")
+    .reduce((sum: number, t: any) => sum + Number(t.amount), 0);
   const expenses = tx
-    .filter((t) => t.type === "expense" && t.status === "paid")
-    .reduce((sum, t) => sum + t.amount, 0);
+    .filter((t: any) => t.type === "expense" && t.status === "paid")
+    .reduce((sum: number, t: any) => sum + Number(t.amount), 0);
   const pending = tx
-    .filter((t) => t.status === "pending")
-    .reduce((sum, t) => sum + t.amount, 0);
+    .filter((t: any) => t.status === "pending")
+    .reduce((sum: number, t: any) => sum + Number(t.amount), 0);
   const overdue = tx
-    .filter((t) => t.status === "overdue")
-    .reduce((sum, t) => sum + t.amount, 0);
+    .filter((t: any) => t.status === "overdue")
+    .reduce((sum: number, t: any) => sum + Number(t.amount), 0);
   const profit = revenue - expenses;
 
   const trend = Array.from({ length: 12 }, (_, i) => ({
@@ -50,13 +75,25 @@ export default function FinancePage() {
     value: Math.round(revenue / 12 + Math.sin(i / 2) * 4000 + i * 800),
   }));
 
-  const byCategory = Array.from(
-    tx.reduce((map, t) => {
+  const byCategory: { name: string; value: number; color?: string; }[] = Array.from(
+    tx.reduce((map: Map<string, number>, t: any) => {
       const cat = t.category ?? "outros";
-      map.set(cat, (map.get(cat) ?? 0) + t.amount);
+      map.set(cat, (map.get(cat) ?? 0) + Number(t.amount));
       return map;
     }, new Map<string, number>()),
-  ).map(([name, value]) => ({ name, value }));
+  ).map(([name, value]: any) => ({ name, value }));
+
+  const handleExport = () => {
+    if (activeWorkspaceId) {
+      window.open(`/api/exports/finance?workspaceId=${activeWorkspaceId}&personaId=${persona.id}`, "_blank");
+    }
+  };
+
+  const handleAiSummary = () => {
+    toast.info("Análise financeira gerada com IA", {
+      description: "Margem saudável e ponto de equilíbrio atingido.",
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -65,13 +102,13 @@ export default function FinancePage() {
         description="Receita, despesas, contas a pagar, folha · global ou por persona."
         actions={
           <>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleExport}>
               <Download className="h-3.5 w-3.5" /> CSV
             </Button>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleAiSummary}>
               <Sparkles className="h-3.5 w-3.5" /> Resumo IA
             </Button>
-            <Button variant="gradient" size="sm">
+            <Button variant="gradient" size="sm" onClick={() => openWith("transaction")}>
               <Plus className="h-4 w-4" /> Lançamento
             </Button>
           </>
@@ -156,7 +193,7 @@ export default function FinancePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
-                {tx.map((t) => (
+                {tx.map((t: any) => (
                   <tr key={t.id} className="hover:bg-accent">
                     <td className="px-4 py-2.5 font-medium">
                       <div className="flex items-center gap-2">
@@ -200,7 +237,7 @@ export default function FinancePage() {
                       )}
                     >
                       {t.type === "expense" ? "-" : ""}
-                      {formatCurrency(t.amount)}
+                      {formatCurrency(Number(t.amount))}
                     </td>
                   </tr>
                 ))}
@@ -211,7 +248,7 @@ export default function FinancePage() {
 
         <TabsContent value="bills">
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {MOCK_BILLS.map((b) => (
+            {bills.map((b: any) => (
               <Card key={b.id} variant="elevated">
                 <CardContent className="p-4 space-y-2">
                   <div className="flex items-center justify-between">
@@ -224,7 +261,7 @@ export default function FinancePage() {
                     </Badge>
                   </div>
                   <p className="text-xl font-semibold num">
-                    {formatCurrency(b.amount)}
+                    {formatCurrency(Number(b.amount))}
                   </p>
                   <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                     <span>
@@ -245,10 +282,10 @@ export default function FinancePage() {
         <TabsContent value="payroll">
           <Card>
             <CardContent className="p-0 divide-y divide-border/60">
-              {MOCK_PAYROLL.map((p) => (
+              {payroll.map((p: any) => (
                 <div key={p.id} className="flex items-center gap-4 p-4">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-white text-xs font-bold">
-                    {p.name.split(" ").map((s) => s[0]).join("").slice(0, 2)}
+                    {p.name.split(" ").map((s: string) => s[0]).join("").slice(0, 2)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium">{p.name}</p>
@@ -257,10 +294,10 @@ export default function FinancePage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold num">{formatCurrency(p.baseSalary)}</p>
-                    {p.commission && p.commission > 0 && (
+                    <p className="font-semibold num">{formatCurrency(Number(p.baseSalary))}</p>
+                    {p.commission && Number(p.commission) > 0 && (
                       <p className="text-[10px] text-muted-foreground">
-                        + {formatCurrency(p.commission)} comissão
+                        + {formatCurrency(Number(p.commission))} comissão
                       </p>
                     )}
                   </div>

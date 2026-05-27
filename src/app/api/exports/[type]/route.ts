@@ -3,7 +3,7 @@ import { useMockData } from "@/lib/config";
 import { db } from "@/lib/db";
 import { eq, and } from "drizzle-orm";
 import * as s from "@/drizzle/schema";
-import { MOCK_LEADS, MOCK_FINANCE, MOCK_CONTENT, MOCK_PERSONAS } from "@/data";
+import { MOCK_LEADS, MOCK_FINANCE, MOCK_CONTENT, MOCK_PERSONAS, MOCK_ACTIVITY } from "@/data";
 
 function escapeCsv(value: unknown): string {
   if (value === null || value === undefined) return "";
@@ -196,6 +196,36 @@ export async function GET(
       m.engagement,
       m.leads,
       m.posts,
+    ]);
+  } else if (type === "activity") {
+    headers = [
+      "id",
+      "actorType",
+      "action",
+      "entityType",
+      "entityId",
+      "createdAt",
+    ];
+
+    let items: any[] = [];
+    if (useMockData) {
+      items = MOCK_ACTIVITY;
+    } else {
+      const conditions = [];
+      if (workspaceId) conditions.push(eq(s.activityLogs.workspaceId, workspaceId));
+      items = await db
+        .select()
+        .from(s.activityLogs)
+        .where(conditions.length > 0 ? and(...conditions) : undefined);
+    }
+
+    rows = items.map((a) => [
+      a.id,
+      a.actorType,
+      a.action,
+      a.entityType,
+      a.entityId,
+      a.createdAt,
     ]);
   } else {
     return NextResponse.json(

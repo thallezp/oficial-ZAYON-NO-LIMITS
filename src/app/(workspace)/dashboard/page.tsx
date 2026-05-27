@@ -28,35 +28,50 @@ import { AreaChart } from "@/components/charts/area-chart";
 import { PieChart } from "@/components/charts/pie-chart";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import {
+  useTasks,
+  useProjects,
+  useFinance,
+  useContent,
+  useActivityLogs,
+  useNotifications,
+  useTools,
+  useLeads,
+  useAiActions,
+  usePersonas,
+  useUpdateUserMetadataMutation,
+} from "@/hooks/use-queries";
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useQuickCreate } from "@/stores/quick-create-store";
+import { cn } from "@/lib/utils/cn";
+import {
+  MOCK_PERSONAS,
   MOCK_TASKS,
   MOCK_PROJECTS,
-  MOCK_ACTIVITY,
-  MOCK_AI_ACTIONS,
   MOCK_TOOLS,
+  MOCK_AI_ACTIONS,
   MOCK_NOTIFICATIONS,
-  MOCK_PERSONAS,
+  MOCK_ACTIVITY,
 } from "@/data";
-import { formatCompact, formatCurrency, initials, relativeTime } from "@/lib/utils/format";
-import { cn } from "@/lib/utils/cn";
-import { toast } from "sonner";
-import { usePersonaStore } from "@/stores/persona-store";
+import { isMockModeClient } from "@/lib/mock-mode-client";
+import { initials, relativeTime, formatCurrency, formatCompact } from "@/lib/utils/format";
 import {
   DndContext,
-  closestCenter,
   KeyboardSensor,
   PointerSensor,
+  closestCenter,
   useSensor,
   useSensors,
-  DragEndEvent,
+  type DragEndEvent,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
   SortableContext,
-  sortableKeyboardCoordinates,
+  arrayMove,
   rectSortingStrategy,
+  sortableKeyboardCoordinates,
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { toast } from "sonner";
 
 const revenueSeries = Array.from({ length: 30 }, (_, i) => ({
   label: `${i + 1}`,
@@ -145,24 +160,67 @@ function SortableWidget({ id, children }: SortableWidgetProps) {
 export default function DashboardPage() {
   const [widgets, setWidgets] = React.useState<Widget[]>(DEFAULT_WIDGETS);
   const [mounted, setMounted] = React.useState(false);
-  const personas = usePersonaStore((s) => s.personas);
-  const defaultPersonaId = personas[0]?.id ?? MOCK_PERSONAS[0]?.id ?? "";
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const user = useWorkspaceStore((s) => s.user);
+  const setUser = useWorkspaceStore((s) => s.setUser);
+  const openQuickCreate = useQuickCreate((s) => s.openWith);
+  const updateMetadataMutation = useUpdateUserMetadataMutation();
 
-  const todayTasks = MOCK_TASKS.filter(
-    (t) => t.status !== "done" && t.priority !== "low",
+  const { data: dbPersonas = [] } = usePersonas(activeWorkspaceId);
+  const personas =
+    isMockModeClient && dbPersonas.length === 0 ? MOCK_PERSONAS : dbPersonas;
+  const defaultPersonaId = personas[0]?.id ?? "";
+
+  const { data: tasks = [] } = useTasks(activeWorkspaceId);
+  const { data: projects = [] } = useProjects(activeWorkspaceId);
+  const { data: finance = [] } = useFinance(activeWorkspaceId);
+  const { data: content = [] } = useContent(activeWorkspaceId);
+  const { data: activity = [] } = useActivityLogs(activeWorkspaceId);
+  const { data: notifications = [] } = useNotifications(user?.id);
+  const { data: tools = [] } = useTools(activeWorkspaceId);
+  const { data: aiActions = [] } = useAiActions(activeWorkspaceId);
+  const { data: leads = [] } = useLeads(activeWorkspaceId);
+
+  const taskItems = isMockModeClient && tasks.length === 0 ? MOCK_TASKS : tasks;
+  const projectItems =
+    isMockModeClient && projects.length === 0 ? MOCK_PROJECTS : projects;
+  const toolItems = isMockModeClient && tools.length === 0 ? MOCK_TOOLS : tools;
+  const aiActionItems =
+    isMockModeClient && aiActions.length === 0 ? MOCK_AI_ACTIONS : aiActions;
+  const notificationItems =
+    isMockModeClient && notifications.length === 0
+      ? MOCK_NOTIFICATIONS
+      : notifications;
+  const activityItems =
+    isMockModeClient && activity.length === 0 ? MOCK_ACTIVITY : activity;
+
+  const todayTasks = taskItems.filter(
+    (t: any) => t.status !== "done" && t.priority !== "low",
   ).slice(0, 6);
 
   React.useEffect(() => {
     setMounted(true);
-    const saved = localStorage.getItem("zayon.dashboard.widgets");
-    if (saved) {
+    const dbOrder = user?.metadata?.dashboardWidgetsOrder;
+    if (dbOrder && Array.isArray(dbOrder) && dbOrder.length > 0) {
       try {
-        setWidgets(JSON.parse(saved));
+        const ordered = dbOrder
+          .map((id: string) => DEFAULT_WIDGETS.find((w) => w.id === id))
+          .filter(Boolean) as Widget[];
+        setWidgets(ordered.length > 0 ? ordered : DEFAULT_WIDGETS);
       } catch (e) {
         setWidgets(DEFAULT_WIDGETS);
       }
+    } else {
+      const saved = localStorage.getItem("zayon.dashboard.widgets");
+      if (saved) {
+        try {
+          setWidgets(JSON.parse(saved));
+        } catch (e) {
+          setWidgets(DEFAULT_WIDGETS);
+        }
+      }
     }
-  }, []);
+  }, [user]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -176,7 +234,18 @@ export default function DashboardPage() {
         const oldIndex = items.findIndex((i) => i.id === active.id);
         const newIndex = items.findIndex((i) => i.id === over.id);
         const next = arrayMove(items, oldIndex, newIndex);
+        const orderIds = next.map((w) => w.id);
         localStorage.setItem("zayon.dashboard.widgets", JSON.stringify(next));
+        if (user) {
+          updateMetadataMutation.mutate({ dashboardWidgetsOrder: orderIds });
+          setUser({
+            ...user,
+            metadata: {
+              ...(user.metadata || {}),
+              dashboardWidgetsOrder: orderIds,
+            },
+          });
+        }
         return next;
       });
       toast.success("Ordem dos widgets atualizada no painel");
@@ -186,6 +255,16 @@ export default function DashboardPage() {
   const handleResetLayout = () => {
     setWidgets(DEFAULT_WIDGETS);
     localStorage.removeItem("zayon.dashboard.widgets");
+    if (user) {
+      updateMetadataMutation.mutate({ dashboardWidgetsOrder: null });
+      setUser({
+        ...user,
+        metadata: {
+          ...(user.metadata || {}),
+          dashboardWidgetsOrder: undefined,
+        },
+      });
+    }
     toast.success("Layout original restaurado");
   };
 
@@ -238,11 +317,11 @@ export default function DashboardPage() {
               </Button>
             </CardHeader>
             <CardContent className="grid sm:grid-cols-2 gap-3">
-              {MOCK_PERSONAS.map((p) => (
+              {personas.slice(0, 4).map((p: any) => (
                 <Link key={p.id} href={`/personas/${p.id}/overview`} className="group relative overflow-hidden rounded-xl border border-border/60 bg-card-elevated p-4 transition hover:border-primary/40">
-                  <div className="absolute inset-0 opacity-0 transition group-hover:opacity-100" style={{ background: `radial-gradient(at top right, ${p.accent}30, transparent 60%)` }} />
+                  <div className="absolute inset-0 opacity-0 transition group-hover:opacity-100" style={{ background: `radial-gradient(at top right, ${p.accent || '#3b82f6'}30, transparent 60%)` }} />
                   <div className="relative flex items-start gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl text-sm font-bold text-white shadow-glow" style={{ background: `linear-gradient(135deg, ${p.accent}, #2a3ef5)` }}>{initials(p.name)}</div>
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl text-sm font-bold text-white shadow-glow" style={{ background: `linear-gradient(135deg, ${p.accent || '#3b82f6'}, #2a3ef5)` }}>{initials(p.name)}</div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2"><p className="font-semibold truncate">{p.name}</p><Badge size="sm" variant={p.status === "active" ? "success" : p.status === "building" ? "warning" : "outline"}>{p.status}</Badge></div>
                       <p className="text-[11px] text-muted-foreground truncate">{p.niche}</p>
@@ -286,13 +365,13 @@ export default function DashboardPage() {
               <Button variant="ghost" size="sm" asChild><Link href="/tasks">Ver todas</Link></Button>
             </CardHeader>
             <CardContent className="space-y-1">
-              {todayTasks.map((task) => (
+              {todayTasks.map((task: any) => (
                 <motion.div key={task.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="group flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-accent">
                   <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", task.priority === "urgent" && "bg-destructive animate-pulse", task.priority === "high" && "bg-warning", task.priority === "medium" && "bg-primary")} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm truncate font-medium">{task.title}</p>
                     <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                      {task.labels?.map((l) => <Badge key={l} size="sm" variant="ghost">{l}</Badge>)}
+                      {task.labels?.map((l: string) => <Badge key={l} size="sm" variant="ghost">{l}</Badge>)}
                       {task.dueAt && <span className="ml-auto">{relativeTime(task.dueAt)}</span>}
                     </div>
                   </div>
@@ -312,7 +391,7 @@ export default function DashboardPage() {
               <p className="text-xs text-muted-foreground mt-1">Equipe + IA</p>
             </CardHeader>
             <CardContent className="space-y-3">
-              {MOCK_ACTIVITY.slice(0, 6).map((a) => (
+              {activityItems.slice(0, 6).map((a: any) => (
                 <div key={a.id} className="flex items-start gap-3">
                   {a.actor ? (<Avatar size="sm"><AvatarFallback>{initials(a.actor.fullName)}</AvatarFallback></Avatar>) : (<div className="flex h-7 w-7 items-center justify-center rounded-full border border-border/60 bg-gradient-to-br from-brand-500/40 to-brand-700/40 text-white"><Bot className="h-3.5 w-3.5" /></div>)}
                   <div className="flex-1 min-w-0">
@@ -332,21 +411,21 @@ export default function DashboardPage() {
             <CardHeader className="flex-row justify-between">
               <div>
                 <CardTitle>Projetos ativos</CardTitle>
-                <p className="text-xs text-muted-foreground mt-1">{MOCK_PROJECTS.length} projetos em execução</p>
+                <p className="text-xs text-muted-foreground mt-1">{projectItems.length} projetos em execução</p>
               </div>
               <Button variant="ghost" size="sm" asChild><Link href="/projects">Ver todos</Link></Button>
             </CardHeader>
             <CardContent className="space-y-3">
-              {MOCK_PROJECTS.map((p) => (
+              {projectItems.map((p: any) => (
                 <div key={p.id} className="flex items-center gap-3 rounded-lg border border-border/60 bg-card-elevated p-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg text-white" style={{ background: `${p.color}40`, color: p.color }}><Gauge className="h-4 w-4" /></div>
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg text-white" style={{ background: `${p.color || '#3b82f6'}40`, color: p.color || '#3b82f6' }}><Gauge className="h-4 w-4" /></div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2"><p className="text-sm font-medium truncate">{p.name}</p><Badge size="sm" variant="outline">{p.taskCount?.done}/{p.taskCount?.total}</Badge></div>
+                    <div className="flex items-center gap-2"><p className="text-sm font-medium truncate">{p.name}</p><Badge size="sm" variant="outline">{p.taskCount?.done || 0}/{p.taskCount?.total || 0}</Badge></div>
                     <p className="text-[11px] text-muted-foreground truncate">{p.description}</p>
-                    <Progress value={p.progress} className="mt-2 h-1" />
+                    <Progress value={p.progress || 0} className="mt-2 h-1" />
                   </div>
                   <div className="flex -space-x-2">
-                    {p.members?.slice(0, 3).map((m) => <Avatar key={m.id} size="xs" className="ring-2 ring-card"><AvatarFallback>{initials(m.fullName)}</AvatarFallback></Avatar>)}
+                    {p.members?.slice(0, 3).map((m: any) => <Avatar key={m.id} size="xs" className="ring-2 ring-card"><AvatarFallback>{initials(m.fullName)}</AvatarFallback></Avatar>)}
                   </div>
                 </div>
               ))}
@@ -365,7 +444,7 @@ export default function DashboardPage() {
               <Button variant="ghost" size="sm" asChild><Link href="/tools">Hub <ArrowUpRight className="h-3.5 w-3.5" /></Link></Button>
             </CardHeader>
             <CardContent className="grid grid-cols-3 gap-2">
-              {MOCK_TOOLS.filter((t) => t.isFavorite).slice(0, 9).map((tool) => (
+              {toolItems.filter((t: any) => t.isFavorite).slice(0, 9).map((tool: any) => (
                 <a key={tool.id} href={tool.url} target="_blank" rel="noreferrer" className="group flex flex-col items-center gap-1.5 rounded-lg border border-border/60 bg-card-elevated p-2.5 transition hover:border-primary/40" title={tool.name}>
                   <div className="flex h-8 w-8 items-center justify-center rounded-md text-white animate-fade-in" style={{ background: tool.brandColor ?? "#3b82f6" }}>
                     <BrandLogo slug={tool.iconSlug} fallback={tool.name} size={16} monochrome brandColor={tool.brandColor} />
@@ -382,7 +461,7 @@ export default function DashboardPage() {
           <Card className="h-full">
             <CardHeader><CardTitle>Ações da IA (24h)</CardTitle></CardHeader>
             <CardContent className="space-y-2">
-              {MOCK_AI_ACTIONS.map((a) => (
+              {aiActionItems.map((a: any) => (
                 <div key={a.id} className="flex items-start gap-2 rounded-lg border border-border/60 bg-card-elevated p-2.5">
                   <div className="mt-0.5">{a.status === "completed" ? (<CheckCircle2 className="h-3.5 w-3.5 text-success" />) : (<span className="block h-3.5 w-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin" />)}</div>
                   <div className="flex-1 min-w-0"><p className="text-xs font-medium">{a.name}</p>{a.description && <p className="text-[10px] text-muted-foreground truncate">{a.description}</p>}</div>
@@ -397,7 +476,7 @@ export default function DashboardPage() {
           <Card className="h-full">
             <CardHeader><CardTitle>Notificações</CardTitle></CardHeader>
             <CardContent className="space-y-2">
-              {MOCK_NOTIFICATIONS.slice(0, 5).map((n) => (
+              {notificationItems.slice(0, 5).map((n: any) => (
                 <Link key={n.id} href={n.href ?? "#"} className="block rounded-lg border border-border/60 bg-card-elevated p-2.5 hover:border-primary/40">
                   <p className="text-xs font-medium">{n.title}</p>
                   {n.body && <p className="text-[10px] text-muted-foreground truncate mt-0.5">{n.body}</p>}
@@ -426,11 +505,31 @@ export default function DashboardPage() {
     }
   };
 
+  const realRevenue = finance.length > 0
+    ? finance.filter((f: any) => f.type === "revenue").reduce((acc: number, f: any) => acc + Number(f.amount), 0)
+    : isMockModeClient
+      ? 186320
+      : 0;
+
+  const realLeads = leads.length > 0
+    ? leads.filter((l: any) => Number(l.score ?? 0) > 80).length
+    : isMockModeClient
+      ? 42
+      : 0;
+
+  const realDoingTasks = taskItems.filter((t: any) => t.status === "doing").length;
+
+  const realPostedContent = content.length > 0
+    ? content.filter((c: any) => c.status === "posted").length
+    : isMockModeClient
+      ? 138
+      : 0;
+
   return (
     <div className="space-y-8 pb-12">
       <PageHeader
-        title={<span>Boa noite, <span className="text-primary">Alex</span></span>}
-        description="Visão consolidada da operação. 8 ações pendentes hoje · 2 leads quentes · 1 conta atrasada."
+        title={<span>Boa noite, <span className="text-primary">{user?.fullName?.split(" ")[0] || "Alex"}</span></span>}
+        description={`Visão consolidada da operação. ${todayTasks.length} ações pendentes hoje · ${realLeads} leads quentes.`}
         badge={<Badge variant="primary">premium</Badge>}
         actions={
           <>
@@ -438,16 +537,22 @@ export default function DashboardPage() {
               <Button variant="ghost" size="sm" onClick={handleResetLayout}>Restaurar Painel</Button>
             )}
             <Button variant="outline" size="sm"><Sparkles className="h-3.5 w-3.5" /> Personalizar</Button>
-            <Button variant="gradient" size="sm"><Plus className="h-4 w-4" /> Novo</Button>
+            <Button
+              variant="gradient"
+              size="sm"
+              onClick={() => openQuickCreate("task")}
+            >
+              <Plus className="h-4 w-4" /> Novo
+            </Button>
           </>
         }
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="Receita 30d" value={formatCurrency(186_320)} delta={18.4} icon={<CircleDollarSign className="h-4 w-4" />} accent="success" />
-        <StatCard label="Leads quentes" value="42" delta={22.7} icon={<Target className="h-4 w-4" />} accent="primary" hint="14 com score > 80" />
-        <StatCard label="Tarefas no doing" value={String(MOCK_TASKS.filter((t) => t.status === "doing").length)} delta={-4.2} icon={<ListChecks className="h-4 w-4" />} accent="info" />
-        <StatCard label="Conteúdos publicados" value="138" delta={12.8} icon={<Flame className="h-4 w-4" />} accent="warning" hint="6 desta semana" />
+        <StatCard label="Receita 30d" value={formatCurrency(realRevenue)} delta={18.4} icon={<CircleDollarSign className="h-4 w-4" />} accent="success" />
+        <StatCard label="Leads quentes" value={String(realLeads)} delta={22.7} icon={<Target className="h-4 w-4" />} accent="primary" hint={`${realLeads} com score > 80`} />
+        <StatCard label="Tarefas no doing" value={String(realDoingTasks)} delta={-4.2} icon={<ListChecks className="h-4 w-4" />} accent="info" />
+        <StatCard label="Conteúdos publicados" value={String(realPostedContent)} delta={12.8} icon={<Flame className="h-4 w-4" />} accent="warning" hint="Consolidado" />
       </div>
 
       {!mounted ? (

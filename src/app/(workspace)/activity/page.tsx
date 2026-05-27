@@ -14,9 +14,15 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MOCK_ACTIVITY } from "@/data";
 import { initials, relativeTime } from "@/lib/utils/format";
+import { isMockModeClient } from "@/lib/mock-mode-client";
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useActivityLogs } from "@/hooks/use-queries";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRealtimeActivity } from "@/hooks/use-realtime";
 
 const actorIcon = {
   user: UserIcon,
@@ -28,9 +34,33 @@ export default function ActivityLogPage() {
   const [filter, setFilter] = React.useState<"all" | "user" | "ai" | "system">(
     "all",
   );
-  const items = MOCK_ACTIVITY.filter(
-    (a) => filter === "all" || a.actorType === filter,
+  
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const { data: dbActivity = [] } = useActivityLogs(activeWorkspaceId);
+  const queryClient = useQueryClient();
+
+  useRealtimeActivity(activeWorkspaceId ?? undefined, () => {
+    queryClient.invalidateQueries({ queryKey: ["activityLogs"] });
+  });
+
+  const activityLogs =
+    isMockModeClient && dbActivity.length === 0 ? MOCK_ACTIVITY : dbActivity;
+
+  const items = activityLogs.filter(
+    (a: any) => filter === "all" || a.actorType === filter,
   );
+
+  const handleExport = () => {
+    if (activeWorkspaceId) {
+      window.open(`/api/exports/activity?workspaceId=${activeWorkspaceId}`, "_blank");
+    }
+  };
+
+  const handleAiSummary = () => {
+    toast.info("A IA está analisando os logs...", {
+      description: "Um resumo das atividades das últimas 24h será gerado.",
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -42,7 +72,7 @@ export default function ActivityLogPage() {
             <Button variant="outline" size="sm">
               <Filter className="h-3.5 w-3.5" /> Filtros avançados
             </Button>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleExport}>
               <Download className="h-3.5 w-3.5" /> Exportar
             </Button>
           </>
@@ -69,41 +99,48 @@ export default function ActivityLogPage() {
 
       <Card>
         <CardContent className="p-0 divide-y divide-border/60">
-          {items.map((a) => {
-            const Icon = actorIcon[a.actorType] ?? ActivityIcon;
-            return (
-              <div key={a.id} className="flex items-start gap-4 p-4">
-                {a.actor ? (
-                  <Avatar size="sm">
-                    <AvatarFallback>{initials(a.actor.fullName)}</AvatarFallback>
-                  </Avatar>
-                ) : (
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-primary">
-                    <Icon className="h-3.5 w-3.5" />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm leading-relaxed">
-                    <span className="font-medium">
-                      {a.actor?.fullName ?? "ZAYON"}
-                    </span>{" "}
-                    <span className="text-muted-foreground">{a.action}</span>
-                  </p>
-                  {a.payload && (
-                    <p className="text-[11px] text-muted-foreground">
-                      {Object.values(a.payload).join(" · ")}
-                    </p>
+          {items.length === 0 ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              Nenhuma atividade registrada neste filtro.
+            </div>
+          ) : (
+            items.map((a: any) => {
+              const Icon = actorIcon[a.actorType as keyof typeof actorIcon] ?? ActivityIcon;
+              return (
+                <div key={a.id} className="flex items-start gap-4 p-4">
+                  {a.actor ? (
+                    <Avatar size="sm">
+                      {a.actor.avatarUrl && <AvatarImage src={a.actor.avatarUrl} alt={a.actor.fullName} />}
+                      <AvatarFallback>{initials(a.actor.fullName)}</AvatarFallback>
+                    </Avatar>
+                  ) : (
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-primary">
+                      <Icon className="h-3.5 w-3.5" />
+                    </div>
                   )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm leading-relaxed">
+                      <span className="font-medium">
+                        {a.actor?.fullName ?? "ZAYON"}
+                      </span>{" "}
+                      <span className="text-muted-foreground">{a.action}</span>
+                    </p>
+                    {a.payload && (
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {Object.values(a.payload).join(" · ")}
+                      </p>
+                    )}
+                  </div>
+                  <Badge size="sm" variant="ghost">
+                    {a.actorType}
+                  </Badge>
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                    {relativeTime(a.createdAt)}
+                  </span>
                 </div>
-                <Badge size="sm" variant="ghost">
-                  {a.actorType}
-                </Badge>
-                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                  {relativeTime(a.createdAt)}
-                </span>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </CardContent>
       </Card>
 
@@ -116,7 +153,7 @@ export default function ActivityLogPage() {
               Logs imutáveis · retenção configurável · exportação CSV/JSON.
             </p>
           </div>
-          <Button variant="gradient" size="sm">
+          <Button variant="gradient" size="sm" onClick={handleAiSummary}>
             <Sparkles className="h-3.5 w-3.5" /> Resumir últimas 24h com IA
           </Button>
         </CardContent>

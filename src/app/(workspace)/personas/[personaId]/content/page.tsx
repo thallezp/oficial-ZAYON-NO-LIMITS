@@ -24,9 +24,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PersonaHero } from "@/components/personas/persona-hero";
 import { usePersonaFromRoute } from "@/components/personas/persona-resolver";
 import { MOCK_CONTENT } from "@/data";
+import { isMockModeClient } from "@/lib/mock-mode-client";
 import type { ContentItem, ContentStatus } from "@/types";
 import { cn } from "@/lib/utils/cn";
 import { formatCompact, relativeTime } from "@/lib/utils/format";
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useContent } from "@/hooks/use-queries";
+import { useQuickCreate } from "@/stores/quick-create-store";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRealtimeContent } from "@/hooks/use-realtime";
 
 const STATUS_COLS: { id: ContentStatus; label: string; color: string }[] = [
   { id: "idea", label: "Ideia", color: "bg-muted/40" },
@@ -49,14 +55,27 @@ const channelEmoji: Record<string, string> = {
 export default function ContentStudioPage() {
   const persona = usePersonaFromRoute();
   const [search, setSearch] = React.useState("");
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const { data: dbContent = [] } = useContent(activeWorkspaceId, persona.id);
+  const { openWith } = useQuickCreate();
+  const queryClient = useQueryClient();
+
+  useRealtimeContent(activeWorkspaceId ?? undefined, persona.id, () => {
+    queryClient.invalidateQueries({ queryKey: ["content"] });
+  });
+
+  const allContent =
+    isMockModeClient && dbContent.length === 0
+      ? MOCK_CONTENT.filter((c) => c.personaId === persona.id)
+      : dbContent;
+
   const content = React.useMemo(
     () =>
-      MOCK_CONTENT.filter(
-        (c) =>
-          c.personaId === persona.id &&
-          (!search || c.title.toLowerCase().includes(search.toLowerCase())),
+      allContent.filter(
+        (c: any) =>
+          !search || c.title.toLowerCase().includes(search.toLowerCase()),
       ),
-    [persona.id, search],
+    [allContent, search],
   );
 
   return (
@@ -72,7 +91,7 @@ export default function ContentStudioPage() {
             <Button variant="outline" size="sm">
               <Sparkles className="h-3.5 w-3.5" /> Sugerir pauta
             </Button>
-            <Button variant="gradient" size="sm">
+            <Button variant="gradient" size="sm" onClick={() => openWith("content")}>
               <Plus className="h-4 w-4" /> Nova peça
             </Button>
           </>
@@ -93,10 +112,10 @@ export default function ContentStudioPage() {
         <div className="ml-auto flex gap-1">
           <Badge variant="outline">{content.length} peças</Badge>
           <Badge variant="primary">
-            {content.filter((c) => c.status === "scheduled").length} agendadas
+            {content.filter((c: any) => c.status === "scheduled").length} agendadas
           </Badge>
           <Badge variant="success">
-            {content.filter((c) => c.status === "posted").length} postadas
+            {content.filter((c: any) => c.status === "posted").length} postadas
           </Badge>
         </div>
       </div>
@@ -123,7 +142,7 @@ export default function ContentStudioPage() {
         <TabsContent value="kanban">
           <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 overflow-x-auto">
             {STATUS_COLS.map((col) => {
-              const items = content.filter((c) => c.status === col.id);
+              const items = content.filter((c: any) => c.status === col.id);
               return (
                 <div
                   key={col.id}
@@ -143,7 +162,7 @@ export default function ContentStudioPage() {
                     </Badge>
                   </div>
                   <div className="space-y-2 p-2">
-                    {items.map((c) => (
+                    {items.map((c: any) => (
                       <ContentCard key={c.id} item={c} accent={persona.accent} />
                     ))}
                   </div>
@@ -168,7 +187,7 @@ export default function ContentStudioPage() {
                   const date = new Date();
                   date.setDate(date.getDate() - 7 + i);
                   const items = content.filter(
-                    (c) =>
+                    (c: any) =>
                       (c.scheduledAt &&
                         new Date(c.scheduledAt).toDateString() ===
                           date.toDateString()) ||
@@ -183,7 +202,7 @@ export default function ContentStudioPage() {
                     >
                       <p className="font-medium">{date.getDate()}</p>
                       <div className="mt-1 space-y-1">
-                        {items.map((it) => (
+                        {items.map((it: any) => (
                           <div
                             key={it.id}
                             className="truncate rounded px-1.5 py-0.5"
@@ -219,7 +238,7 @@ export default function ContentStudioPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
-                {content.map((c) => (
+                {content.map((c: any) => (
                   <tr key={c.id} className="hover:bg-accent">
                     <td className="px-4 py-2.5 font-medium max-w-md truncate">{c.title}</td>
                     <td className="px-4 py-2.5">
@@ -261,7 +280,7 @@ export default function ContentStudioPage() {
 
         <TabsContent value="list">
           <div className="space-y-2">
-            {content.map((c) => (
+            {content.map((c: any) => (
               <Card key={c.id} className="hover:border-primary/40 transition">
                 <CardContent className="p-4 flex items-start gap-4">
                   <div className="text-2xl">{channelEmoji[c.channel]}</div>

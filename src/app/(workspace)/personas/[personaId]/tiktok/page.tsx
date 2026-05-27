@@ -9,17 +9,33 @@ import { BarChart } from "@/components/charts/bar-chart";
 import { PersonaHero } from "@/components/personas/persona-hero";
 import { usePersonaFromRoute } from "@/components/personas/persona-resolver";
 import { MOCK_CONTENT } from "@/data";
+import { isMockModeClient } from "@/lib/mock-mode-client";
 import { formatCompact, relativeTime } from "@/lib/utils/format";
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useContent } from "@/hooks/use-queries";
+import { useQuickCreate } from "@/stores/quick-create-store";
+import { useRealtimeContent } from "@/hooks/use-realtime";
 
 export default function TikTokPage() {
   const persona = usePersonaFromRoute();
-  const items = MOCK_CONTENT.filter(
-    (c) => c.personaId === persona.id && c.channel === "tiktok",
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const { data: dbContent = [] } = useContent(activeWorkspaceId, persona.id);
+  const { openWith } = useQuickCreate();
+
+  useRealtimeContent(activeWorkspaceId ?? undefined, persona.id);
+
+  const allContent =
+    isMockModeClient && dbContent.length === 0
+      ? MOCK_CONTENT.filter((c) => c.personaId === persona.id)
+      : dbContent;
+
+  const items = allContent.filter(
+    (c: any) => c.channel === "tiktok",
   );
 
   const topVideos = items
-    .filter((c) => c.metrics?.views)
-    .sort((a, b) => (b.metrics?.views ?? 0) - (a.metrics?.views ?? 0))
+    .filter((c: any) => (c as any).metrics?.views)
+    .sort((a: any, b: any) => ((b as any).metrics?.views ?? 0) - ((a as any).metrics?.views ?? 0))
     .slice(0, 5);
 
   return (
@@ -37,7 +53,7 @@ export default function TikTokPage() {
             <Button variant="outline" size="sm">
               <Sparkles className="h-3.5 w-3.5" /> Gerar hooks
             </Button>
-            <Button variant="gradient" size="sm">
+            <Button variant="gradient" size="sm" onClick={() => openWith("content")}>
               <Plus className="h-4 w-4" /> Novo vídeo
             </Button>
           </>
@@ -52,7 +68,7 @@ export default function TikTokPage() {
             <p className="text-xs text-muted-foreground">Slots semanais.</p>
           </CardHeader>
           <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {items.map((c) => (
+            {items.map((c: any) => (
               <Card key={c.id} variant="elevated" className="overflow-hidden">
                 <CardContent className="p-3 space-y-2.5">
                   <Badge size="sm" variant="outline">
@@ -103,7 +119,7 @@ export default function TikTokPage() {
           </CardHeader>
           <CardContent>
             <BarChart
-              data={topVideos.map((v) => ({
+              data={topVideos.map((v: any) => ({
                 label: v.title.slice(0, 18) + "…",
                 value: v.metrics?.views ?? 0,
               }))}

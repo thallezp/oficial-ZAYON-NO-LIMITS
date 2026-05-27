@@ -10,6 +10,7 @@ import {
   ListChecks,
   Sparkles,
   Workflow,
+  Folder,
 } from "lucide-react";
 import {
   Dialog,
@@ -28,6 +29,18 @@ import { useQuickCreate } from "@/stores/quick-create-store";
 import { useActivePersona } from "@/stores/persona-store";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils/cn";
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import {
+  useCreateTaskMutation,
+  useCreateDocumentMutation,
+  useCreateContentMutation,
+  useCreateLeadMutation,
+  useCreateFinancialMutation,
+  useUpsertPersonaMutation,
+  useCreateFlowMutation,
+  useCreateToolMutation,
+  useCreateProjectMutation,
+} from "@/hooks/use-queries";
 
 type Entity =
   | "task"
@@ -37,7 +50,8 @@ type Entity =
   | "transaction"
   | "persona"
   | "flow"
-  | "tool";
+  | "tool"
+  | "project";
 
 const entityOptions: {
   id: Entity;
@@ -53,6 +67,7 @@ const entityOptions: {
   { id: "flow", label: "Flow", description: "Processo ou automação", icon: Workflow },
   { id: "persona", label: "Persona", description: "Nova unidade de negócio", icon: Sparkles },
   { id: "tool", label: "Ferramenta", description: "Adicionar ao Tools Hub", icon: Hammer },
+  { id: "project", label: "Projeto", description: "Iniciativa ou campanha de longo prazo", icon: Folder },
 ];
 
 export function QuickCreateDialog() {
@@ -62,6 +77,18 @@ export function QuickCreateDialog() {
   const [title, setTitle] = React.useState("");
   const [details, setDetails] = React.useState("");
 
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+
+  const createTask = useCreateTaskMutation();
+  const createDocument = useCreateDocumentMutation();
+  const createContent = useCreateContentMutation();
+  const createLead = useCreateLeadMutation();
+  const createFinancial = useCreateFinancialMutation();
+  const createPersona = useUpsertPersonaMutation();
+  const createFlow = useCreateFlowMutation();
+  const createTool = useCreateToolMutation();
+  const createProject = useCreateProjectMutation();
+
   React.useEffect(() => {
     if (open) {
       setSelected(entity ?? "task");
@@ -70,23 +97,127 @@ export function QuickCreateDialog() {
     }
   }, [open, entity]);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-    const labels = {
-      task: "Tarefa",
-      document: "Documento",
-      content: "Conteúdo",
-      lead: "Lead",
-      transaction: "Lançamento",
-      persona: "Persona",
-      flow: "Flow",
-      tool: "Ferramenta",
-    } as const;
-    toast.success(`${labels[selected!]} criada`, {
-      description: `${title} · contexto: ${persona?.name ?? "Workspace"}`,
-    });
-    setOpen(false);
+
+    if (!activeWorkspaceId) {
+      toast.error("Nenhum workspace ativo selecionado");
+      return;
+    }
+
+    try {
+      switch (selected) {
+        case "task":
+          await createTask.mutateAsync({
+            workspaceId: activeWorkspaceId,
+            personaId: persona?.id || undefined,
+            title,
+            description: details || undefined,
+            status: "todo",
+            priority: "medium",
+          });
+          break;
+        case "document":
+          await createDocument.mutateAsync({
+            workspaceId: activeWorkspaceId,
+            personaId: persona?.id || undefined,
+            title,
+            content: details || "",
+          });
+          break;
+        case "content":
+          await createContent.mutateAsync({
+            workspaceId: activeWorkspaceId,
+            personaId: persona?.id || undefined,
+            title,
+            caption: details || undefined,
+            channel: "instagram",
+            contentType: "reel",
+            status: "idea",
+          });
+          break;
+        case "lead":
+          await createLead.mutateAsync({
+            workspaceId: activeWorkspaceId,
+            personaId: persona?.id || undefined,
+            name: title,
+            notes: details || undefined,
+            status: "open",
+            score: 50,
+            source: "manual",
+          });
+          break;
+        case "transaction":
+          await createFinancial.mutateAsync({
+            workspaceId: activeWorkspaceId,
+            personaId: persona?.id || undefined,
+            description: title,
+            category: "Geral",
+            amount: Number(details) || 0,
+            type: "revenue",
+            status: "paid",
+            occurredAt: new Date().toISOString(),
+          });
+          break;
+        case "persona":
+          await createPersona.mutateAsync({
+            workspaceId: activeWorkspaceId,
+            name: title,
+            bigIdea: details || undefined,
+            status: "building",
+          });
+          break;
+        case "flow":
+          await createFlow.mutateAsync({
+            workspaceId: activeWorkspaceId,
+            personaId: persona?.id || undefined,
+            name: title,
+            description: details || undefined,
+            type: "process",
+          });
+          break;
+        case "tool":
+          await createTool.mutateAsync({
+            workspaceId: activeWorkspaceId,
+            personaId: persona?.id || undefined,
+            name: title,
+            description: details || undefined,
+            url: details && details.startsWith("http") ? details : "https://",
+            category: "IA",
+          });
+          break;
+        case "project":
+          await createProject.mutateAsync({
+            workspaceId: activeWorkspaceId,
+            personaId: persona?.id || undefined,
+            name: title,
+            description: details || undefined,
+            status: "active",
+            color: "#3b82f6",
+          });
+          break;
+      }
+
+      const labels = {
+        task: "Tarefa",
+        document: "Documento",
+        content: "Conteúdo",
+        lead: "Lead",
+        transaction: "Lançamento",
+        persona: "Persona",
+        flow: "Flow",
+        tool: "Ferramenta",
+        project: "Projeto",
+      } as const;
+
+      toast.success(`${labels[selected!]} criada com sucesso!`, {
+        description: `${title} · contexto: ${persona?.name ?? "Workspace"}`,
+      });
+      setOpen(false);
+    } catch (err: any) {
+      toast.error(`Erro ao criar: ${err.message}`);
+    }
   };
 
   return (

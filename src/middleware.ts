@@ -16,8 +16,7 @@ export async function middleware(req: NextRequest) {
   // Pular assets, API e rotas públicas
   if (
     pathname.startsWith("/_next") ||
-    pathname.startsWith("/api/webhooks") ||
-    pathname.startsWith("/api/exports") ||
+    pathname.startsWith("/api/") ||
     pathname.includes(".")
   ) {
     return NextResponse.next();
