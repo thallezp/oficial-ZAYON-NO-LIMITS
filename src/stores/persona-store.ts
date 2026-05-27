@@ -19,14 +19,18 @@ export const usePersonaStore = create<PersonaState>()(
       personas: [],
       activePersonaId: null,
       setPersonas: (personas) =>
-        set((state) => ({
-          personas,
-          activePersonaId:
-            state.activePersonaId &&
-            personas.find((p) => p.id === state.activePersonaId)
+        set((state) => {
+          // valida que o ID persistido existe nas personas reais carregadas
+          const persistedIsValid =
+            state.activePersonaId !== null &&
+            personas.some((p) => p.id === state.activePersonaId);
+          return {
+            personas,
+            activePersonaId: persistedIsValid
               ? state.activePersonaId
               : personas[0]?.id ?? null,
-        })),
+          };
+        }),
       setActivePersona: (id) => set({ activePersonaId: id }),
       upsertPersona: (persona) =>
         set((state) => {
@@ -48,7 +52,14 @@ export const usePersonaStore = create<PersonaState>()(
     }),
     {
       name: "zayon.persona",
+      version: 2,
       partialize: (state) => ({ activePersonaId: state.activePersonaId }),
+      migrate: (persisted: any, fromVersion) => {
+        if (fromVersion < 2) {
+          return { activePersonaId: null };
+        }
+        return persisted;
+      },
     },
   ),
 );
