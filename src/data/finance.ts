@@ -1,4 +1,4 @@
-﻿import type { FinanceTransaction, PayrollMember, Bill } from "@/types";
+import type { FinanceTransaction, PayrollMember, Bill } from "@/types";
 
 const day = (d: number) => {
   const x = new Date();
@@ -15,7 +15,7 @@ export const MOCK_FINANCE: FinanceTransaction[] = [
     status: "paid",
     source: "hotmart",
     amount: 12_990,
-    description: "Vendas Aurora Â· checkout Hotmart",
+    description: "Vendas Aurora · checkout Hotmart",
     occurredAt: day(-1),
     category: "Infoproduto",
   },
@@ -27,7 +27,7 @@ export const MOCK_FINANCE: FinanceTransaction[] = [
     status: "paid",
     source: "stripe",
     amount: 5_421.4,
-    description: "Mentoria Obsidian Â· 3 clientes",
+    description: "Mentoria Obsidian · 3 clientes",
     occurredAt: day(-2),
     category: "Mentoria",
   },
@@ -50,9 +50,9 @@ export const MOCK_FINANCE: FinanceTransaction[] = [
     status: "paid",
     source: "pix",
     amount: 7_200,
-    description: "EdiÃ§Ã£o Â· Rafael Â· Reels Aurora",
+    description: "Edição · Rafael · Reels Aurora",
     occurredAt: day(-4),
-    category: "ProduÃ§Ã£o",
+    category: "Produção",
   },
   {
     id: "f_005",
@@ -62,7 +62,7 @@ export const MOCK_FINANCE: FinanceTransaction[] = [
     status: "pending",
     source: "boleto",
     amount: 9_400,
-    description: "Parcelamento Â· turma piloto Aurora",
+    description: "Parcelamento · turma piloto Aurora",
     occurredAt: day(2),
     category: "Infoproduto",
   },
@@ -73,7 +73,7 @@ export const MOCK_FINANCE: FinanceTransaction[] = [
     status: "paid",
     source: "stripe",
     amount: 1_180,
-    description: "OpenAI Â· GPT custos",
+    description: "OpenAI · GPT custos",
     occurredAt: day(-1),
     category: "IA",
   },
@@ -85,7 +85,7 @@ export const MOCK_FINANCE: FinanceTransaction[] = [
     status: "paid",
     source: "pix",
     amount: 1_997,
-    description: "Venda direta Â· Helena P.",
+    description: "Venda direta · Helena P.",
     occurredAt: day(0),
     category: "Direct",
   },
@@ -96,7 +96,7 @@ export const MOCK_FINANCE: FinanceTransaction[] = [
     status: "overdue",
     source: "boleto",
     amount: 2_800,
-    description: "Aluguel estÃºdio Â· marÃ§o",
+    description: "Aluguel estúdio · março",
     occurredAt: day(-7),
     category: "Estrutura",
   },
@@ -169,7 +169,7 @@ export const MOCK_BILLS: Bill[] = [
   {
     id: "b_003",
     workspaceId: "11111111-1111-1111-1111-111111111111",
-    name: "EstÃºdio Â· marÃ§o",
+    name: "Estúdio · março",
     amount: 2_800,
     dueAt: day(-2),
     status: "overdue",

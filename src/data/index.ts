@@ -1,4 +1,4 @@
-﻿export * from "./core";
+export * from "./core";
 export * from "./personas";
 export * from "./tasks";
 export * from "./content";

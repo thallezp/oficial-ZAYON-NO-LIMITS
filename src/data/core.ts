@@ -1,4 +1,4 @@
-﻿import type { User, Workspace } from "@/types";
+import type { User, Workspace } from "@/types";
 
 export const MOCK_USERS: User[] = [
   {
@@ -53,7 +53,7 @@ export const MOCK_WORKSPACES: Workspace[] = [
     id: "11111111-1111-1111-1111-111111111111",
     name: "ZAYON HQ",
     slug: "zayon",
-    description: "OperaÃ§Ã£o principal â€” equipe interna",
+    description: "Operação principal — equipe interna",
     ownerId: MOCK_USERS[0].id,
     plan: "Premium",
     createdAt: "2025-01-12T10:00:00Z",
