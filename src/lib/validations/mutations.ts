@@ -253,6 +253,7 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
     .passthrough(),
   createMaterial,
   createFlow,
+  updateFlow: z.object({ id, input: z.object({ name: z.string().min(2).optional(), description: z.string().optional().nullable(), type: z.string().optional(), color: z.string().optional() }).passthrough() }).passthrough(),
   saveFlowData: z.object({ id, nodes: z.array(z.any()), edges: z.array(z.any()) }),
   saveFunnelData: z
     .object({

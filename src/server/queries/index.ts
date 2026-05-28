@@ -198,7 +198,17 @@ export const queries = {
       const conditions = [];
       if (filter?.workspaceId) conditions.push(eq(s.contentItems.workspaceId, filter.workspaceId));
       if (filter?.personaId) conditions.push(eq(s.contentItems.personaId, filter.personaId));
-      return db.select().from(s.contentItems).where(conditions.length > 0 ? and(...conditions) : undefined);
+      const items = await db.select().from(s.contentItems).where(conditions.length > 0 ? and(...conditions) : undefined);
+      if (items.length === 0) return [];
+      const ids = items.map((it: any) => it.id);
+      const metrics = await db.select().from(s.contentMetrics).where(inArray(s.contentMetrics.contentItemId, ids));
+      return items.map((it: any) => {
+        const m = metrics.find((met: any) => met.contentItemId === it.id);
+        return {
+          ...it,
+          metrics: m || null,
+        };
+      });
     },
   },
   leads: {

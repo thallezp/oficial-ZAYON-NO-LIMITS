@@ -315,7 +315,7 @@ export async function POST(req: Request) {
 
       // ── FLOWS ─────────────────────────────────────────────────────────────
       case "createFlow": {
-        const { data, error } = await supabase
+        const { data: flowData, error: flowError } = await supabase
           .from("flows")
           .insert({
             workspace_id: payload.workspaceId,
@@ -323,11 +323,39 @@ export async function POST(req: Request) {
             name: payload.name,
             description: payload.description || null,
             type: payload.type || "process",
+            color: payload.color || null,
+            icon: payload.icon || null,
           })
           .select()
           .single();
-        if (error) throw error;
-        result = data;
+        if (flowError) throw flowError;
+        // Save template nodes and edges if provided
+        if (payload.nodes?.length > 0) {
+          await supabase.from("flow_nodes").insert(
+            payload.nodes.map((n: any) => ({
+              id: n.id,
+              flow_id: flowData.id,
+              node_type: n.type || "step",
+              title: n.data?.title || n.title || "",
+              description: n.data?.description || n.description || "",
+              position: n.position,
+              data: n.data || null,
+            }))
+          );
+        }
+        if (payload.edges?.length > 0) {
+          await supabase.from("flow_edges").insert(
+            payload.edges.map((e: any) => ({
+              id: e.id,
+              flow_id: flowData.id,
+              source: e.source,
+              target: e.target,
+              label: e.label || null,
+              data: { style: e.style, animated: e.animated, type: e.type },
+            }))
+          );
+        }
+        result = flowData;
         break;
       }
 
@@ -1047,6 +1075,24 @@ export async function POST(req: Request) {
             invited_by: user.id,
             expires_at: expiresAt,
           })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "updateFlow": {
+        const { id, input } = payload;
+        const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
+        if (input.name !== undefined) updateData.name = input.name;
+        if (input.description !== undefined) updateData.description = input.description;
+        if (input.type !== undefined) updateData.type = input.type;
+        if (input.color !== undefined) updateData.color = input.color;
+        const { data, error } = await supabase
+          .from("flows")
+          .update(updateData)
+          .eq("id", id)
           .select()
           .single();
         if (error) throw error;

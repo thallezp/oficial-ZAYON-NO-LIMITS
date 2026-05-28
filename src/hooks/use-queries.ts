@@ -701,6 +701,18 @@ export function useDeleteFlowMutation() {
   });
 }
 
+export function useUpdateFlowMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: Record<string, unknown> }) =>
+      callMutate("updateFlow", { id, input }),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["flows"] });
+      queryClient.invalidateQueries({ queryKey: ["flow", vars.id] });
+    },
+  });
+}
+
 export function useDeleteToolMutation() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import {
   Activity,
   CircleDollarSign,
@@ -25,35 +26,116 @@ import {
   formatCompact,
   formatPercent,
 } from "@/lib/utils/format";
+import { useFinance, useContent, useLeads, useFunnel } from "@/hooks/use-queries";
+import { useWorkspaceStore } from "@/stores/workspace-store";
 
 export default function PersonaOverviewPage() {
   const persona = usePersonaFromRoute();
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+
+  const { data: dbFinance = [] } = useFinance(activeWorkspaceId, persona.id);
+  const { data: dbContent = [] } = useContent(activeWorkspaceId, persona.id);
+  const { data: dbLeads = [] } = useLeads(activeWorkspaceId, persona.id);
+  const { data: dbFunnel } = useFunnel(persona.id);
+
   const m = persona.metrics ?? {};
 
-  const revenueSeries = Array.from({ length: 30 }, (_, i) => ({
-    label: `${i + 1}`,
-    value: Math.round(
-      ((m.revenuePeriod ?? 50_000) / 30) * (1 + Math.sin(i / 3) * 0.4 + i * 0.04),
-    ),
+  // 1. Curva de faturamento real
+  const days30 = Array.from({ length: 30 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (29 - i));
+    return {
+      dateStr: d.toISOString().split("T")[0],
+      label: d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" }),
+      value: 0,
+    };
+  });
+
+  dbFinance.forEach((t: any) => {
+    if (t.type === "revenue" && t.status === "paid" && t.occurredAt) {
+      const match = days30.find((d) => d.dateStr === t.occurredAt);
+      if (match) {
+        match.value += Number(t.amount);
+      }
+    }
+  });
+
+  let cumulative = 0;
+  const revenueSeries = days30.map((d) => {
+    cumulative += d.value;
+    return {
+      label: d.label,
+      value: cumulative,
+    };
+  });
+
+  // 2. Crescimento de seguidores realistas
+  const totalFollowers = m.followers ?? 0;
+  const followersSeries = Array.from({ length: 30 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (29 - i));
+    const val = Math.round(totalFollowers * (1 - (29 - i) * 0.002));
+    return {
+      label: d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" }),
+      value: val,
+    };
+  });
+
+  // 3. Top 5 conteúdos reais por views
+  const postedContent = dbContent.filter((c: any) => c.status === "posted" && c.metrics?.views);
+  const topContent = [...postedContent]
+    .sort((a: any, b: any) => (b.metrics?.views ?? 0) - (a.metrics?.views ?? 0))
+    .slice(0, 5);
+
+  const viewsByContent = topContent.length > 0
+    ? topContent.map((c: any) => ({
+        label: c.title,
+        value: c.metrics?.views ?? 0,
+      }))
+    : [
+        { label: "Nenhum conteúdo", value: 0 },
+      ];
+
+  // 4. Distribuição real de pilares de conteúdo
+  const pillarCounts = new Map<string, number>();
+  dbContent.forEach((c: any) => {
+    const p = c.pillar ?? "neutro";
+    pillarCounts.set(p, (pillarCounts.get(p) ?? 0) + 1);
+  });
+  const pillarDistribution = Array.from(pillarCounts.entries()).map(([name, value]) => ({
+    name: name.toUpperCase(),
+    value,
   }));
+  if (pillarDistribution.length === 0) {
+    pillarDistribution.push({ name: "NEUTRO", value: 0 });
+  }
 
-  const followersSeries = Array.from({ length: 30 }, (_, i) => ({
-    label: `${i + 1}`,
-    value: Math.round((m.followers ?? 100_000) - (30 - i) * 1100),
-  }));
+  // 5. Funil de leads real
+  const funnelSteps = React.useMemo(() => {
+    if (dbFunnel?.nodes && dbFunnel.nodes.length > 0) {
+      const sortedNodes = [...dbFunnel.nodes].sort((a: any, b: any) => (a.position?.x ?? 0) - (b.position?.x ?? 0));
+      return sortedNodes.map((node: any) => {
+        const traffic = node.metrics?.traffic ?? 0;
+        const conversion = node.metrics?.conversion ?? 0;
+        return {
+          label: node.title || node.type || "Etapa",
+          value: traffic,
+          pct: conversion,
+        };
+      });
+    }
+    const total = dbLeads.length;
+    const approached = dbLeads.filter((l: any) => ["approached", "qualified", "converted"].includes(l.status)).length;
+    const qualified = dbLeads.filter((l: any) => ["qualified", "converted"].includes(l.status)).length;
+    const converted = dbLeads.filter((l: any) => l.status === "converted").length;
 
-  const viewsByContent = [
-    { label: "Reel 003", value: 184_000 },
-    { label: "Carrossel", value: 92_000 },
-    { label: "Story seq.", value: 54_000 },
-    { label: "Reel 002", value: 47_000 },
-    { label: "Reel 001", value: 38_000 },
-  ];
-
-  const pillarDistribution = persona.pillars?.map((p, i) => ({
-    name: p,
-    value: 30 - i * 5,
-  })) ?? [];
+    return [
+      { label: "Total Leads", value: total, pct: 100 },
+      { label: "Abordados", value: approached, pct: total > 0 ? Math.round((approached / total) * 100) : 0 },
+      { label: "Qualificados", value: qualified, pct: approached > 0 ? Math.round((qualified / approached) * 100) : 0 },
+      { label: "Convertidos", value: converted, pct: qualified > 0 ? Math.round((converted / qualified) * 100) : 0 },
+    ];
+  }, [dbFunnel, dbLeads]);
 
   return (
     <div className="space-y-6">
@@ -202,15 +284,9 @@ export default function PersonaOverviewPage() {
             <CardTitle>Funil de leads</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {[
-              { label: "Visitas", value: 184_000, pct: 100 },
-              { label: "Direct", value: 5_620, pct: 3.0 },
-              { label: "WhatsApp", value: 2_140, pct: 38 },
-              { label: "Checkout", value: 472, pct: 22 },
-              { label: "Pago", value: 132, pct: 28 },
-            ].map((step, i) => (
+            {funnelSteps.map((step, i) => (
               <div key={step.label} className="flex items-center gap-3">
-                <span className="text-[10px] text-muted-foreground w-16">
+                <span className="text-[10px] text-muted-foreground w-16 truncate" title={step.label}>
                   {step.label}
                 </span>
                 <div className="flex-1 h-6 rounded bg-card-elevated overflow-hidden">

@@ -366,13 +366,7 @@ export default function TasksPage() {
         </TabsContent>
 
         <TabsContent value="calendar">
-          <div className="rounded-xl border border-dashed border-border/60 bg-card/30 px-6 py-16 text-center">
-            <CalendarIcon className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-            <p className="text-sm font-medium">Visualização de calendário</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Aberto na rota <code>/calendar</code> com as mesmas tarefas via FullCalendar.
-            </p>
-          </div>
+          <TaskCalendar tasks={filteredTasks} onTaskClick={setSelectedTask} />
         </TabsContent>
       </Tabs>
 
@@ -381,6 +375,166 @@ export default function TasksPage() {
         open={!!selectedTask}
         onOpenChange={(o) => !o && setSelectedTask(null)}
       />
+    </div>
+  );
+}
+
+// ── Task Calendar ────────────────────────────────────────────────────────────
+const WEEKDAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+
+const priorityDot: Record<string, string> = {
+  urgent: "bg-destructive",
+  high: "bg-warning",
+  medium: "bg-primary",
+  low: "bg-muted-foreground",
+};
+
+function TaskCalendar({
+  tasks,
+  onTaskClick,
+}: {
+  tasks: Task[];
+  onTaskClick: (t: Task) => void;
+}) {
+  const [current, setCurrent] = React.useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+
+  const year = current.getFullYear();
+  const month = current.getMonth();
+
+  const monthLabel = current.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+
+  // Monday-aligned grid
+  const firstDay = new Date(year, month, 1);
+  const dayOfWeekMon = (firstDay.getDay() + 6) % 7; // 0=Mon
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const totalCells = Math.ceil((dayOfWeekMon + daysInMonth) / 7) * 7;
+
+  const tasksByDate = React.useMemo(() => {
+    const map = new Map<string, Task[]>();
+    tasks.forEach((t) => {
+      if (!t.dueAt) return;
+      const key = new Date(t.dueAt).toISOString().slice(0, 10);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(t);
+    });
+    return map;
+  }, [tasks]);
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  const cells = Array.from({ length: totalCells }, (_, i) => {
+    const offset = i - dayOfWeekMon;
+    if (offset < 0 || offset >= daysInMonth) return null;
+    const date = new Date(year, month, offset + 1);
+    const key = date.toISOString().slice(0, 10);
+    return { date, key, tasks: tasksByDate.get(key) ?? [] };
+  });
+
+  const goBack = () => setCurrent(new Date(year, month - 1, 1));
+  const goFwd = () => setCurrent(new Date(year, month + 1, 1));
+
+  return (
+    <div className="space-y-3">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={goBack}
+          className="rounded-lg border border-border/60 bg-card px-3 py-1.5 text-xs hover:bg-accent transition"
+        >
+          ‹ Anterior
+        </button>
+        <p className="text-sm font-semibold capitalize">{monthLabel}</p>
+        <button
+          onClick={goFwd}
+          className="rounded-lg border border-border/60 bg-card px-3 py-1.5 text-xs hover:bg-accent transition"
+        >
+          Próximo ›
+        </button>
+      </div>
+
+      {/* Day headers */}
+      <div className="grid grid-cols-7 gap-1">
+        {WEEKDAYS.map((d) => (
+          <div
+            key={d}
+            className="px-2 py-1.5 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+          >
+            {d}
+          </div>
+        ))}
+      </div>
+
+      {/* Calendar cells */}
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((cell, idx) => {
+          if (!cell) {
+            return <div key={`empty-${idx}`} className="min-h-[100px]" />;
+          }
+          const isToday = cell.key === today;
+          const isPast = cell.key < today;
+          return (
+            <div
+              key={cell.key}
+              className={cn(
+                "min-h-[100px] rounded-lg border p-2 transition",
+                isToday
+                  ? "border-primary/60 bg-primary/5"
+                  : "border-border/40 bg-card/30 hover:bg-card/60",
+                isPast && !isToday && "opacity-60",
+              )}
+            >
+              <p
+                className={cn(
+                  "text-[11px] font-semibold mb-1.5",
+                  isToday ? "text-primary" : "text-foreground",
+                )}
+              >
+                {cell.date.getDate()}
+              </p>
+              <div className="space-y-0.5">
+                {cell.tasks.slice(0, 3).map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => onTaskClick(t)}
+                    className="w-full text-left flex items-center gap-1 rounded px-1 py-0.5 hover:bg-accent transition"
+                  >
+                    <span
+                      className={cn(
+                        "h-1.5 w-1.5 rounded-full shrink-0",
+                        priorityDot[t.priority] ?? "bg-muted-foreground",
+                      )}
+                    />
+                    <span className="text-[10px] truncate leading-tight">
+                      {t.title}
+                    </span>
+                  </button>
+                ))}
+                {cell.tasks.length > 3 && (
+                  <p className="text-[9px] text-muted-foreground pl-1">
+                    +{cell.tasks.length - 3} mais
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+        {Object.entries(priorityDot).map(([label, cls]) => (
+          <span key={label} className="flex items-center gap-1 capitalize">
+            <span className={cn("h-2 w-2 rounded-full", cls)} />
+            {label}
+          </span>
+        ))}
+        <span className="ml-auto">
+          {tasks.filter((t) => t.dueAt).length} com prazo
+        </span>
+      </div>
     </div>
   );
 }

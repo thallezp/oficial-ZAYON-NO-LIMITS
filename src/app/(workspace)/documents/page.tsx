@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
+  CheckSquare,
   Copy,
   ExternalLink,
   Hash,
@@ -13,6 +14,7 @@ import {
   Plus,
   Search,
   Sparkles,
+  Square,
   Star,
   StickyNote,
   Trash2,
@@ -70,6 +72,8 @@ export default function DocumentsPage() {
   const [personaFilter, setPersonaFilter] = React.useState<string>("all");
   const [favoritesOnly, setFavoritesOnly] = React.useState(false);
   const [confirmDelete, setConfirmDelete] = React.useState<any | null>(null);
+  const [selected, setSelected] = React.useState<Set<string>>(new Set());
+  const [confirmBulkDelete, setConfirmBulkDelete] = React.useState(false);
 
   const filteredDocs = React.useMemo(() => {
     return docs.filter((d: any) => {
@@ -134,6 +138,44 @@ export default function DocumentsPage() {
     }
   };
 
+  const toggleSelect = (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    if (selected.size === filteredDocs.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(filteredDocs.map((d: any) => d.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selected);
+    let failed = 0;
+    for (const id of ids) {
+      try {
+        await deleteDoc.mutateAsync(id);
+      } catch {
+        failed++;
+      }
+    }
+    setSelected(new Set());
+    setConfirmBulkDelete(false);
+    if (failed > 0) {
+      toast.error(`${failed} documento(s) não puderam ser removidos`);
+    } else {
+      toast.success(`${ids.length} documento(s) removido(s)`);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -178,13 +220,44 @@ export default function DocumentsPage() {
           />
           Favoritos
         </Button>
-        <div className="flex gap-1 ml-auto text-xs">
-          <Badge variant="outline">{filteredDocs.length} documentos</Badge>
-          <Badge variant="primary">
-            <Star className="h-3 w-3" />{" "}
-            {filteredDocs.filter((d: any) => d.isStarred).length}
-          </Badge>
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex gap-1 ml-auto text-xs">
+            <Badge variant="outline">{filteredDocs.length} documentos</Badge>
+            <Badge variant="primary">
+              <Star className="h-3 w-3" />{" "}
+              {filteredDocs.filter((d: any) => d.isStarred).length}
+            </Badge>
+          </div>
         </div>
+
+        {/* Barra de seleção em massa */}
+        {selected.size > 0 && (
+          <div className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5">
+            <button
+              onClick={selectAll}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <CheckSquare className="h-3.5 w-3.5 text-primary" />
+              {selected.size} selecionado(s)
+            </button>
+            <div className="flex gap-2 ml-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelected(new Set())}
+              >
+                Desselecionar
+              </Button>
+              <Button
+                size="sm"
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => setConfirmBulkDelete(true)}
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Excluir {selected.size}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* filtro de persona */}
@@ -238,6 +311,7 @@ export default function DocumentsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
         {filteredDocs.map((d: any, i: number) => {
           const persona = personas.find((p: any) => p.id === d.personaId);
+          const isSelected = selected.has(d.id);
           return (
             <motion.div
               key={d.id}
@@ -247,7 +321,10 @@ export default function DocumentsPage() {
             >
               <Card
                 variant="elevated"
-                className="group hover:border-primary/40 transition relative overflow-hidden"
+                className={cn(
+                  "group hover:border-primary/40 transition relative overflow-hidden",
+                  isSelected && "border-primary/60 ring-1 ring-primary/30",
+                )}
               >
                 <Link href={`/documents/${d.id}`} className="block">
                   <CardContent className="p-4 space-y-3">
@@ -308,6 +385,18 @@ export default function DocumentsPage() {
                   </CardContent>
                 </Link>
 
+                {/* Checkbox de seleção */}
+                <button
+                  onClick={(e) => toggleSelect(d.id, e)}
+                  className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition z-10"
+                >
+                  {isSelected ? (
+                    <CheckSquare className="h-4 w-4 text-primary" />
+                  ) : (
+                    <Square className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </button>
+
                 {/* menu de 3 pontos */}
                 <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition">
                   <DropdownMenu>
@@ -360,6 +449,7 @@ export default function DocumentsPage() {
         )}
       </div>
 
+      {/* Modal: Confirmar exclusão individual */}
       <Dialog
         open={!!confirmDelete}
         onOpenChange={(o) => !o && setConfirmDelete(null)}
@@ -383,6 +473,32 @@ export default function DocumentsPage() {
               disabled={deleteDoc.isPending}
             >
               {deleteDoc.isPending ? "Removendo..." : "Confirmar exclusão"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Confirmar exclusão em massa */}
+      <Dialog open={confirmBulkDelete} onOpenChange={setConfirmBulkDelete}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-4 w-4" /> Excluir {selected.size} documento(s)
+            </DialogTitle>
+            <DialogDescription>
+              Esta ação não pode ser desfeita. Os {selected.size} documentos selecionados serão removidos permanentemente.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmBulkDelete(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleBulkDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteDoc.isPending}
+            >
+              {deleteDoc.isPending ? "Removendo..." : `Excluir ${selected.size}`}
             </Button>
           </DialogFooter>
         </DialogContent>

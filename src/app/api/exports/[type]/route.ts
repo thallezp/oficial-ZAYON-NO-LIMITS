@@ -5,6 +5,8 @@ import { eq, and } from "drizzle-orm";
 import * as s from "@/drizzle/schema";
 import { MOCK_LEADS, MOCK_FINANCE, MOCK_CONTENT, MOCK_PERSONAS, MOCK_ACTIVITY } from "@/data";
 
+export const dynamic = "force-dynamic";
+
 function escapeCsv(value: unknown): string {
   if (value === null || value === undefined) return "";
   const s = String(value);
