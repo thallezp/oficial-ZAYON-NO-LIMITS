@@ -405,6 +405,83 @@ export async function POST(req: Request) {
         break;
       }
 
+      case "createFunnel": {
+        const { data, error } = await supabase
+          .from("sales_funnels")
+          .insert({
+            workspace_id: payload.workspaceId,
+            persona_id: payload.personaId || null,
+            name: payload.name,
+            description: payload.description || null,
+            conversion_rate: "0.0",
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deleteFunnel": {
+        const { id } = payload;
+        const { error } = await supabase.from("sales_funnels").delete().eq("id", id);
+        if (error) throw error;
+        result = { id };
+        break;
+      }
+
+      case "updatePromptChain": {
+        const { id, input } = payload;
+        const patch: Record<string, any> = { updated_at: new Date().toISOString() };
+        if (input.name !== undefined) patch.name = input.name;
+        if (input.description !== undefined) patch.description = input.description;
+        if (input.status !== undefined) patch.status = input.status;
+        if (input.basePrompt !== undefined) patch.base_prompt = input.basePrompt;
+        if (input.chain !== undefined) patch.chain = input.chain;
+        if (input.tags !== undefined) patch.tags = input.tags;
+        const { data, error } = await supabase
+          .from("prompt_chains")
+          .update(patch)
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "createPromptIteration": {
+        const { promptChainId, version, body } = payload;
+        const { data, error } = await supabase
+          .from("prompt_iterations")
+          .insert({
+            prompt_chain_id: promptChainId,
+            version,
+            body,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deletePromptChain": {
+        const { id } = payload;
+        const { error } = await supabase.from("prompt_chains").delete().eq("id", id);
+        if (error) throw error;
+        result = { id };
+        break;
+      }
+
+      case "deleteModelingProfile": {
+        const { id } = payload;
+        const { error } = await supabase.from("modeling_profiles").delete().eq("id", id);
+        if (error) throw error;
+        result = { id };
+        break;
+      }
+
       // ── TOOLS ─────────────────────────────────────────────────────────────
       case "createTool": {
         let categoryId: string | null = null;
@@ -440,6 +517,49 @@ export async function POST(req: Request) {
             category_id: categoryId,
             created_by: user.id,
           })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "updateTool": {
+        const { id, input } = payload;
+        const patch: Record<string, any> = {};
+        if (input.name !== undefined) patch.name = input.name;
+        if (input.description !== undefined) patch.description = input.description;
+        if (input.url !== undefined) patch.url = input.url;
+        if (input.iconUrl !== undefined) patch.icon_url = input.iconUrl;
+        if (input.embedMode !== undefined) patch.embed_mode = input.embedMode;
+        if (input.isFavorite !== undefined) patch.is_favorite = input.isFavorite;
+        if (input.isPinned !== undefined) patch.is_pinned = input.isPinned;
+        if (input.tags !== undefined) patch.tags = input.tags;
+        // categoria por slug/nome igual createTool
+        if (input.category !== undefined) {
+          let categoryId: string | null = null;
+          if (input.category) {
+            const { data: catData } = await supabase
+              .from("tool_categories")
+              .select("id, workspace_id")
+              .ilike("slug", input.category)
+              .limit(1);
+            if (catData && catData.length > 0) categoryId = catData[0].id;
+            else {
+              const { data: byName } = await supabase
+                .from("tool_categories")
+                .select("id")
+                .ilike("name", input.category)
+                .limit(1);
+              if (byName && byName.length > 0) categoryId = byName[0].id;
+            }
+          }
+          patch.category_id = categoryId;
+        }
+        const { data, error } = await supabase
+          .from("tools")
+          .update(patch)
+          .eq("id", id)
           .select()
           .single();
         if (error) throw error;
@@ -715,6 +835,28 @@ export async function POST(req: Request) {
         break;
       }
 
+      case "updateModelingProfile": {
+        const { id, input } = payload;
+        const patch: Record<string, any> = {};
+        if (input.name !== undefined) patch.name = input.name;
+        if (input.socialNetwork !== undefined) patch.social_network = input.socialNetwork;
+        if (input.country !== undefined) patch.country = input.country;
+        if (input.link !== undefined) patch.link = input.link;
+        if (input.niche !== undefined) patch.niche = input.niche;
+        if (input.category !== undefined) patch.category = input.category;
+        if (input.notes !== undefined) patch.notes = input.notes;
+        if (input.tags !== undefined) patch.tags = input.tags;
+        const { data, error } = await supabase
+          .from("modeling_profiles")
+          .update(patch)
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
       case "createFolder": {
         const insertPayload: Record<string, any> = {
           workspace_id: payload.workspaceId,
@@ -760,6 +902,135 @@ export async function POST(req: Request) {
         const { error } = await supabase.from("folders").delete().eq("id", id);
         if (error) throw error;
         result = { id };
+        break;
+      }
+
+      case "markNotificationRead": {
+        const { id } = payload;
+        const { data, error } = await supabase
+          .from("notifications")
+          .update({ read_at: new Date().toISOString() })
+          .eq("id", id)
+          .eq("user_id", user.id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "markAllNotificationsRead": {
+        const { data, error } = await supabase
+          .from("notifications")
+          .update({ read_at: new Date().toISOString() })
+          .eq("user_id", user.id)
+          .is("read_at", null);
+        if (error) throw error;
+        result = { ok: true };
+        break;
+      }
+
+      case "archiveNotification": {
+        const { id } = payload;
+        const { data, error } = await supabase
+          .from("notifications")
+          .update({ archived_at: new Date().toISOString() })
+          .eq("id", id)
+          .eq("user_id", user.id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deleteNotification": {
+        const { id } = payload;
+        const { error } = await supabase
+          .from("notifications")
+          .delete()
+          .eq("id", id)
+          .eq("user_id", user.id);
+        if (error) throw error;
+        result = { id };
+        break;
+      }
+
+      case "clearReadNotifications": {
+        const { error } = await supabase
+          .from("notifications")
+          .delete()
+          .eq("user_id", user.id)
+          .not("read_at", "is", null);
+        if (error) throw error;
+        result = { ok: true };
+        break;
+      }
+
+      case "updateMember": {
+        // Atualiza o papel de um membro do workspace
+        const { workspaceId, userId, role } = payload;
+        const { data, error } = await supabase
+          .from("workspace_members")
+          .update({ role })
+          .eq("workspace_id", workspaceId)
+          .eq("user_id", userId)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "removeMember": {
+        const { workspaceId, userId } = payload;
+        // Bloqueia remover o ultimo owner
+        const { data: owners } = await supabase
+          .from("workspace_members")
+          .select("user_id")
+          .eq("workspace_id", workspaceId)
+          .eq("role", "owner");
+        if (
+          owners &&
+          owners.length === 1 &&
+          owners[0].user_id === userId
+        ) {
+          throw new Error(
+            "Não é possível remover o único owner. Transfira a propriedade antes.",
+          );
+        }
+        const { error } = await supabase
+          .from("workspace_members")
+          .delete()
+          .eq("workspace_id", workspaceId)
+          .eq("user_id", userId);
+        if (error) throw error;
+        result = { workspaceId, userId };
+        break;
+      }
+
+      case "transferOwnership": {
+        // Transfere ownership de owner para outro membro
+        const { workspaceId, newOwnerId } = payload;
+        // muda owner_id do workspace
+        const { error: wsError } = await supabase
+          .from("workspaces")
+          .update({ owner_id: newOwnerId })
+          .eq("id", workspaceId);
+        if (wsError) throw wsError;
+        // promove novo owner
+        await supabase
+          .from("workspace_members")
+          .update({ role: "owner" })
+          .eq("workspace_id", workspaceId)
+          .eq("user_id", newOwnerId);
+        // demove antigo owner para admin
+        await supabase
+          .from("workspace_members")
+          .update({ role: "admin" })
+          .eq("workspace_id", workspaceId)
+          .eq("user_id", user.id);
+        result = { workspaceId, newOwnerId };
         break;
       }
 

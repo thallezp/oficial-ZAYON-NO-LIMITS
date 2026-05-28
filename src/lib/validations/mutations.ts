@@ -263,6 +263,9 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
     })
     .passthrough(),
   createTool,
+  updateTool: z
+    .object({ id, input: z.object({}).passthrough() })
+    .passthrough(),
   toggleToolFavorite: z.object({ toolId: id }).passthrough(),
   createProject,
   updateUserMetadata: z.record(z.any()),
@@ -304,6 +307,48 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
     .passthrough(),
   deleteFolder: simpleDelete,
   inviteMember,
+  markNotificationRead: simpleDelete,
+  markAllNotificationsRead: z.object({}).passthrough(),
+  archiveNotification: simpleDelete,
+  deleteNotification: simpleDelete,
+  clearReadNotifications: z.object({}).passthrough(),
+  updateMember: z
+    .object({
+      workspaceId: id,
+      userId: id,
+      role: z.enum(["owner", "admin", "editor", "viewer", "financeiro"]),
+    })
+    .passthrough(),
+  removeMember: z
+    .object({ workspaceId: id, userId: id })
+    .passthrough(),
+  transferOwnership: z
+    .object({ workspaceId: id, newOwnerId: id })
+    .passthrough(),
+  createFunnel: z
+    .object({
+      workspaceId: id,
+      personaId: id,
+      name: z.string().min(2, "Nome do funil e obrigatorio"),
+      description: z.string().optional().nullable(),
+    })
+    .passthrough(),
+  deleteFunnel: simpleDelete,
+  updatePromptChain: z
+    .object({ id, input: z.object({}).passthrough() })
+    .passthrough(),
+  createPromptIteration: z
+    .object({
+      promptChainId: id,
+      version: z.coerce.number().int(),
+      body: z.string().min(1, "O prompt nao pode ser vazio"),
+    })
+    .passthrough(),
+  deletePromptChain: simpleDelete,
+  deleteModelingProfile: simpleDelete,
+  updateModelingProfile: z
+    .object({ id, input: z.object({}).passthrough() })
+    .passthrough(),
 };
 
 export function parseMutationPayload(action: string, payload: unknown) {

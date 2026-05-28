@@ -19,12 +19,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { MOCK_NOTIFICATIONS } from "@/data";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import { relativeTime } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import { useWorkspaceStore } from "@/stores/workspace-store";
-import { useNotifications } from "@/hooks/use-queries";
+import {
+  useNotifications,
+  useMarkAllNotificationsReadMutation,
+  useMarkNotificationReadMutation,
+} from "@/hooks/use-queries";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRealtimeNotifications } from "@/hooks/use-realtime";
 import { toast } from "sonner";
 
 const ICONS = {
@@ -38,16 +42,18 @@ const ICONS = {
 export function NotificationsPopover() {
   const user = useWorkspaceStore((s) => s.user);
   const { data: dbNotifications = [] } = useNotifications(user?.id);
-  const notifications =
-    isMockModeClient && dbNotifications.length === 0
-      ? MOCK_NOTIFICATIONS
-      : dbNotifications;
-  const unreadCount = notifications.filter((n: any) => !n.readAt).length;
-  const [unread, setUnread] = React.useState(unreadCount);
+  const queryClient = useQueryClient();
+  const markRead = useMarkNotificationReadMutation();
+  const markAllRead = useMarkAllNotificationsReadMutation();
 
-  React.useEffect(() => {
-    setUnread(unreadCount);
-  }, [unreadCount]);
+  useRealtimeNotifications(user?.id ?? undefined, () => {
+    queryClient.invalidateQueries({ queryKey: ["notifications"] });
+  });
+
+  const notifications = (dbNotifications as any[]).filter(
+    (n) => !n.archivedAt && !n.archived_at,
+  );
+  const unread = notifications.filter((n: any) => !(n.readAt ?? n.read_at)).length;
 
   return (
     <Popover>
@@ -80,10 +86,15 @@ export function NotificationsPopover() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              setUnread(0);
-              toast.success("Marcadas como lidas");
+            onClick={async () => {
+              try {
+                await markAllRead.mutateAsync();
+                toast.success("Marcadas como lidas");
+              } catch (e: any) {
+                toast.error(e?.message ?? "Erro");
+              }
             }}
+            disabled={markAllRead.isPending || unread === 0}
           >
             <CheckCheck className="h-3 w-3" /> Tudo lido
           </Button>
@@ -100,30 +111,42 @@ export function NotificationsPopover() {
 
           <TabsContent value="all" className="mt-2">
             <div className="max-h-96 overflow-y-auto divide-y divide-border/60">
-              {notifications.map((n: any, i: number) => {
+              {notifications.length === 0 && (
+                <div className="px-6 py-12 text-center">
+                  <p className="text-xs text-muted-foreground">
+                    Sem notificações por aqui ✓
+                  </p>
+                </div>
+              )}
+              {notifications.map((n: any) => {
                 const Icon = ICONS[n.type as keyof typeof ICONS] ?? Activity;
-                const isUnread = i < unread;
+                const isUnread = !(n.readAt ?? n.read_at);
                 return (
                   <Link
                     key={n.id}
                     href={n.href ?? "#"}
+                    onClick={() => {
+                      if (isUnread) markRead.mutate(n.id);
+                    }}
                     className={cn(
                       "flex items-start gap-3 px-4 py-3 hover:bg-accent transition",
-                      isUnread && "bg-primary/5",
+                      isUnread ? "bg-primary/5" : "opacity-70",
                     )}
                   >
                     <div className="flex h-8 w-8 items-center justify-center rounded-md border border-border/60 bg-card/60 text-primary">
                       <Icon className="h-3.5 w-3.5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium">{n.title}</p>
+                      <p className={cn("text-xs", isUnread && "font-medium")}>
+                        {n.title}
+                      </p>
                       {n.body && (
                         <p className="text-[11px] text-muted-foreground line-clamp-2">
                           {n.body}
                         </p>
                       )}
                       <p className="text-[10px] text-muted-foreground/60 mt-0.5">
-                        {relativeTime(n.createdAt)}
+                        {relativeTime(n.createdAt ?? n.created_at)}
                       </p>
                     </div>
                     {isUnread && (

@@ -194,6 +194,7 @@ function FunnelInner({ funnel, accent = "#5b8cff", onSave }: Props) {
   const [editTraffic, setEditTraffic] = React.useState(0);
   const [editConversion, setEditConversion] = React.useState(0);
   const [editRevenue, setEditRevenue] = React.useState(0);
+  const [editNodeType, setEditNodeType] = React.useState<keyof typeof NODE_ICONS>("content");
 
   React.useEffect(() => {
     if (selectedNode) {
@@ -202,6 +203,7 @@ function FunnelInner({ funnel, accent = "#5b8cff", onSave }: Props) {
       setEditTraffic(selectedNode.data.metrics?.traffic ?? 0);
       setEditConversion(selectedNode.data.metrics?.conversion ?? 0);
       setEditRevenue(selectedNode.data.metrics?.revenue ?? 0);
+      setEditNodeType(selectedNode.data.nodeType || "content");
     }
   }, [selectedNode]);
 
@@ -239,6 +241,7 @@ function FunnelInner({ funnel, accent = "#5b8cff", onSave }: Props) {
               ...n.data,
               title: editTitle,
               description: editDesc,
+              nodeType: editNodeType,
               metrics: {
                 traffic: Number(editTraffic),
                 conversion: Number(editConversion),
@@ -252,6 +255,14 @@ function FunnelInner({ funnel, accent = "#5b8cff", onSave }: Props) {
     );
     setSelectedNode(null);
     toast.success("Métricas do nó salvas com sucesso");
+  };
+
+  const handleDeleteNode = () => {
+    if (!selectedNode) return;
+    setNodes((nds) => nds.filter((n) => n.id !== selectedNode.id));
+    setEdges((eds) => eds.filter((e) => e.source !== selectedNode.id && e.target !== selectedNode.id));
+    setSelectedNode(null);
+    toast.success("Nó removido do canvas");
   };
 
   return (
@@ -301,7 +312,45 @@ function FunnelInner({ funnel, accent = "#5b8cff", onSave }: Props) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => toast.success("Template aplicado")}
+            onClick={() => {
+              const escalator = {
+                nodes: [
+                  { id: "node-1", type: "landing", title: "Isca Digital", description: "Lead Magnet PDF", position: { x: 50, y: 100 }, metrics: { traffic: 5000, conversion: 20, revenue: 0 } },
+                  { id: "node-2", type: "community", title: "Comunidade de Alunos", description: "Comunidade Low Ticket", position: { x: 280, y: 100 }, metrics: { traffic: 1000, conversion: 10, revenue: 19000 } },
+                  { id: "node-3", type: "checkout", title: "Curso Principal", description: "Core Offer", position: { x: 510, y: 100 }, metrics: { traffic: 100, conversion: 15, revenue: 49000 } },
+                  { id: "node-4", type: "call", title: "Mentoria Individual", description: "High Ticket Back-end", position: { x: 740, y: 100 }, metrics: { traffic: 15, conversion: 30, revenue: 150000 } },
+                ],
+                edges: [
+                  { source: "node-1", target: "node-2" },
+                  { source: "node-2", target: "node-3" },
+                  { source: "node-3", target: "node-4" },
+                ],
+              };
+              const formattedNodes = escalator.nodes.map(n => ({
+                id: n.id,
+                type: "funnel",
+                position: n.position,
+                data: {
+                  title: n.title,
+                  description: n.description,
+                  nodeType: n.type,
+                  metrics: n.metrics,
+                  accent,
+                }
+              }));
+              const formattedEdges = escalator.edges.map((e, idx) => ({
+                id: `edge-${idx}-${Date.now()}`,
+                source: e.source,
+                target: e.target,
+                type: "smoothstep",
+                animated: true,
+                style: { stroke: accent, strokeWidth: 1.5 },
+                markerEnd: { type: MarkerType.ArrowClosed, color: accent },
+              }));
+              setNodes(formattedNodes);
+              setEdges(formattedEdges);
+              toast.success("Template Escada de Valor aplicado!");
+            }}
           >
             Template
           </Button>
@@ -370,6 +419,21 @@ function FunnelInner({ funnel, accent = "#5b8cff", onSave }: Props) {
                 />
               </div>
 
+              <div className="space-y-1.5">
+                <label className="text-muted-foreground font-medium">Tipo do Nó</label>
+                <select
+                  value={editNodeType}
+                  onChange={(e) => setEditNodeType(e.target.value as any)}
+                  className="w-full h-8 rounded-md border border-border/60 bg-background px-2 text-xs text-foreground outline-none focus:border-primary/60"
+                >
+                  {Object.keys(NODE_ICONS).map((type) => (
+                    <option key={type} value={type}>
+                      {type.toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="border-t border-border/40 my-2 pt-2 space-y-2">
                 <p className="font-semibold text-[10px] text-muted-foreground uppercase tracking-wider">Métricas do Nó</p>
                 
@@ -406,12 +470,17 @@ function FunnelInner({ funnel, accent = "#5b8cff", onSave }: Props) {
               </div>
             </div>
 
-            <div className="pt-2 border-t border-border/60 flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1" onClick={() => setSelectedNode(null)}>
-                Cancelar
-              </Button>
-              <Button variant="gradient" size="sm" className="flex-1" onClick={handleSaveNode}>
-                Salvar
+            <div className="pt-2 border-t border-border/60 flex flex-col gap-2">
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => setSelectedNode(null)}>
+                  Cancelar
+                </Button>
+                <Button variant="gradient" size="sm" className="flex-1" onClick={handleSaveNode}>
+                  Salvar
+                </Button>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleDeleteNode} className="text-destructive hover:bg-destructive/10 border-destructive/30">
+                Excluir Nó
               </Button>
             </div>
           </motion.div>

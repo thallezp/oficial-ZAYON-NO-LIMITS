@@ -3,24 +3,57 @@
 import * as React from "react";
 import { motion } from "framer-motion";
 import {
+  Copy,
   ExternalLink,
   Filter,
   Globe,
+  MoreVertical,
+  Pencil,
   Pin,
   Plus,
   Search,
   Star,
+  Trash2,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { MOCK_TOOLS, TOOL_CATEGORIES } from "@/data";
 import { cn } from "@/lib/utils/cn";
 import { isMockModeClient } from "@/lib/mock-mode-client";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { useWorkspaceStore } from "@/stores/workspace-store";
-import { useTools, useToggleToolFavoriteMutation } from "@/hooks/use-queries";
+import {
+  useTools,
+  useToggleToolFavoriteMutation,
+  useUpdateToolMutation,
+  useDeleteToolMutation,
+} from "@/hooks/use-queries";
 import { useQuickCreate } from "@/stores/quick-create-store";
 import { useNewEntityShortcut } from "@/hooks/use-page-shortcuts";
 import { toast } from "sonner";
@@ -28,14 +61,38 @@ import { toast } from "sonner";
 export default function ToolsPage() {
   const [search, setSearch] = React.useState("");
   const [category, setCategory] = React.useState<string>("Todas");
+  const [editingTool, setEditingTool] = React.useState<any | null>(null);
+  const [confirmDeleteTool, setConfirmDeleteTool] = React.useState<any | null>(null);
 
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
   const { data: dbTools = [] } = useTools(activeWorkspaceId);
   const toggleFavoriteMutation = useToggleToolFavoriteMutation();
+  const updateToolMutation = useUpdateToolMutation();
+  const deleteToolMutation = useDeleteToolMutation();
   const { openWith } = useQuickCreate();
   useNewEntityShortcut("tool");
 
   const allTools = isMockModeClient && dbTools.length === 0 ? MOCK_TOOLS : dbTools;
+
+  const handleCopyUrl = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("URL copiada");
+    } catch {
+      toast.error("Não foi possível copiar");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDeleteTool) return;
+    try {
+      await deleteToolMutation.mutateAsync(confirmDeleteTool.id);
+      toast.success(`${confirmDeleteTool.name} removida`);
+      setConfirmDeleteTool(null);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao remover ferramenta");
+    }
+  };
 
   const tools = allTools.filter(
     (t: any) =>
@@ -124,7 +181,15 @@ export default function ToolsPage() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 {pinned.map((t: any) => (
-                  <ToolCard key={t.id} tool={t} variant="featured" onToggleFavorite={handleToggleFavorite} />
+                  <ToolCard
+                    key={t.id}
+                    tool={t}
+                    variant="featured"
+                    onToggleFavorite={handleToggleFavorite}
+                    onEdit={() => setEditingTool(t)}
+                    onDelete={() => setConfirmDeleteTool(t)}
+                    onCopyUrl={() => handleCopyUrl(t.url)}
+                  />
                 ))}
               </div>
             </section>
@@ -140,7 +205,14 @@ export default function ToolsPage() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                 {favorites.map((t: any) => (
-                  <ToolCard key={t.id} tool={t} onToggleFavorite={handleToggleFavorite} />
+                  <ToolCard
+                    key={t.id}
+                    tool={t}
+                    onToggleFavorite={handleToggleFavorite}
+                    onEdit={() => setEditingTool(t)}
+                    onDelete={() => setConfirmDeleteTool(t)}
+                    onCopyUrl={() => handleCopyUrl(t.url)}
+                  />
                 ))}
               </div>
             </section>
@@ -152,12 +224,87 @@ export default function ToolsPage() {
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {tools.map((t: any) => (
-                <ToolCard key={t.id} tool={t} onToggleFavorite={handleToggleFavorite} />
+                <ToolCard
+                    key={t.id}
+                    tool={t}
+                    onToggleFavorite={handleToggleFavorite}
+                    onEdit={() => setEditingTool(t)}
+                    onDelete={() => setConfirmDeleteTool(t)}
+                    onCopyUrl={() => handleCopyUrl(t.url)}
+                  />
               ))}
             </div>
+            {tools.length === 0 && (
+              <div className="rounded-xl border border-dashed border-border/60 bg-card/20 px-6 py-12 text-center">
+                <Globe className="h-8 w-8 mx-auto text-muted-foreground/40 mb-3" />
+                <p className="text-sm font-medium">Nenhuma ferramenta nesta categoria</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Adicione uma ferramenta para começar a montar seu launcher.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => openWith("tool")}
+                >
+                  <Plus className="h-3.5 w-3.5" /> Adicionar ferramenta
+                </Button>
+              </div>
+            )}
           </section>
         </div>
       </div>
+
+      {/* Modal de edicao */}
+      {editingTool && (
+        <ToolEditDialog
+          tool={editingTool}
+          onClose={() => setEditingTool(null)}
+          onSave={async (input) => {
+            try {
+              await updateToolMutation.mutateAsync({
+                id: editingTool.id,
+                input,
+              });
+              toast.success("Ferramenta atualizada");
+              setEditingTool(null);
+            } catch (e: any) {
+              toast.error(e?.message ?? "Erro ao salvar");
+            }
+          }}
+          pending={updateToolMutation.isPending}
+        />
+      )}
+
+      {/* Confirmacao de remocao */}
+      <Dialog
+        open={!!confirmDeleteTool}
+        onOpenChange={(o) => !o && setConfirmDeleteTool(null)}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-4 w-4" /> Remover ferramenta
+            </DialogTitle>
+            <DialogDescription>
+              {confirmDeleteTool?.name} será removida do Tools Hub. Esta ação não
+              pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDeleteTool(null)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteToolMutation.isPending}
+            >
+              {deleteToolMutation.isPending ? "Removendo..." : "Confirmar remoção"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -166,10 +313,16 @@ function ToolCard({
   tool,
   variant = "default",
   onToggleFavorite,
+  onEdit,
+  onDelete,
+  onCopyUrl,
 }: {
   tool: any;
   variant?: "default" | "featured";
   onToggleFavorite?: (e: React.MouseEvent, toolId: string) => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onCopyUrl?: () => void;
 }) {
   return (
     <motion.a
@@ -223,6 +376,66 @@ function ToolCard({
                 )}
               />
             </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  className="p-1 rounded hover:bg-white/10 transition"
+                  title="Mais ações"
+                >
+                  <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              >
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.open(tool.url, "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  <ExternalLink className="h-4 w-4" /> Abrir
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onCopyUrl?.();
+                  }}
+                >
+                  <Copy className="h-4 w-4" /> Copiar URL
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onEdit?.();
+                  }}
+                >
+                  <Pencil className="h-4 w-4" /> Editar
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onDelete?.();
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" /> Remover
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition" />
           </div>
         </div>
@@ -237,5 +450,136 @@ function ToolCard({
         </Badge>
       </div>
     </motion.a>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Modal de edicao de ferramenta
+// ----------------------------------------------------------------------------
+
+function ToolEditDialog({
+  tool,
+  onClose,
+  onSave,
+  pending,
+}: {
+  tool: any;
+  onClose: () => void;
+  onSave: (input: any) => Promise<void>;
+  pending: boolean;
+}) {
+  const [name, setName] = React.useState(tool.name ?? "");
+  const [description, setDescription] = React.useState(tool.description ?? "");
+  const [url, setUrl] = React.useState(tool.url ?? "");
+  const [category, setCategory] = React.useState(tool.category ?? "Outros");
+  const [tags, setTags] = React.useState(((tool.tags ?? []) as string[]).join(", "));
+  const [isPinned, setIsPinned] = React.useState(!!tool.isPinned);
+  const [embedMode, setEmbedMode] = React.useState(tool.embedMode ?? "new_tab");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !url.trim()) {
+      toast.error("Nome e URL são obrigatórios");
+      return;
+    }
+    await onSave({
+      name: name.trim(),
+      description: description.trim() || null,
+      url: url.trim(),
+      category,
+      tags: tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean),
+      isPinned,
+      embedMode,
+    });
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Pencil className="h-4 w-4" /> Editar ferramenta
+          </DialogTitle>
+          <DialogDescription>
+            Renomear, mudar URL, recategorizar ou ajustar embed.
+          </DialogDescription>
+        </DialogHeader>
+        <form className="space-y-3" onSubmit={handleSubmit}>
+          <div className="space-y-1">
+            <Label className="text-xs">Nome</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">URL</Label>
+            <Input type="url" value={url} onChange={(e) => setUrl(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Categoria</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TOOL_CATEGORIES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Modo de abertura</Label>
+              <Select value={embedMode} onValueChange={setEmbedMode}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="new_tab">Nova aba</SelectItem>
+                  <SelectItem value="embed">Embed (iframe)</SelectItem>
+                  <SelectItem value="modal">Modal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Tags (separadas por vírgula)</Label>
+            <Input
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder="ex: design, vetorial, gratuito"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Descrição</Label>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+            />
+          </div>
+          <label className="flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={isPinned}
+              onChange={(e) => setIsPinned(e.target.checked)}
+            />
+            Fixar no topo do Tools Hub
+          </label>
+          <DialogFooter className="gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit" variant="gradient" disabled={pending}>
+              {pending ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

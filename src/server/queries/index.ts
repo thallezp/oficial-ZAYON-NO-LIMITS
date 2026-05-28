@@ -31,7 +31,7 @@ import {
 import { useMockData } from "@/lib/config";
 import { db } from "@/lib/db";
 import { supabaseServer } from "@/lib/supabase/server";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql, inArray } from "drizzle-orm";
 import * as s from "@/drizzle/schema";
 
 interface ScopeFilter {
@@ -65,6 +65,85 @@ function mapProject(row: any, taskCount?: { total: number; done: number }) {
     members: [],
     taskCount: { total, done },
     progress: total > 0 ? Math.round((done / total) * 100) : 0,
+  };
+}
+
+async function getPersonaMetrics(id: string) {
+  const channels = await db.select().from(s.personaChannels).where(eq(s.personaChannels.personaId, id));
+  const totalFollowers = channels.reduce((acc: number, c: any) => acc + (c.followers || 0), 0);
+
+  const txs = await db.select().from(s.financialTransactions).where(eq(s.financialTransactions.personaId, id));
+  const totalRevenue = txs
+    .filter((t: any) => t.type === "revenue" && t.status === "paid")
+    .reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
+
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+  const revenuePeriod = txs
+    .filter((t: any) => t.type === "revenue" && t.status === "paid" && new Date(t.occurredAt) >= thirtyDaysAgo)
+    .reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
+
+  const revenuePeriodPrev = txs
+    .filter((t: any) => t.type === "revenue" && t.status === "paid" && new Date(t.occurredAt) >= sixtyDaysAgo && new Date(t.occurredAt) < thirtyDaysAgo)
+    .reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
+
+  const revenueDelta = revenuePeriodPrev > 0 ? ((revenuePeriod - revenuePeriodPrev) / revenuePeriodPrev) * 100 : 0;
+
+  const allLeads = await db.select().from(s.leads).where(eq(s.leads.personaId, id));
+  const totalLeads = allLeads.length;
+
+  const leadsPeriod = allLeads.filter((l: any) => l.createdAt && new Date(l.createdAt) >= thirtyDaysAgo).length;
+  const leadsPeriodPrev = allLeads.filter((l: any) => l.createdAt && new Date(l.createdAt) >= sixtyDaysAgo && new Date(l.createdAt) < thirtyDaysAgo).length;
+  const leadsDelta = leadsPeriodPrev > 0 ? ((leadsPeriod - leadsPeriodPrev) / leadsPeriodPrev) * 100 : 0;
+
+  const content = await db.select().from(s.contentItems).where(eq(s.contentItems.personaId, id));
+  const postedContent = content.filter((c: any) => c.status === "posted");
+  const totalPosts = postedContent.length;
+
+  const contentIds = postedContent.map((c: any) => c.id);
+  let totalViews = 0;
+  let averageEngagement = 0;
+
+  if (contentIds.length > 0) {
+    const metrics = await db.select().from(s.contentMetrics).where(inArray(s.contentMetrics.contentItemId, contentIds));
+    totalViews = metrics.reduce((sum: number, m: any) => sum + (m.views || 0), 0);
+    const countWithEng = metrics.filter((m: any) => m.engagementRate !== null).length;
+    const sumEng = metrics.reduce((sum: number, m: any) => sum + (m.engagementRate || 0), 0);
+    averageEngagement = countWithEng > 0 ? sumEng / countWithEng : 0;
+  }
+
+  const paidSales = txs.filter((t: any) => t.type === "revenue" && t.status === "paid").length;
+  const conversion = totalLeads > 0 ? (paidSales / totalLeads) * 100 : 0;
+
+  const pillarsRows = await db.select().from(s.contentPillars).where(eq(s.contentPillars.personaId, id));
+  const pillars = pillarsRows.map((p: any) => p.name);
+
+  return {
+    metrics: {
+      revenue: totalRevenue,
+      revenuePeriod,
+      revenueDelta,
+      followers: totalFollowers,
+      followersDelta: 0,
+      views: totalViews,
+      viewsDelta: 0,
+      engagement: averageEngagement,
+      engagementDelta: 0,
+      leads: totalLeads,
+      leadsDelta,
+      posts: totalPosts,
+      conversion,
+      conversionDelta: 0,
+    },
+    pillars,
+    channels: channels.map((c: any) => ({
+      channel: c.channel as any,
+      handle: c.handle || undefined,
+      url: c.url || undefined,
+      followers: c.followers || 0,
+    })),
   };
 }
 
@@ -157,13 +236,31 @@ export const queries = {
         return MOCK_PERSONAS.filter(
           (p) => !workspaceId || p.workspaceId === workspaceId,
         );
-      if (!workspaceId) return db.select().from(s.personas);
-      return db.select().from(s.personas).where(eq(s.personas.workspaceId, workspaceId));
+      let rows;
+      if (!workspaceId) {
+        rows = await db.select().from(s.personas);
+      } else {
+        rows = await db.select().from(s.personas).where(eq(s.personas.workspaceId, workspaceId));
+      }
+      return Promise.all(
+        rows.map(async (row: any) => {
+          const details = await getPersonaMetrics(row.id);
+          return {
+            ...row,
+            ...details,
+          };
+        })
+      );
     },
     byId: async (id: string) => {
       if (useMockData) return MOCK_PERSONAS.find((p) => p.id === id);
       const rows = await db.select().from(s.personas).where(eq(s.personas.id, id));
-      return rows[0] || null;
+      if (!rows[0]) return null;
+      const details = await getPersonaMetrics(id);
+      return {
+        ...rows[0],
+        ...details,
+      };
     },
   },
   documents: {

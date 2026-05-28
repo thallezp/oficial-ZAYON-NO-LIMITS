@@ -206,6 +206,56 @@ export function useNotifications(userId?: string | null) {
   });
 }
 
+export function useMarkNotificationReadMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("markNotificationRead", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+}
+
+export function useMarkAllNotificationsReadMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => callMutate("markAllNotificationsRead", {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+}
+
+export function useArchiveNotificationMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("archiveNotification", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+}
+
+export function useDeleteNotificationMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deleteNotification", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+}
+
+export function useClearReadNotificationsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => callMutate("clearReadNotifications", {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+}
+
 export function useActivityLogs(workspaceId?: string | null) {
   return useQuery({
     queryKey: ["activityLogs", workspaceId],
@@ -352,6 +402,17 @@ export function useCreateToolMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: any) => callMutate("createTool", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tools"] });
+    },
+  });
+}
+
+export function useUpdateToolMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: any }) =>
+      callMutate("updateTool", { id, input }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tools"] });
     },
@@ -541,6 +602,81 @@ export function useDeletePersonaMutation() {
     mutationFn: (id: string) => callMutate("deletePersona", { id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["personas"] });
+    },
+  });
+}
+
+export function useCreateFunnelMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { workspaceId: string; personaId: string; name: string; description?: string }) =>
+      callMutate("createFunnel", input),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["funnel", variables.personaId] });
+    },
+  });
+}
+
+export function useDeleteFunnelMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, personaId }: { id: string; personaId: string }) =>
+      callMutate("deleteFunnel", { id }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["funnel", variables.personaId] });
+    },
+  });
+}
+
+export function useUpdatePromptChainMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: any }) =>
+      callMutate("updatePromptChain", { id, input }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["prompts"] });
+    },
+  });
+}
+
+export function useCreatePromptIterationMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { promptChainId: string; version: number; body: string }) =>
+      callMutate("createPromptIteration", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["prompts"] });
+    },
+  });
+}
+
+export function useDeletePromptChainMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deletePromptChain", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["prompts"] });
+    },
+  });
+}
+
+export function useDeleteModelingProfileMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deleteModelingProfile", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["modeling"] });
+    },
+  });
+}
+
+export function useUpdateModelingProfileMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: any }) =>
+      callMutate("updateModelingProfile", { id, input }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["modeling"] });
     },
   });
 }
@@ -745,6 +881,43 @@ export function useFolders(workspaceId?: string | null, personaId?: string | nul
         personaId: personaId ?? undefined,
       }),
     enabled: !!workspaceId,
+  });
+}
+
+export function useUpdateMemberMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      workspaceId: string;
+      userId: string;
+      role: "owner" | "admin" | "editor" | "viewer" | "financeiro";
+    }) => callMutate("updateMember", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team"] });
+    },
+  });
+}
+
+export function useRemoveMemberMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { workspaceId: string; userId: string }) =>
+      callMutate("removeMember", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team"] });
+    },
+  });
+}
+
+export function useTransferOwnershipMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { workspaceId: string; newOwnerId: string }) =>
+      callMutate("transferOwnership", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+    },
   });
 }
 

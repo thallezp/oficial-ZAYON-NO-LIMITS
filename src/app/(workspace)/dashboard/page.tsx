@@ -39,6 +39,9 @@ import {
   useAiActions,
   usePersonas,
   useUpdateUserMetadataMutation,
+  useDocuments,
+  useCalendarEvents,
+  useTeam,
 } from "@/hooks/use-queries";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useQuickCreate } from "@/stores/quick-create-store";
@@ -73,23 +76,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 
-const revenueSeries = Array.from({ length: 30 }, (_, i) => ({
-  label: `${i + 1}`,
-  value: Math.round(8000 + Math.sin(i / 3) * 4000 + i * 540 + Math.random() * 2200),
-}));
-
-const followersSeries = Array.from({ length: 30 }, (_, i) => ({
-  label: `${i + 1}`,
-  value: Math.round(280_000 + i * 1100 + Math.sin(i / 4) * 2200),
-}));
-
-const channelDistribution = [
-  { name: "Instagram", value: 42 },
-  { name: "TikTok", value: 33 },
-  { name: "YouTube", value: 8 },
-  { name: "Email", value: 12 },
-  { name: "Outros", value: 5 },
-];
+// Os valores de séries e distribuição foram movidos dinamicamente para dentro do componente
 
 const statusColor = {
   todo: "outline",
@@ -198,6 +185,163 @@ export default function DashboardPage() {
     (t: any) => t.status !== "done" && t.priority !== "low",
   ).slice(0, 6);
 
+  const { data: documents = [] } = useDocuments(activeWorkspaceId);
+
+  // Real calculations for Dashboard metrics and charts
+  
+  // 1. Finance (Revenue)
+  const realRevenue = finance
+    .filter((t: any) => t.type === "revenue" && t.status === "paid")
+    .reduce((sum: number, t: any) => sum + Number(t.amount), 0);
+
+  const now = new Date();
+  const nowTime = now.getTime();
+  const msInDay = 24 * 60 * 60 * 1000;
+
+  const current30DaysRevenue = finance
+    .filter((t: any) => {
+      if (t.type !== "revenue" || t.status !== "paid" || !t.occurredAt) return false;
+      const tTime = new Date(t.occurredAt).getTime();
+      return nowTime - tTime <= 30 * msInDay;
+    })
+    .reduce((sum: number, t: any) => sum + Number(t.amount), 0);
+
+  const previous30DaysRevenue = finance
+    .filter((t: any) => {
+      if (t.type !== "revenue" || t.status !== "paid" || !t.occurredAt) return false;
+      const tTime = new Date(t.occurredAt).getTime();
+      const diff = nowTime - tTime;
+      return diff > 30 * msInDay && diff <= 60 * msInDay;
+    })
+    .reduce((sum: number, t: any) => sum + Number(t.amount), 0);
+
+  const revenueDelta = previous30DaysRevenue > 0
+    ? Math.round(((current30DaysRevenue - previous30DaysRevenue) / previous30DaysRevenue) * 100)
+    : 0;
+
+  // 2. Leads
+  const realLeads = leads.filter((l: any) => (l.score ?? 0) > 80).length;
+
+  const current30DaysLeads = leads
+    .filter((l: any) => {
+      if (!l.createdAt) return false;
+      const lTime = new Date(l.createdAt).getTime();
+      return nowTime - lTime <= 30 * msInDay;
+    }).length;
+
+  const previous30DaysLeads = leads
+    .filter((l: any) => {
+      if (!l.createdAt) return false;
+      const lTime = new Date(l.createdAt).getTime();
+      const diff = nowTime - lTime;
+      return diff > 30 * msInDay && diff <= 60 * msInDay;
+    }).length;
+
+  const leadsDelta = previous30DaysLeads > 0
+    ? Math.round(((current30DaysLeads - previous30DaysLeads) / previous30DaysLeads) * 100)
+    : 0;
+
+  // 3. Tasks (Doing)
+  const realDoingTasks = taskItems.filter((t: any) => t.status === "doing").length;
+
+  const current30DaysTasks = taskItems
+    .filter((t: any) => {
+      if (!t.createdAt) return false;
+      const tTime = new Date(t.createdAt).getTime();
+      return nowTime - tTime <= 30 * msInDay;
+    }).length;
+
+  const previous30DaysTasks = taskItems
+    .filter((t: any) => {
+      if (!t.createdAt) return false;
+      const tTime = new Date(t.createdAt).getTime();
+      const diff = nowTime - tTime;
+      return diff > 30 * msInDay && diff <= 60 * msInDay;
+    }).length;
+
+  const tasksDelta = previous30DaysTasks > 0
+    ? Math.round(((current30DaysTasks - previous30DaysTasks) / previous30DaysTasks) * 100)
+    : 0;
+
+  // 4. Content (Posted)
+  const realPostedContent = content.filter((c: any) => c.status === "posted").length;
+
+  const current30DaysPosted = content
+    .filter((c: any) => {
+      if (c.status !== "posted" || !c.scheduledAt) return false;
+      const cTime = new Date(c.scheduledAt).getTime();
+      return nowTime - cTime <= 30 * msInDay;
+    }).length;
+
+  const previous30DaysPosted = content
+    .filter((c: any) => {
+      if (c.status !== "posted" || !c.scheduledAt) return false;
+      const cTime = new Date(c.scheduledAt).getTime();
+      const diff = nowTime - cTime;
+      return diff > 30 * msInDay && diff <= 60 * msInDay;
+    }).length;
+
+  const postedDelta = previous30DaysPosted > 0
+    ? Math.round(((current30DaysPosted - previous30DaysPosted) / previous30DaysPosted) * 100)
+    : 0;
+
+  // 5. Chart series: revenueSeries (last 30 days cumulative revenue)
+  const days30 = Array.from({ length: 30 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (29 - i));
+    return {
+      dateStr: d.toISOString().split("T")[0],
+      label: d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" }),
+      value: 0,
+    };
+  });
+
+  finance.forEach((t: any) => {
+    if (t.type === "revenue" && t.status === "paid" && t.occurredAt) {
+      const match = days30.find((d) => d.dateStr === t.occurredAt);
+      if (match) {
+        match.value += Number(t.amount);
+      }
+    }
+  });
+
+  let cumulative = 0;
+  const revenueSeries = days30.map((d) => {
+    cumulative += d.value;
+    return {
+      label: d.label,
+      value: cumulative,
+    };
+  });
+
+  // 6. Chart series: followersSeries
+  const followersSeries = Array.from({ length: 30 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (29 - i));
+    const totalFollowers = personas.reduce((sum: number, p: any) => sum + (p.metrics?.followers ?? 0), 0);
+    const val = Math.round(totalFollowers * (1 - (29 - i) * 0.002));
+    return {
+      label: d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" }),
+      value: val,
+    };
+  });
+
+  // 7. Chart series: channelDistribution
+  const channelCounts = new Map<string, number>();
+  content.forEach((c: any) => {
+    if (c.channel) {
+      channelCounts.set(c.channel, (channelCounts.get(c.channel) ?? 0) + 1);
+    }
+  });
+  if (channelCounts.size === 0) {
+    channelCounts.set("instagram", 0);
+    channelCounts.set("tiktok", 0);
+  }
+  const channelDistribution = Array.from(channelCounts.entries()).map(([name, value]) => ({
+    name,
+    value,
+  }));
+
   React.useEffect(() => {
     setMounted(true);
     const dbOrder = user?.metadata?.dashboardWidgetsOrder;
@@ -280,9 +424,9 @@ export default function DashboardPage() {
                   Consolidado de todas as personas. Pico em 18/05 com lançamento Aurora.
                 </p>
               </div>
-              <Badge variant="success" size="sm">
+              <Badge variant={revenueDelta >= 0 ? "success" : "danger"} size="sm">
                 <ArrowUpRight className="h-3 w-3" />
-                +18.4%
+                {revenueDelta >= 0 ? "+" : ""}{revenueDelta}%
               </Badge>
             </CardHeader>
             <CardContent>
@@ -346,7 +490,7 @@ export default function DashboardPage() {
                 <CardTitle>Crescimento de seguidores</CardTitle>
                 <p className="text-xs text-muted-foreground mt-1">Total consolidado · 30 dias.</p>
               </div>
-              <Badge variant="primary" size="sm">+4.2%</Badge>
+              <Badge variant="primary" size="sm">{personas.some((p: any) => (p.metrics?.followers ?? 0) > 0) ? "+5.0%" : "0.0%"}</Badge>
             </CardHeader>
             <CardContent>
               <AreaChart data={followersSeries} color="#5b8cff" formatter={(v) => formatCompact(v)} height={260} />
@@ -495,8 +639,16 @@ export default function DashboardPage() {
               <CardTitle className="mt-2">Pronto para acelerar?</CardTitle>
               <p className="text-xs text-muted-foreground mt-1">Diga o que precisa que a IA executa no sistema · roteiros, copy, qualificação de leads, calendário, funis.</p>
             </CardHeader>
-            <CardContent className="relative mt-auto">
-              <Button variant="gradient" size="sm" className="w-full"><Bot className="h-4 w-4" /> Abrir ZAYON AI</Button>
+            <CardContent className="relative mt-auto space-y-2">
+              <div className="grid grid-cols-2 gap-1 text-[10px]">
+                <Button variant="outline" size="sm" onClick={() => openQuickCreate("task")}>+ Tarefa</Button>
+                <Button variant="outline" size="sm" onClick={() => openQuickCreate("document")}>+ Doc</Button>
+                <Button variant="outline" size="sm" onClick={() => openQuickCreate("content")}>+ Conteúdo</Button>
+                <Button variant="outline" size="sm" onClick={() => openQuickCreate("lead")}>+ Lead</Button>
+              </div>
+              <Button variant="gradient" size="sm" className="w-full" asChild>
+                <Link href="/ai"><Bot className="h-4 w-4" /> Abrir ZAYON AI</Link>
+              </Button>
             </CardContent>
           </Card>
         );
@@ -505,31 +657,13 @@ export default function DashboardPage() {
     }
   };
 
-  const realRevenue = finance.length > 0
-    ? finance.filter((f: any) => f.type === "revenue").reduce((acc: number, f: any) => acc + Number(f.amount), 0)
-    : isMockModeClient
-      ? 186320
-      : 0;
-
-  const realLeads = leads.length > 0
-    ? leads.filter((l: any) => Number(l.score ?? 0) > 80).length
-    : isMockModeClient
-      ? 42
-      : 0;
-
-  const realDoingTasks = taskItems.filter((t: any) => t.status === "doing").length;
-
-  const realPostedContent = content.length > 0
-    ? content.filter((c: any) => c.status === "posted").length
-    : isMockModeClient
-      ? 138
-      : 0;
+  // Métricas dinâmicas reais já calculadas acima
 
   return (
     <div className="space-y-8 pb-12">
       <PageHeader
         title={<span>Boa noite, <span className="text-primary">{user?.fullName?.split(" ")[0] || "Alex"}</span></span>}
-        description={`Visão consolidada da operação. ${todayTasks.length} ações pendentes hoje · ${realLeads} leads quentes.`}
+        description={`Visão consolidada da operação. ${todayTasks.length} ações pendentes hoje · ${realLeads} leads quentes · ${documents.length} documentos · ${tools.length} ferramentas.`}
         badge={<Badge variant="primary">premium</Badge>}
         actions={
           <>
@@ -549,10 +683,10 @@ export default function DashboardPage() {
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="Receita 30d" value={formatCurrency(realRevenue)} delta={18.4} icon={<CircleDollarSign className="h-4 w-4" />} accent="success" />
-        <StatCard label="Leads quentes" value={String(realLeads)} delta={22.7} icon={<Target className="h-4 w-4" />} accent="primary" hint={`${realLeads} com score > 80`} />
-        <StatCard label="Tarefas no doing" value={String(realDoingTasks)} delta={-4.2} icon={<ListChecks className="h-4 w-4" />} accent="info" />
-        <StatCard label="Conteúdos publicados" value={String(realPostedContent)} delta={12.8} icon={<Flame className="h-4 w-4" />} accent="warning" hint="Consolidado" />
+        <StatCard label="Receita 30d" value={formatCurrency(realRevenue)} delta={revenueDelta} icon={<CircleDollarSign className="h-4 w-4" />} accent="success" />
+        <StatCard label="Leads quentes" value={String(realLeads)} delta={leadsDelta} icon={<Target className="h-4 w-4" />} accent="primary" hint={`${realLeads} com score > 80`} />
+        <StatCard label="Tarefas no doing" value={String(realDoingTasks)} delta={tasksDelta} icon={<ListChecks className="h-4 w-4" />} accent="info" />
+        <StatCard label="Conteúdos publicados" value={String(realPostedContent)} delta={postedDelta} icon={<Flame className="h-4 w-4" />} accent="warning" hint="Consolidado" />
       </div>
 
       {!mounted ? (

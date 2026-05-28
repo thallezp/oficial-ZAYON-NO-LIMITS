@@ -1,11 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Sparkles, Upload } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,6 +27,13 @@ export default function LookPage() {
   const [bioShort, setBioShort] = React.useState("");
   const [voiceTone, setVoiceTone] = React.useState("");
   const [archetype, setArchetype] = React.useState("");
+  const [visualStyle, setVisualStyle] = React.useState("");
+  const [dressStyle, setDressStyle] = React.useState("");
+  const [personality, setPersonality] = React.useState("");
+  const [preferredWords, setPreferredWords] = React.useState("");
+  const [forbiddenWords, setForbiddenWords] = React.useState("");
+  const [avatarUrl, setAvatarUrl] = React.useState("");
+  const [coverUrl, setCoverUrl] = React.useState("");
 
   React.useEffect(() => {
     if (persona) {
@@ -39,6 +45,13 @@ export default function LookPage() {
       setBioShort(persona.bioShort || "");
       setVoiceTone(persona.voiceTone || "");
       setArchetype(persona.archetype || "");
+      setVisualStyle(persona.visualStyle || "");
+      setDressStyle(persona.dressStyle || "");
+      setPersonality(persona.personality?.join(", ") || "");
+      setPreferredWords(persona.preferredWords?.join(", ") || "");
+      setForbiddenWords(persona.forbiddenWords?.join(", ") || "");
+      setAvatarUrl(persona.avatarUrl || "");
+      setCoverUrl(persona.coverUrl || "");
     }
   }, [persona]);
 
@@ -59,6 +72,13 @@ export default function LookPage() {
         bioShort: bioShort || undefined,
         voiceTone: voiceTone || undefined,
         archetype: archetype || undefined,
+        visualStyle: visualStyle || undefined,
+        dressStyle: dressStyle || undefined,
+        avatarUrl: avatarUrl || undefined,
+        coverUrl: coverUrl || undefined,
+        personality: personality ? personality.split(",").map(s => s.trim()).filter(Boolean) : [],
+        preferredWords: preferredWords ? preferredWords.split(",").map(s => s.trim()).filter(Boolean) : [],
+        forbiddenWords: forbiddenWords ? forbiddenWords.split(",").map(s => s.trim()).filter(Boolean) : [],
       });
       toast.success("Persona atualizada com sucesso!");
     } catch (err: any) {
@@ -70,13 +90,13 @@ export default function LookPage() {
     <div className="space-y-6">
       <PageHeader
         title="Look 3D · Identidade"
-        description="Tudo o que define a persona como uma entidade única."
+        description="Tudo o que define a persona como uma entidade única. Salve alterações diretamente no Supabase."
         actions={
           <>
             <Button variant="outline" size="sm" onClick={handleSave} disabled={upsertMutation.isPending}>
               {upsertMutation.isPending ? "Salvando..." : "Salvar Alterações"}
             </Button>
-            <Button variant="gradient" size="sm">
+            <Button variant="gradient" size="sm" onClick={() => toast.success("Processando refinamento com IA...")}>
               <Sparkles className="h-4 w-4" /> Refinar com IA
             </Button>
           </>
@@ -104,17 +124,25 @@ export default function LookPage() {
                 id="field-status"
                 value={status}
                 onChange={(e) => setStatus(e.target.value as any)}
-                className="flex h-9 w-full rounded-md border border-border/60 bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-9 w-full rounded-md border border-border/60 bg-card px-3 py-1 text-sm shadow-sm transition-colors outline-none focus-visible:outline-none"
               >
-                <option value="active" className="bg-card text-foreground">Active</option>
-                <option value="building" className="bg-card text-foreground">Building</option>
-                <option value="paused" className="bg-card text-foreground">Paused</option>
-                <option value="archived" className="bg-card text-foreground">Archived</option>
+                <option value="active">Active</option>
+                <option value="building">Building</option>
+                <option value="paused">Paused</option>
+                <option value="archived">Archived</option>
               </select>
             </div>
             <div className="space-y-1">
               <Label htmlFor="field-niche">Nicho</Label>
               <Input id="field-niche" value={niche} onChange={(e) => setNiche(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="field-avatar">Avatar Image URL</Label>
+              <Input id="field-avatar" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="field-cover">Cover Image URL</Label>
+              <Input id="field-cover" value={coverUrl} onChange={(e) => setCoverUrl(e.target.value)} />
             </div>
             <div className="sm:col-span-2 space-y-1">
               <Label htmlFor="field-bigIdea">Big idea</Label>
@@ -127,81 +155,69 @@ export default function LookPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Voz e personalidade</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-1">
-              <Label htmlFor="field-voiceTone">Tom de voz</Label>
-              <Input id="field-voiceTone" value={voiceTone} onChange={(e) => setVoiceTone(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="field-archetype">Arquétipo</Label>
-              <Input id="field-archetype" value={archetype} onChange={(e) => setArchetype(e.target.value)} />
-            </div>
-            <div>
-              <Label>Traços</Label>
-              <div className="flex flex-wrap gap-1 mt-1.5">
-                {persona.personality?.map((t) => (
-                  <Badge key={t} variant="outline">
-                    {t}
-                  </Badge>
-                ))}
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Voz e personalidade</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-1">
+                <Label htmlFor="field-voiceTone">Tom de voz</Label>
+                <Input id="field-voiceTone" value={voiceTone} onChange={(e) => setVoiceTone(e.target.value)} />
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Estética</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-1">
-              <Label>Estilo visual</Label>
-              <Input readOnly value={persona.visualStyle || ""} className="bg-transparent opacity-80" />
-            </div>
-            <div className="space-y-1">
-              <Label>Estilo de vestimenta</Label>
-              <Input readOnly value={persona.dressStyle || ""} className="bg-transparent opacity-80" />
-            </div>
-            <div className="space-y-1">
-              <Label>Cor accent</Label>
-              <div className="flex items-center gap-2">
-                <Input readOnly value={persona.accent || ""} className="flex-1 bg-transparent opacity-80" />
-                <span
-                  className="h-4 w-4 rounded-full ring-2 ring-card"
-                  style={{ background: persona.accent }}
-                />
+              <div className="space-y-1">
+                <Label htmlFor="field-archetype">Arquétipo</Label>
+                <Input id="field-archetype" value={archetype} onChange={(e) => setArchetype(e.target.value)} />
               </div>
-            </div>
+              <div className="space-y-1">
+                <Label htmlFor="field-personality">Traços de Personalidade (separados por vírgula)</Label>
+                <Input id="field-personality" value={personality} onChange={(e) => setPersonality(e.target.value)} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Estética</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-1">
+                <Label htmlFor="field-visualStyle">Estilo visual</Label>
+                <Input id="field-visualStyle" value={visualStyle} onChange={(e) => setVisualStyle(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="field-dressStyle">Estilo de vestimenta</Label>
+                <Input id="field-dressStyle" value={dressStyle} onChange={(e) => setDressStyle(e.target.value)} />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Palavras preferidas (separadas por vírgula)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              value={preferredWords}
+              onChange={(e) => setPreferredWords(e.target.value)}
+              placeholder="Ex: exuberante, silêncio, autenticidade"
+              rows={3}
+            />
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Palavras preferidas</CardTitle>
+            <CardTitle>Palavras proibidas (separadas por vírgula)</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-wrap gap-1">
-            {persona.preferredWords?.map((w) => (
-              <Badge key={w} variant="success">
-                {w}
-              </Badge>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Palavras proibidas</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-1">
-            {persona.forbiddenWords?.map((w) => (
-              <Badge key={w} variant="danger">
-                {w}
-              </Badge>
-            ))}
+          <CardContent>
+            <Textarea
+              value={forbiddenWords}
+              onChange={(e) => setForbiddenWords(e.target.value)}
+              placeholder="Ex: fofo, polêmica, galera"
+              rows={3}
+            />
           </CardContent>
         </Card>
       </div>

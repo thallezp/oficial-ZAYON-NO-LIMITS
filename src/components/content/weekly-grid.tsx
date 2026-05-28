@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronLeft, ChevronRight, Plus, Trash2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Filter, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -138,6 +138,17 @@ interface Props {
 
 const DEFAULT_SLOTS = ["12h00", "18h00", "Extra"];
 
+const STATUS_OPTIONS: { id: string; label: string; color: string }[] = [
+  { id: "idea", label: "Ideia", color: "bg-zinc-700/60 text-zinc-300" },
+  { id: "scripted", label: "Roteirizado", color: "bg-amber-500/30 text-amber-200" },
+  { id: "recorded", label: "Gravado", color: "bg-blue-500/30 text-blue-200" },
+  { id: "editing", label: "Editando", color: "bg-fuchsia-500/30 text-fuchsia-200" },
+  { id: "scheduled", label: "Agendado", color: "bg-indigo-500/30 text-indigo-200" },
+  { id: "posted", label: "Postado", color: "bg-emerald-500/30 text-emerald-200" },
+];
+
+const STATUS_BY_ID = Object.fromEntries(STATUS_OPTIONS.map((s) => [s.id, s]));
+
 export function WeeklyGrid({
   items,
   channel,
@@ -147,12 +158,15 @@ export function WeeklyGrid({
 }: Props) {
   const [weekStart, setWeekStart] = React.useState(() => startOfWeek(new Date()));
   const [slots, setSlots] = React.useState<string[]>(DEFAULT_SLOTS);
-  const [newSlot, setNewSlot] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const [editing, setEditing] = React.useState<{
     date: Date;
     slot: string;
     item?: ContentItem;
   } | null>(null);
+  // Modal de "adicionar slot" especifico de um dia
+  const [addingSlotForDate, setAddingSlotForDate] = React.useState<Date | null>(null);
+  const [newSlotInput, setNewSlotInput] = React.useState("");
 
   const weekDates = React.useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
@@ -160,11 +174,12 @@ export function WeeklyGrid({
   );
   const weekEnd = addDays(weekStart, 6);
 
-  // index: items por dia + slot
+  // index: items por dia + slot (com filtro de status)
   const itemsByCell = React.useMemo(() => {
     const map = new Map<string, ContentItem>();
     items.forEach((it) => {
       if (!it.scheduledAt || it.channel !== channel) return;
+      if (statusFilter !== "all" && it.status !== statusFilter) return;
       const d = new Date(it.scheduledAt);
       const matchDay = weekDates.find((wd) => sameDay(wd, d));
       if (!matchDay) return;
@@ -174,17 +189,19 @@ export function WeeklyGrid({
       map.set(key, it);
     });
     return map;
-  }, [items, weekDates, slots, channel]);
+  }, [items, weekDates, slots, channel, statusFilter]);
 
-  const handleAddSlot = () => {
-    const v = newSlot.trim();
+  const handleAddSlotToDay = (date: Date, slotName: string) => {
+    const v = slotName.trim();
     if (!v) return;
-    if (slots.includes(v)) {
-      toast.info("Slot já existe");
-      return;
+    // adiciona slot a lista de slots globais (eles aparecem em todos os dias)
+    if (!slots.includes(v)) {
+      setSlots((s) => [...s, v]);
     }
-    setSlots((s) => [...s, v]);
-    setNewSlot("");
+    // abre direto o modal de edicao para criar conteudo naquele dia+slot
+    setAddingSlotForDate(null);
+    setNewSlotInput("");
+    setEditing({ date, slot: v });
   };
 
   const handleRemoveSlot = (s: string) => {
@@ -194,7 +211,7 @@ export function WeeklyGrid({
 
   return (
     <div className="space-y-4">
-      {/* navegação semana */}
+      {/* navegação semana + filtro de status */}
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border/60 bg-card/40 px-4 py-2.5">
         <Button
           variant="ghost"
@@ -207,14 +224,28 @@ export function WeeklyGrid({
           Semana: <span className="text-foreground">{formatDM(weekStart)}</span>{" "}
           a <span className="text-foreground">{formatDM(weekEnd)}</span>
         </span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setWeekStart((d) => addDays(d, 7))}
-          className="ml-auto"
-        >
-          Próxima <ChevronRight className="h-3.5 w-3.5" />
-        </Button>
+        <div className="flex items-center gap-1 ml-auto">
+          <Filter className="h-3 w-3 text-muted-foreground" />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="h-7 text-[11px] bg-card border border-border/60 rounded-md px-2 outline-none focus:border-primary"
+          >
+            <option value="all">Todos os status</option>
+            {STATUS_OPTIONS.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setWeekStart((d) => addDays(d, 7))}
+          >
+            Próxima <ChevronRight className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
 
       {/* tabela */}
@@ -228,11 +259,22 @@ export function WeeklyGrid({
               {weekDates.map((d, i) => (
                 <th
                   key={d.toDateString()}
-                  className="px-3 py-3 text-[10px] uppercase tracking-wider text-emerald-400 font-semibold text-left border-l border-border/60"
+                  className="px-3 py-3 text-[10px] uppercase tracking-wider text-emerald-400 font-semibold text-left border-l border-border/60 align-top"
                 >
-                  <div>{WEEKDAYS_FULL[(i + 1) % 7]}</div>
-                  <div className="font-mono text-emerald-500/80 text-[10px] mt-0.5">
-                    {formatDM(d)}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div>{WEEKDAYS_FULL[(i + 1) % 7]}</div>
+                      <div className="font-mono text-emerald-500/80 text-[10px] mt-0.5">
+                        {formatDM(d)}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setAddingSlotForDate(d)}
+                      title="Adicionar slot neste dia"
+                      className="inline-flex h-5 w-5 items-center justify-center rounded-md border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 transition"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </button>
                   </div>
                 </th>
               ))}
@@ -269,15 +311,27 @@ export function WeeklyGrid({
                     >
                       {item ? (
                         <div className="space-y-1.5">
-                          <span
-                            className={cn(
-                              "inline-block rounded-full px-2 py-0.5 text-[9px] font-semibold tracking-wide uppercase",
-                              pillar.bg,
-                              pillar.text,
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span
+                              className={cn(
+                                "inline-block rounded-full px-2 py-0.5 text-[9px] font-semibold tracking-wide uppercase",
+                                pillar.bg,
+                                pillar.text,
+                              )}
+                            >
+                              {pillar.label}
+                            </span>
+                            {item.status && STATUS_BY_ID[item.status] && (
+                              <span
+                                className={cn(
+                                  "inline-block rounded px-1.5 py-0.5 text-[8px] font-semibold tracking-wide uppercase",
+                                  STATUS_BY_ID[item.status].color,
+                                )}
+                              >
+                                {STATUS_BY_ID[item.status].label}
+                              </span>
                             )}
-                          >
-                            {pillar.label}
-                          </span>
+                          </div>
                           <p className="text-[11px] leading-tight line-clamp-2 text-foreground">
                             {item.title}
                           </p>
@@ -285,7 +339,7 @@ export function WeeklyGrid({
                       ) : (
                         <div className="space-y-1.5">
                           <span className="inline-block rounded-full px-2 py-0.5 text-[9px] font-semibold tracking-wide uppercase bg-zinc-700/60 text-zinc-300">
-                            NEUTRO
+                            VAZIO
                           </span>
                           <p className="text-[11px] italic text-muted-foreground/70">
                             Clique para planejar
@@ -301,21 +355,82 @@ export function WeeklyGrid({
         </table>
       </div>
 
-      {/* adicionar slot */}
-      <div className="flex items-center gap-2">
-        <Input
-          value={newSlot}
-          onChange={(e) => setNewSlot(e.target.value)}
-          placeholder='Novo slot (ex: "20h00" ou "Stories")'
-          className="max-w-xs"
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleAddSlot();
+      <p className="text-[10px] text-muted-foreground italic">
+        Dica: clique no <Plus className="inline h-3 w-3" /> no cabeçalho de cada
+        dia para adicionar um slot novo (ex: 20h00, Stories, Live) — ou clique
+        numa célula vazia para planejar conteúdo num slot existente.
+      </p>
+
+      {/* Modal: adicionar slot a um dia especifico */}
+      {addingSlotForDate && (
+        <Dialog
+          open
+          onOpenChange={(o) => {
+            if (!o) {
+              setAddingSlotForDate(null);
+              setNewSlotInput("");
+            }
           }}
-        />
-        <Button variant="outline" size="sm" onClick={handleAddSlot}>
-          <Plus className="h-3.5 w-3.5" /> Adicionar linha
-        </Button>
-      </div>
+        >
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>
+                Adicionar slot · {formatDM(addingSlotForDate)}
+              </DialogTitle>
+              <DialogDescription>
+                Crie um novo horário/categoria para planejar conteúdo neste dia.
+                O slot aparece em todos os dias da tabela (mantendo a estrutura
+                semanal consistente).
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label className="text-xs">Nome do slot</Label>
+              <Input
+                value={newSlotInput}
+                onChange={(e) => setNewSlotInput(e.target.value)}
+                placeholder="Ex: 20h00, Stories, Live, Extra"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleAddSlotToDay(addingSlotForDate, newSlotInput);
+                  }
+                }}
+              />
+              <div className="flex gap-1 flex-wrap mt-2">
+                {["06h00", "08h00", "10h00", "12h00", "14h00", "16h00", "18h00", "20h00", "22h00", "Stories", "Live"].map(
+                  (preset) => (
+                    <button
+                      key={preset}
+                      onClick={() => setNewSlotInput(preset)}
+                      className="text-[10px] rounded-full border border-border/60 px-2 py-0.5 hover:border-primary/40 hover:bg-card transition"
+                    >
+                      {preset}
+                    </button>
+                  ),
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setAddingSlotForDate(null);
+                  setNewSlotInput("");
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="gradient"
+                onClick={() => handleAddSlotToDay(addingSlotForDate, newSlotInput)}
+                disabled={!newSlotInput.trim()}
+              >
+                Adicionar e planejar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* modal de edição */}
       {editing && (
