@@ -42,8 +42,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 60 * 1000,
+            // Cache agressivo + sem refetch automático pra reduzir carga
+            staleTime: 5 * 60 * 1000, // 5 min
+            gcTime: 10 * 60 * 1000, // 10 min
             refetchOnWindowFocus: false,
+            refetchOnReconnect: false,
+            refetchOnMount: false,
+            retry: 1,
+            retryDelay: 1000,
+          },
+          mutations: {
+            retry: 0,
           },
         },
       }),
@@ -70,12 +79,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
         });
 
         if (!res.ok) {
-          // 401 = não logado ainda → usar mock
-          // 400 = usuário não tem perfil/workspace → usar mock
-          console.warn("[bootstrap] Falhou com status", res.status, "— usando mock como fallback");
+          // Em modo real (Supabase ligado), NÃO contaminar com mocks —
+          // mocks têm IDs string ("ws_nexus") que não existem no banco e
+          // travam todas as queries. Apenas registra erro pra dev e segue
+          // com estado vazio (UI mostra empty states).
+          console.warn("[bootstrap] Falhou com status", res.status);
           if (!cancelled) {
-            bootstrap({ workspaces: MOCK_WORKSPACES, user: CURRENT_USER });
-            setPersonas(MOCK_PERSONAS);
+            setBootstrapError(
+              res.status === 401
+                ? "Sessão expirada. Faça login novamente."
+                : "Não foi possível carregar o workspace. Recarregue a página.",
+            );
           }
           return;
         }
@@ -89,21 +103,20 @@ export function Providers({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
         setBootstrapError(null);
 
-        // Se veio workspaces vazio, mesclar com mock para não travar a UI
-        const workspaces = payload.workspaces?.length > 0 ? payload.workspaces : MOCK_WORKSPACES;
-        const personas = payload.personas?.length > 0 ? payload.personas : MOCK_PERSONAS;
-
+        // ⚠️ Em modo real, NUNCA misturar com MOCK_WORKSPACES — seus IDs
+        // são strings ("ws_nexus") que não batem com nada no banco e
+        // quebram queries downstream.
         bootstrap({
-          workspaces,
+          workspaces: payload.workspaces ?? [],
           user: payload.user ?? CURRENT_USER,
         });
-        setPersonas(personas);
+        setPersonas(payload.personas ?? []);
       } catch (error) {
         console.error("Erro ao carregar bootstrap real do Supabase:", error);
         if (cancelled) return;
-        // Em vez de mostrar erro, usa mock silenciosamente
-        bootstrap({ workspaces: MOCK_WORKSPACES, user: CURRENT_USER });
-        setPersonas(MOCK_PERSONAS);
+        setBootstrapError(
+          "Falha ao conectar com o servidor. Verifique sua conexão.",
+        );
       }
     };
 
