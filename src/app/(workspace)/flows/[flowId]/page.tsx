@@ -58,53 +58,55 @@ export default function FlowDetailPage() {
     );
   }
 
-  // Map initial nodes and edges from db or mock
-  const initialNodes: Node[] = (flow as any).nodes?.length > 0 || !isMockModeClient ? ((flow as any).nodes ?? []) : [
+  // Template default: quando o flow nao tem nodes (real ou mock), oferece um
+  // ponto de partida em vez de canvas em branco. Apenas vira o "state inicial"
+  // do canvas — so persiste no banco quando o usuario clicar em "Salvar".
+  const DEFAULT_NODES: Node[] = [
     {
       id: "1",
       type: "step",
       position: { x: 0, y: 80 },
-      data: { kind: "trigger", title: "Ideação", description: "Brainstorm com pilares", owner: "Strategy" },
+      data: { kind: "trigger", title: "Ideacao", description: "Brainstorm com pilares", owner: "Strategy" },
     },
     {
       id: "2",
       type: "step",
       position: { x: 240, y: 80 },
-      data: { kind: "action", title: "Roteiro", description: "Tiptap · checklist", owner: "Copy" },
+      data: { kind: "action", title: "Roteiro", description: "Tiptap + checklist", owner: "Copy" },
     },
     {
       id: "3",
       type: "step",
       position: { x: 480, y: 80 },
-      data: { kind: "approval", title: "Aprovação", description: "Strategist + Owner", owner: "Marina" },
+      data: { kind: "approval", title: "Aprovacao", description: "Strategist + Owner", owner: "Marina" },
     },
     {
       id: "4",
       type: "step",
       position: { x: 720, y: 80 },
-      data: { kind: "action", title: "Captação", description: "B-roll + áudio", owner: "Vídeo" },
+      data: { kind: "action", title: "Captacao", description: "B-roll + audio", owner: "Video" },
     },
     {
       id: "5",
       type: "step",
       position: { x: 480, y: 260 },
-      data: { kind: "action", title: "Edição", description: "CapCut · Premiere", owner: "Editor" },
+      data: { kind: "action", title: "Edicao", description: "CapCut / Premiere", owner: "Editor" },
     },
     {
       id: "6",
       type: "step",
       position: { x: 720, y: 260 },
-      data: { kind: "approval", title: "Aprovação final", description: "Owner", owner: "Alex" },
+      data: { kind: "approval", title: "Aprovacao final", description: "Owner", owner: "Alex" },
     },
     {
       id: "7",
       type: "step",
       position: { x: 960, y: 260 },
-      data: { kind: "action", title: "Publicação", description: "Agendamento + boost", owner: "Social" },
+      data: { kind: "action", title: "Publicacao", description: "Agendamento + boost", owner: "Social" },
     },
   ];
 
-  const initialEdges: Edge[] = (flow as any).edges?.length > 0 || !isMockModeClient ? ((flow as any).edges ?? []) : [
+  const DEFAULT_EDGES: Edge[] = [
     { id: "e1-2", source: "1", target: "2", type: "smoothstep", animated: true, style: { stroke: "#5b8cff" } },
     { id: "e2-3", source: "2", target: "3", type: "smoothstep", animated: true, style: { stroke: "#5b8cff" } },
     { id: "e3-4", source: "3", target: "4", type: "smoothstep", animated: true, style: { stroke: "#5b8cff" } },
@@ -112,6 +114,14 @@ export default function FlowDetailPage() {
     { id: "e5-6", source: "5", target: "6", type: "smoothstep", animated: true, style: { stroke: "#5b8cff" } },
     { id: "e6-7", source: "6", target: "7", type: "smoothstep", animated: true, style: { stroke: "#5b8cff" } },
   ];
+
+  const dbNodes = ((flow as any).nodes ?? []) as Node[];
+  const dbEdges = ((flow as any).edges ?? []) as Edge[];
+
+  // Se o flow do banco tem nodes salvos, usa eles. Caso contrario, mostra o
+  // template default. Isso elimina o canvas em branco que confundia o usuario.
+  const initialNodes: Node[] = dbNodes.length > 0 ? dbNodes : DEFAULT_NODES;
+  const initialEdges: Edge[] = dbNodes.length > 0 ? dbEdges : DEFAULT_EDGES;
 
   const handleSave = async (nodes: Node[], edges: Edge[]) => {
     if (!flowId) return;

@@ -237,6 +237,10 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
     .object({ id, status: taskStatus, position: z.number().optional() })
     .passthrough(),
   createContent,
+  updateContent: z
+    .object({ id, input: z.object({}).passthrough() })
+    .passthrough(),
+  deleteContent: simpleDelete,
   createLead,
   updateLead,
   createFinancial,

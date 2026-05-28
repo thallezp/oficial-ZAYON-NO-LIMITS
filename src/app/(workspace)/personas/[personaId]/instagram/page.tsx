@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PersonaHero } from "@/components/personas/persona-hero";
 import { usePersonaFromRoute } from "@/components/personas/persona-resolver";
+import { WeeklyGrid } from "@/components/content/weekly-grid";
 import { MOCK_CONTENT } from "@/data";
 import { isMockModeClient } from "@/lib/mock-mode-client";
 import { formatCompact, relativeTime } from "@/lib/utils/format";
@@ -15,9 +16,6 @@ import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useContent } from "@/hooks/use-queries";
 import { useQuickCreate } from "@/stores/quick-create-store";
 import { useRealtimeContent } from "@/hooks/use-realtime";
-
-const weekdays = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
-const slots = ["12h", "18h", "20h"];
 
 export default function InstagramPage() {
   const persona = usePersonaFromRoute();
@@ -68,50 +66,18 @@ export default function InstagramPage() {
           <Card>
             <CardHeader>
               <CardTitle>Calendário semanal</CardTitle>
-              <p className="text-xs text-muted-foreground">3 slots por dia · pilares táticos · status de produção.</p>
+              <p className="text-xs text-muted-foreground">
+                Clique em qualquer célula para planejar · adicione novos slots à direita.
+              </p>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-8 gap-1 text-[11px]">
-                <div />
-                {weekdays.map((d) => (
-                  <div
-                    key={d}
-                    className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold text-center"
-                  >
-                    {d}
-                  </div>
-                ))}
-                {slots.map((slot) => (
-                  <>
-                    <div key={slot} className="px-2 py-2 text-[10px] text-muted-foreground">
-                      {slot}
-                    </div>
-                    {weekdays.map((d, i) => {
-                      const item = items[(i + slot.length) % items.length];
-                      return (
-                        <div
-                          key={`${slot}-${d}`}
-                          className="min-h-[80px] rounded-md border border-border/50 bg-card/30 p-1.5"
-                          style={{
-                            borderColor: `${persona.accent}30`,
-                          }}
-                        >
-                          {item && (
-                            <>
-                              <Badge size="sm" variant="ghost" className="mb-1">
-                                {item.pillar}
-                              </Badge>
-                              <p className="text-[10px] leading-tight line-clamp-2">
-                                {item.title}
-                              </p>
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </>
-                ))}
-              </div>
+              <WeeklyGrid
+                items={items as any}
+                channel="instagram"
+                workspaceId={activeWorkspaceId}
+                personaId={persona.id}
+                defaultContentType="reel"
+              />
             </CardContent>
           </Card>
         </TabsContent>

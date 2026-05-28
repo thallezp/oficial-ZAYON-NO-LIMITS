@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { usePersonaStore } from "@/stores/persona-store";
+import { useQuickCreate } from "@/stores/quick-create-store";
 import { cn } from "@/lib/utils/cn";
 import { initials } from "@/lib/utils/format";
 
@@ -26,12 +27,18 @@ export function PersonaSwitcher({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const { personas, activePersonaId, setActivePersona } = usePersonaStore();
+  const openQuickCreate = useQuickCreate((s) => s.openWith);
   const active =
     personas.find((p) => p.id === activePersonaId) ?? personas[0];
 
   if (!active) {
     return (
-      <div className="h-12 rounded-xl animate-pulse bg-secondary/40" />
+      <button
+        onClick={() => openQuickCreate("persona")}
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 bg-card/40 text-xs text-muted-foreground transition hover:border-primary/60 hover:bg-card hover:text-foreground"
+      >
+        <Plus className="h-3.5 w-3.5" /> Criar primeira persona
+      </button>
     );
   }
 
@@ -109,7 +116,10 @@ export function PersonaSwitcher({ compact = false }: { compact?: boolean }) {
           );
         })}
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="text-muted-foreground">
+        <DropdownMenuItem
+          className="text-muted-foreground"
+          onClick={() => openQuickCreate("persona")}
+        >
           <Plus className="h-4 w-4" /> Nova persona
         </DropdownMenuItem>
       </DropdownMenuContent>

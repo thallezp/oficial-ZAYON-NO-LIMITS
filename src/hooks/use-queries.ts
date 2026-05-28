@@ -462,6 +462,27 @@ export function useCreateContentMutation() {
   });
 }
 
+export function useUpdateContentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: any }) =>
+      callMutate("updateContent", { id, input }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["content"] });
+    },
+  });
+}
+
+export function useDeleteContentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deleteContent", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["content"] });
+    },
+  });
+}
+
 export function useUpdateUserMetadataMutation() {
   return useMutation({
     mutationFn: (metadata: any) => callMutate("updateUserMetadata", metadata),

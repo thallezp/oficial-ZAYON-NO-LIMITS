@@ -114,8 +114,57 @@ function ProcessInner({ initialNodes, initialEdges, onSave }: Props) {
     }
   };
 
+  const handleAddStep = React.useCallback(
+    (kind: keyof typeof ICONS) => {
+      const id = `n_${Date.now()}`;
+      // posiciona novo node em grid 240px x 180px baseado no count atual
+      const existing = nodes.length;
+      const col = existing % 4;
+      const row = Math.floor(existing / 4);
+      const newNode: Node = {
+        id,
+        type: "step",
+        position: { x: col * 240, y: 80 + row * 180 },
+        data: {
+          kind,
+          title: kind === "trigger" ? "Novo gatilho" : kind === "approval" ? "Nova aprovação" : "Nova etapa",
+          description: "Clique para editar",
+          owner: "—",
+        },
+      };
+      setNodes((nds) => [...nds, newNode]);
+    },
+    [nodes, setNodes],
+  );
+
   return (
     <div className="h-[560px] rounded-xl border border-border/60 bg-card/40 overflow-hidden relative">
+      <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5">
+        <button
+          onClick={() => handleAddStep("action")}
+          className="flex items-center gap-1 rounded-lg border border-border/60 bg-card/80 px-2.5 py-1.5 text-[11px] font-medium hover:border-primary/40 hover:bg-card transition"
+        >
+          + Ação
+        </button>
+        <button
+          onClick={() => handleAddStep("trigger")}
+          className="flex items-center gap-1 rounded-lg border border-border/60 bg-card/80 px-2.5 py-1.5 text-[11px] font-medium hover:border-primary/40 hover:bg-card transition"
+        >
+          + Gatilho
+        </button>
+        <button
+          onClick={() => handleAddStep("approval")}
+          className="flex items-center gap-1 rounded-lg border border-border/60 bg-card/80 px-2.5 py-1.5 text-[11px] font-medium hover:border-primary/40 hover:bg-card transition"
+        >
+          + Aprovação
+        </button>
+        <button
+          onClick={() => handleAddStep("document")}
+          className="flex items-center gap-1 rounded-lg border border-border/60 bg-card/80 px-2.5 py-1.5 text-[11px] font-medium hover:border-primary/40 hover:bg-card transition"
+        >
+          + Documento
+        </button>
+      </div>
       {onSave && (
         <button
           onClick={handleSave}

@@ -118,6 +118,43 @@ export async function POST(req: Request) {
         break;
       }
 
+      case "updateContent": {
+        const { id, input } = payload;
+        const patch: Record<string, any> = { updated_at: new Date().toISOString() };
+        if (input.title !== undefined) patch.title = input.title;
+        if (input.hook !== undefined) patch.hook = input.hook;
+        if (input.script !== undefined) patch.script = input.script;
+        if (input.caption !== undefined) patch.caption = input.caption;
+        if (input.pillar !== undefined) patch.pillar = input.pillar;
+        if (input.channel !== undefined) patch.channel = input.channel;
+        if (input.contentType !== undefined) patch.content_type = input.contentType;
+        if (input.status !== undefined) patch.status = input.status;
+        if (input.scheduledAt !== undefined) patch.scheduled_at = input.scheduledAt;
+        if (input.publishedAt !== undefined) patch.published_at = input.publishedAt;
+        if (input.mediaUrl !== undefined) patch.media_url = input.mediaUrl;
+        if (input.metrics !== undefined) patch.metrics = input.metrics;
+        const { data, error } = await supabase
+          .from("content_items")
+          .update(patch)
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deleteContent": {
+        const { id } = payload;
+        const { error } = await supabase
+          .from("content_items")
+          .delete()
+          .eq("id", id);
+        if (error) throw error;
+        result = { id };
+        break;
+      }
+
       // ── LEADS ─────────────────────────────────────────────────────────────
       case "createLead": {
         const { data, error } = await supabase
