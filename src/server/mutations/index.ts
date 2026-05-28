@@ -14,7 +14,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import * as s from "@/drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, or, ilike } from "drizzle-orm";
 import { supabaseServer } from "@/lib/supabase/server";
 import { useMockData } from "@/lib/config";
 import {
@@ -507,6 +507,27 @@ export async function createTool(input: any) {
   }
   const user = await getAuthUser();
   if (!user) throw new Error("Não autorizado");
+
+  let categoryId: string | null = null;
+  if (input.category) {
+    const cat = await db
+      .select({ id: s.toolCategories.id })
+      .from(s.toolCategories)
+      .where(
+        and(
+          eq(s.toolCategories.workspaceId, input.workspaceId),
+          or(
+            ilike(s.toolCategories.slug, input.category),
+            ilike(s.toolCategories.name, input.category)
+          )
+        )
+      )
+      .limit(1);
+    if (cat && cat.length > 0) {
+      categoryId = cat[0].id;
+    }
+  }
+
   const [newTool] = await db
     .insert(s.tools)
     .values({
@@ -516,8 +537,8 @@ export async function createTool(input: any) {
       description: input.description || null,
       url: input.url,
       iconSlug: input.iconSlug || null,
-      brandColor: input.brandColor || null,
-      category: input.category || "IA",
+      categoryId: categoryId,
+      createdBy: user.id,
     })
     .returning();
   revalidatePath("/tools");

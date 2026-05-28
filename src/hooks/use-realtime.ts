@@ -1,8 +1,12 @@
 "use client";
 
 import * as React from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import type {
+  RealtimeChannel,
+  RealtimePostgresChangesPayload,
+} from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import type { RealtimeChannel, RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
 type Event = "INSERT" | "UPDATE" | "DELETE" | "*";
 
@@ -15,15 +19,29 @@ interface Options<T extends Record<string, any> = Record<string, any>> {
   onPayload?: (payload: RealtimePostgresChangesPayload<T>) => void;
 }
 
-/**
- * Hook genérico de Supabase Realtime.
- *
- * Em modo mock (sem URL/key Supabase) faz no-op silencioso. Quando ligado
- * a um projeto real, abre canal e chama `onPayload` a cada INSERT/UPDATE/DELETE.
- *
- * Garanta de habilitar Realtime na tabela:
- *   alter publication supabase_realtime add table <nome>;
- */
+const realtimeQueryKeys: Record<string, string[]> = {
+  activity_logs: ["activityLogs"],
+  ai_actions: ["aiActions"],
+  calendar_events: ["calendarEvents"],
+  content_items: ["content"],
+  documents: ["documents", "document"],
+  financial_transactions: ["finance", "bills"],
+  flow_edges: ["flows", "flow"],
+  flow_nodes: ["flows", "flow"],
+  flows: ["flows", "flow"],
+  funnel_edges: ["funnel"],
+  funnel_nodes: ["funnel"],
+  leads: ["leads"],
+  materials: ["materials"],
+  notifications: ["notifications"],
+  personas: ["personas", "persona"],
+  projects: ["projects"],
+  sales_funnels: ["funnel"],
+  task_comments: ["taskComments"],
+  tasks: ["tasks", "taskSubtasks"],
+  tools: ["tools"],
+};
+
 export function useRealtime<T extends Record<string, any> = Record<string, any>>({
   table,
   event = "*",
@@ -32,39 +50,41 @@ export function useRealtime<T extends Record<string, any> = Record<string, any>>
   enabled = true,
   onPayload,
 }: Options<T>) {
+  const queryClient = useQueryClient();
+
   React.useEffect(() => {
     if (!enabled) return;
-    if (
-      typeof window === "undefined" ||
-      !process.env.NEXT_PUBLIC_SUPABASE_URL
-    ) {
+    if (typeof window === "undefined" || !process.env.NEXT_PUBLIC_SUPABASE_URL) {
       return;
     }
 
     const supabase = supabaseBrowser();
+    const channelName = `zayon-rt-${table}-${filter ?? "all"}`;
     const channel: RealtimeChannel = supabase
-      .channel(`zayon-rt-${table}-${filter ?? "all"}`)
+      .channel(channelName)
       .on(
         "postgres_changes" as any,
         { event, schema, table, filter } as any,
         (payload: RealtimePostgresChangesPayload<T>) => {
+          queryClient.invalidateQueries({ queryKey: [table] });
+          realtimeQueryKeys[table]?.forEach((queryKey) => {
+            queryClient.invalidateQueries({ queryKey: [queryKey] });
+          });
           onPayload?.(payload);
         },
       )
       .subscribe();
 
     return () => {
-      try {
-        supabase.removeChannel(channel);
-      } catch {
-        /* ignored */
-      }
+      supabase.removeChannel(channel);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [table, event, schema, filter, enabled]);
+  }, [enabled, event, filter, onPayload, queryClient, schema, table]);
 }
 
-// Helpers tipados ---------------------------------------------------------
+function scopeFilter(workspaceId?: string, personaId?: string) {
+  if (!workspaceId) return undefined;
+  return personaId ? `persona_id=eq.${personaId}` : `workspace_id=eq.${workspaceId}`;
+}
 
 export function useRealtimeTasks(
   workspaceId: string | undefined,
@@ -83,14 +103,9 @@ export function useRealtimeLeads(
   personaId?: string,
   onChange?: (payload: RealtimePostgresChangesPayload<any>) => void,
 ) {
-  const filter = workspaceId
-    ? personaId
-      ? `persona_id=eq.${personaId}`
-      : `workspace_id=eq.${workspaceId}`
-    : undefined;
   useRealtime({
     table: "leads",
-    filter,
+    filter: scopeFilter(workspaceId, personaId),
     enabled: !!workspaceId,
     onPayload: onChange,
   });
@@ -101,14 +116,9 @@ export function useRealtimeContent(
   personaId?: string,
   onChange?: (payload: RealtimePostgresChangesPayload<any>) => void,
 ) {
-  const filter = workspaceId
-    ? personaId
-      ? `persona_id=eq.${personaId}`
-      : `workspace_id=eq.${workspaceId}`
-    : undefined;
   useRealtime({
     table: "content_items",
-    filter,
+    filter: scopeFilter(workspaceId, personaId),
     enabled: !!workspaceId,
     onPayload: onChange,
   });
@@ -145,6 +155,69 @@ export function useRealtimeActivity(
   useRealtime({
     table: "activity_logs",
     event: "INSERT",
+    filter: workspaceId ? `workspace_id=eq.${workspaceId}` : undefined,
+    enabled: !!workspaceId,
+    onPayload: onChange,
+  });
+}
+
+export function useRealtimeCalendar(
+  workspaceId: string | undefined,
+  personaId?: string,
+  onChange?: (payload: RealtimePostgresChangesPayload<any>) => void,
+) {
+  useRealtime({
+    table: "calendar_events",
+    filter: scopeFilter(workspaceId, personaId),
+    enabled: !!workspaceId,
+    onPayload: onChange,
+  });
+}
+
+export function useRealtimeDocuments(
+  workspaceId: string | undefined,
+  personaId?: string,
+  onChange?: (payload: RealtimePostgresChangesPayload<any>) => void,
+) {
+  useRealtime({
+    table: "documents",
+    filter: scopeFilter(workspaceId, personaId),
+    enabled: !!workspaceId,
+    onPayload: onChange,
+  });
+}
+
+export function useRealtimeMaterials(
+  workspaceId: string | undefined,
+  personaId?: string,
+  onChange?: (payload: RealtimePostgresChangesPayload<any>) => void,
+) {
+  useRealtime({
+    table: "materials",
+    filter: scopeFilter(workspaceId, personaId),
+    enabled: !!workspaceId,
+    onPayload: onChange,
+  });
+}
+
+export function useRealtimeFlows(
+  workspaceId: string | undefined,
+  onChange?: (payload: RealtimePostgresChangesPayload<any>) => void,
+) {
+  useRealtime({
+    table: "flows",
+    filter: workspaceId ? `workspace_id=eq.${workspaceId}` : undefined,
+    enabled: !!workspaceId,
+    onPayload: onChange,
+  });
+}
+
+export function useRealtimeTools(
+  workspaceId: string | undefined,
+  onChange?: (payload: RealtimePostgresChangesPayload<any>) => void,
+) {
+  useRealtime({
+    table: "tools",
     filter: workspaceId ? `workspace_id=eq.${workspaceId}` : undefined,
     enabled: !!workspaceId,
     onPayload: onChange,

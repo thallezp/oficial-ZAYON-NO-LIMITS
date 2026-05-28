@@ -14,6 +14,7 @@ export async function GET() {
   } = await supabase.auth.getSession();
 
   const authUser = session?.user;
+  console.log("[bootstrap] session user:", authUser ? { id: authUser.id, email: authUser.email } : "null");
   if (!authUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -31,10 +32,16 @@ export async function GET() {
       .eq("user_id", authUser.id),
   ]);
 
+  console.log("[bootstrap] user query error:", userRes.error);
+  console.log("[bootstrap] user query data:", userRes.data);
+  console.log("[bootstrap] memberships query error:", membershipRes.error);
+  console.log("[bootstrap] memberships query data:", membershipRes.data);
+
   let user = userRes.data;
 
   // Cria perfil se não existir
   if (!user) {
+    console.log("[bootstrap] user profile not found, creating/upserting...");
     const { data: newUser, error: createUserError } = await supabase
       .from("users")
       .upsert({
@@ -65,9 +72,11 @@ export async function GET() {
   let workspaceIds = [
     ...new Set((membershipRes.data ?? []).map((m) => m.workspace_id)),
   ];
+  console.log("[bootstrap] workspaceIds found:", workspaceIds);
 
   // Auto-cria workspace se não existir nenhum
   if (workspaceIds.length === 0) {
+    console.log("[bootstrap] No workspaces for user, inserting automatic workspace...");
     const { data: newWorkspace, error: wsError } = await supabase
       .from("workspaces")
       .insert({
@@ -79,11 +88,17 @@ export async function GET() {
       .single();
 
     if (!wsError && newWorkspace) {
-      await supabase.from("workspace_members").insert({
+      console.log("[bootstrap] workspace auto-created:", newWorkspace.id);
+      const { error: memberError } = await supabase.from("workspace_members").insert({
         workspace_id: newWorkspace.id,
         user_id: authUser.id,
         role: "admin",
       });
+      if (memberError) {
+        console.error("[bootstrap] Failed to create membership for auto-created workspace:", memberError);
+      } else {
+        console.log("[bootstrap] membership auto-created for workspace:", newWorkspace.id);
+      }
       workspaceIds = [newWorkspace.id];
     } else {
       console.warn("[bootstrap] Não foi possível criar workspace automático:", wsError);
@@ -103,6 +118,7 @@ export async function GET() {
   }
 
   // Fase 2: workspaces + personas em paralelo.
+  console.log("[bootstrap] Querying workspaces + personas in parallel for workspaceIds:", workspaceIds);
   const [workspacesRes, personasRes] = await Promise.all([
     supabase
       .from("workspaces")
@@ -113,11 +129,16 @@ export async function GET() {
       .select(
         `id, workspace_id, name, codename, status, niche, big_idea, bio_short,
          objective, voice_tone, archetype, personality, visual_style, dress_style,
-         forbidden_words, preferred_words, guidelines, reference_links`,
+         forbidden_words, preferred_words, guidelines, reference_links`
       )
       .in("workspace_id", workspaceIds)
       .order("name"),
   ]);
+
+  console.log("[bootstrap] workspaces query error:", workspacesRes.error);
+  console.log("[bootstrap] workspaces query data:", workspacesRes.data);
+  console.log("[bootstrap] personas query error:", personasRes.error);
+  console.log("[bootstrap] personas query data:", personasRes.data);
 
   if (workspacesRes.error) {
     return NextResponse.json({ error: workspacesRes.error.message }, { status: 400 });

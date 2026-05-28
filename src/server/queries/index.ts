@@ -30,6 +30,7 @@ import {
 } from "@/data";
 import { useMockData } from "@/lib/config";
 import { db } from "@/lib/db";
+import { supabaseServer } from "@/lib/supabase/server";
 import { eq, and } from "drizzle-orm";
 import * as s from "@/drizzle/schema";
 
@@ -46,6 +47,27 @@ function matchScope<T extends ScopeFilter>(items: T[], filter?: ScopeFilter) {
   );
 }
 
+function mapProject(row: any, taskCount?: { total: number; done: number }) {
+  const total = taskCount?.total ?? 0;
+  const done = taskCount?.done ?? 0;
+  return {
+    id: row.id,
+    workspaceId: row.workspace_id,
+    personaId: row.persona_id ?? undefined,
+    name: row.name,
+    description: row.description ?? undefined,
+    color: row.color ?? "#3b82f6",
+    icon: row.icon ?? "Folder",
+    status: row.status ?? "active",
+    ownerId: row.owner_id ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    members: [],
+    taskCount: { total, done },
+    progress: total > 0 ? Math.round((done / total) * 100) : 0,
+  };
+}
+
 export const queries = {
   tasks: {
     list: async (filter?: ScopeFilter) => {
@@ -59,10 +81,36 @@ export const queries = {
   projects: {
     list: async (filter?: ScopeFilter) => {
       if (useMockData) return matchScope(MOCK_PROJECTS, filter);
-      const conditions = [];
-      if (filter?.workspaceId) conditions.push(eq(s.projects.workspaceId, filter.workspaceId));
-      if (filter?.personaId) conditions.push(eq(s.projects.personaId, filter.personaId));
-      return db.select().from(s.projects).where(conditions.length > 0 ? and(...conditions) : undefined);
+      const supabase = supabaseServer();
+      let query = supabase
+        .from("projects")
+        .select("id, workspace_id, persona_id, name, description, color, icon, status, owner_id, created_at, updated_at")
+        .order("created_at", { ascending: false });
+
+      if (filter?.workspaceId) query = query.eq("workspace_id", filter.workspaceId);
+      if (filter?.personaId) query = query.eq("persona_id", filter.personaId);
+
+      const { data: projects, error } = await query;
+      if (error) throw new Error(error.message);
+
+      const projectIds = (projects ?? []).map((project) => project.id);
+      if (projectIds.length === 0) return [];
+
+      const { data: tasks } = await supabase
+        .from("tasks")
+        .select("project_id, status")
+        .in("project_id", projectIds);
+
+      const counts = new Map<string, { total: number; done: number }>();
+      (tasks ?? []).forEach((task) => {
+        if (!task.project_id) return;
+        const current = counts.get(task.project_id) ?? { total: 0, done: 0 };
+        current.total += 1;
+        if (task.status === "done") current.done += 1;
+        counts.set(task.project_id, current);
+      });
+
+      return (projects ?? []).map((project) => mapProject(project, counts.get(project.id)));
     },
   },
   content: {
@@ -284,7 +332,7 @@ export const queries = {
         .orderBy(s.activityLogs.createdAt);
       return rows.map((r: any) => ({
         ...r,
-        actor: r.actor.fullName ? r.actor : null,
+        actor: r.actor?.fullName ? r.actor : null,
       }));
     },
   },
@@ -300,5 +348,47 @@ export const queries = {
         .orderBy(s.aiActions.createdAt);
     },
   },
+  calendar: {
+    list: async (filter?: ScopeFilter) => {
+      if (useMockData) return [];
+      const conditions = [];
+      if (filter?.workspaceId) conditions.push(eq(s.calendarEvents.workspaceId, filter.workspaceId));
+      if (filter?.personaId) conditions.push(eq(s.calendarEvents.personaId, filter.personaId));
+      return db
+        .select()
+        .from(s.calendarEvents)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(s.calendarEvents.startAt);
+    },
+  },
+  taskExtensions: {
+    comments: async (taskId: string) => {
+      if (useMockData) return [];
+      const rows = await db
+        .select({
+          id: s.taskComments.id,
+          taskId: s.taskComments.taskId,
+          authorId: s.taskComments.authorId,
+          body: s.taskComments.body,
+          createdAt: s.taskComments.createdAt,
+          author: {
+            fullName: s.users.fullName,
+            avatarUrl: s.users.avatarUrl,
+          },
+        })
+        .from(s.taskComments)
+        .leftJoin(s.users, eq(s.taskComments.authorId, s.users.id))
+        .where(eq(s.taskComments.taskId, taskId))
+        .orderBy(s.taskComments.createdAt);
+      return rows;
+    },
+    subtasks: async (taskId: string) => {
+      if (useMockData) return [];
+      return db
+        .select()
+        .from(s.tasks)
+        .where(eq(s.tasks.parentTaskId, taskId))
+        .orderBy(s.tasks.createdAt);
+    },
+  },
 };
-
