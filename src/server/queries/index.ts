@@ -305,6 +305,18 @@ export const queries = {
       return db.select().from(s.folders).where(conditions.length > 0 ? and(...conditions) : undefined);
     },
   },
+  contentHooks: {
+    list: async (filter?: ScopeFilter) => {
+      if (useMockData) return [] as any[];
+      const conditions = [];
+      if (filter?.workspaceId) conditions.push(eq(s.contentHooks.workspaceId, filter.workspaceId));
+      if (filter?.personaId) conditions.push(eq(s.contentHooks.personaId, filter.personaId));
+      return db
+        .select()
+        .from(s.contentHooks)
+        .where(conditions.length > 0 ? and(...conditions) : undefined);
+    },
+  },
   tools: {
     list: async (workspaceId?: string) => {
       if (useMockData)

@@ -933,6 +933,57 @@ export async function POST(req: Request) {
         break;
       }
 
+      case "createHook": {
+        const { data, error } = await supabase
+          .from("content_hooks")
+          .insert({
+            workspace_id: payload.workspaceId,
+            persona_id: payload.personaId || null,
+            text: payload.text,
+            category: payload.category || "custom",
+            tag: payload.tag || null,
+            notes: payload.notes || null,
+            created_by: user.id,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "updateHook": {
+        const { id, input } = payload;
+        const patch: Record<string, any> = { updated_at: new Date().toISOString() };
+        if (input.text !== undefined) patch.text = input.text;
+        if (input.category !== undefined) patch.category = input.category;
+        if (input.tag !== undefined) patch.tag = input.tag;
+        if (input.notes !== undefined) patch.notes = input.notes;
+        if (input.performanceScore !== undefined)
+          patch.performance_score = input.performanceScore;
+        if (input.tested !== undefined) patch.tested = input.tested;
+        const { data, error } = await supabase
+          .from("content_hooks")
+          .update(patch)
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deleteHook": {
+        const { id } = payload;
+        const { error } = await supabase
+          .from("content_hooks")
+          .delete()
+          .eq("id", id);
+        if (error) throw error;
+        result = { id };
+        break;
+      }
+
       case "markNotificationRead": {
         const { id } = payload;
         const { data, error } = await supabase

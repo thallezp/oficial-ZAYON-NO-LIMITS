@@ -421,7 +421,7 @@ export default function DashboardPage() {
               <div>
                 <CardTitle>Receita acumulada · 30 dias</CardTitle>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Consolidado de todas as personas. Pico em 18/05 com lançamento Aurora.
+                  Consolidado de todas as personas. Calculado de financial_transactions.
                 </p>
               </div>
               <Badge variant={revenueDelta >= 0 ? "success" : "danger"} size="sm">

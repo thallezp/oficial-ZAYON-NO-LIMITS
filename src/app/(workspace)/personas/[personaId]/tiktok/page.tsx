@@ -30,18 +30,33 @@ import { MOCK_CONTENT } from "@/data";
 import { isMockModeClient } from "@/lib/mock-mode-client";
 import { formatCompact, relativeTime } from "@/lib/utils/format";
 import { useWorkspaceStore } from "@/stores/workspace-store";
-import { useContent } from "@/hooks/use-queries";
+import {
+  useContent,
+  useContentHooks,
+  useCreateHookMutation,
+  useDeleteHookMutation,
+  useUpdateHookMutation,
+} from "@/hooks/use-queries";
 import { useQuickCreate } from "@/stores/quick-create-store";
 import { useRealtimeContent } from "@/hooks/use-realtime";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 
-// Predefined hook library suggestions
-const DEFAULT_HOOKS = [
-  { id: "hook-1", text: "O segredo do algoritmo do TikTok revelado em 3 passos...", category: "educational", tag: "Algoritmo" },
-  { id: "hook-2", text: "Pare de fazer isso agora se você quer vender na internet...", category: "objection", tag: "Vendas" },
-  { id: "hook-3", text: "Como consegui faturar R$ 10k em 15 dias sem equipe...", category: "authority", tag: "Ganhos" },
-  { id: "hook-4", text: "O maior erro dos criadores de conteúdo iniciantes...", category: "pain", tag: "Erros" },
+const HOOK_CATEGORIES = [
+  { id: "educational", label: "Educacional" },
+  { id: "objection", label: "Quebra de objeção" },
+  { id: "authority", label: "Autoridade" },
+  { id: "pain", label: "Dor / Problema" },
+  { id: "curiosity", label: "Curiosidade" },
+  { id: "contrast", label: "Contraste" },
+  { id: "custom", label: "Personalizado" },
+];
+
+const SUGGESTED_HOOKS = [
+  { text: "O segredo do algoritmo do TikTok revelado em 3 passos...", category: "educational", tag: "Algoritmo" },
+  { text: "Pare de fazer isso agora se você quer vender na internet...", category: "objection", tag: "Vendas" },
+  { text: "Como consegui faturar R$ 10k em 15 dias sem equipe...", category: "authority", tag: "Ganhos" },
+  { text: "O maior erro dos criadores de conteúdo iniciantes...", category: "pain", tag: "Erros" },
 ];
 
 export default function TikTokPage() {
@@ -52,9 +67,16 @@ export default function TikTokPage() {
 
   useRealtimeContent(activeWorkspaceId ?? undefined, persona.id);
 
-  const [hooks, setHooks] = React.useState(DEFAULT_HOOKS);
+  // Banco de hooks persistido em content_hooks (Supabase)
+  const { data: dbHooks = [] } = useContentHooks(activeWorkspaceId, persona.id);
+  const createHook = useCreateHookMutation();
+  const updateHook = useUpdateHookMutation();
+  const deleteHook = useDeleteHookMutation();
   const [newHookText, setNewHookText] = React.useState("");
+  const [newHookCategory, setNewHookCategory] = React.useState("custom");
+  const [newHookTag, setNewHookTag] = React.useState("");
   const [activeTab, setActiveTab] = React.useState("weekly");
+  const [hookFilter, setHookFilter] = React.useState<string>("all");
 
   const allContent =
     isMockModeClient && dbContent.length === 0
@@ -100,20 +122,70 @@ export default function TikTokPage() {
     toast.success("Hook copiado para a área de transferência!");
   };
 
-  const handleAddHook = () => {
-    if (!newHookText.trim()) return;
-    setHooks([
-      ...hooks,
-      {
-        id: `hook-${Date.now()}`,
+  const handleAddHook = async () => {
+    if (!newHookText.trim() || !activeWorkspaceId) return;
+    try {
+      await createHook.mutateAsync({
+        workspaceId: activeWorkspaceId,
+        personaId: persona.id,
         text: newHookText.trim(),
-        category: "custom",
-        tag: "Personalizado",
-      },
-    ]);
-    setNewHookText("");
-    toast.success("Novo hook adicionado ao seu banco!");
+        category: newHookCategory,
+        tag: newHookTag.trim() || null,
+      });
+      setNewHookText("");
+      setNewHookTag("");
+      setNewHookCategory("custom");
+      toast.success("Hook salvo no banco!");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao salvar hook");
+    }
   };
+
+  const handleSeedSuggestions = async () => {
+    if (!activeWorkspaceId) return;
+    try {
+      for (const sug of SUGGESTED_HOOKS) {
+        await createHook.mutateAsync({
+          workspaceId: activeWorkspaceId,
+          personaId: persona.id,
+          text: sug.text,
+          category: sug.category,
+          tag: sug.tag,
+        });
+      }
+      toast.success("4 hooks sugeridos adicionados");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao adicionar sugestões");
+    }
+  };
+
+  const handleDeleteHook = async (id: string) => {
+    try {
+      await deleteHook.mutateAsync(id);
+      toast.success("Hook removido");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao remover");
+    }
+  };
+
+  const handleMarkTested = async (hook: any) => {
+    try {
+      const current = hook.tested ?? { count: 0 };
+      await updateHook.mutateAsync({
+        id: hook.id,
+        input: {
+          tested: { ...current, count: (current.count ?? 0) + 1, lastUsedAt: new Date().toISOString() },
+        },
+      });
+      toast.success("Marcado como usado em conteúdo");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro");
+    }
+  };
+
+  const filteredHooks = (dbHooks as any[]).filter(
+    (h) => hookFilter === "all" || h.category === hookFilter,
+  );
 
   return (
     <div className="space-y-6">
@@ -320,22 +392,102 @@ export default function TikTokPage() {
           {activeTab === "hooks" && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card className="md:col-span-2">
-                <CardHeader>
-                  <CardTitle>Biblioteca de Hooks (Atrativos)</CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    Gatilhos de atenção validados para aumentar a taxa de retenção nos primeiros 3 segundos.
-                  </p>
+                <CardHeader className="flex-row items-start justify-between">
+                  <div>
+                    <CardTitle>Banco de Hooks</CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      {dbHooks.length} hook{dbHooks.length === 1 ? "" : "s"} salvos no
+                      Supabase — persistem em todos os dispositivos.
+                    </p>
+                  </div>
+                  {dbHooks.length === 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSeedSuggestions}
+                      disabled={createHook.isPending}
+                    >
+                      <Sparkles className="h-3 w-3" /> Adicionar sugestões
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {hooks.map((h) => (
-                    <div key={h.id} className="flex items-start justify-between gap-4 p-3 rounded-lg bg-card-elevated border border-border/60">
-                      <div className="space-y-1">
+                  {/* filtro por categoria */}
+                  <div className="flex gap-1 flex-wrap">
+                    <Badge
+                      variant={hookFilter === "all" ? "primary" : "outline"}
+                      className="cursor-pointer"
+                      onClick={() => setHookFilter("all")}
+                    >
+                      Todas
+                    </Badge>
+                    {HOOK_CATEGORIES.map((c) => (
+                      <Badge
+                        key={c.id}
+                        variant={hookFilter === c.id ? "primary" : "outline"}
+                        className="cursor-pointer"
+                        onClick={() => setHookFilter(c.id)}
+                      >
+                        {c.label}
+                      </Badge>
+                    ))}
+                  </div>
+
+                  {filteredHooks.length === 0 && (
+                    <div className="rounded-lg border border-dashed border-border/60 bg-card/30 px-4 py-8 text-center text-xs text-muted-foreground">
+                      Nenhum hook nesta categoria ainda. Crie ao lado →
+                    </div>
+                  )}
+
+                  {filteredHooks.map((h: any) => (
+                    <div
+                      key={h.id}
+                      className="flex items-start justify-between gap-4 p-3 rounded-lg bg-card-elevated border border-border/60"
+                    >
+                      <div className="space-y-1 flex-1 min-w-0">
                         <p className="text-sm italic">"{h.text}"</p>
-                        <Badge variant="ghost" size="sm">#{h.tag}</Badge>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <Badge variant="ghost" size="sm">
+                            {HOOK_CATEGORIES.find((c) => c.id === h.category)
+                              ?.label ?? h.category}
+                          </Badge>
+                          {h.tag && (
+                            <Badge variant="outline" size="sm">
+                              #{h.tag}
+                            </Badge>
+                          )}
+                          {h.tested?.count > 0 && (
+                            <Badge variant="success" size="sm">
+                              usado {h.tested.count}x
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                      <Button variant="outline" size="sm" onClick={() => handleCopyHook(h.text)}>
-                        Copiar
-                      </Button>
+                      <div className="flex flex-col gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCopyHook(h.text)}
+                        >
+                          Copiar
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleMarkTested(h)}
+                          className="text-[10px]"
+                        >
+                          + 1 uso
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteHook(h.id)}
+                          className="text-destructive text-[10px]"
+                        >
+                          Remover
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </CardContent>
@@ -344,9 +496,11 @@ export default function TikTokPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Cadastrar Novo Hook</CardTitle>
-                  <p className="text-xs text-muted-foreground">Registre novos gatilhos para usar nos seus roteiros.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Salva direto no banco com workspace + persona.
+                  </p>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs">Texto do Gatilho</Label>
                     <textarea
@@ -357,8 +511,37 @@ export default function TikTokPage() {
                       className="w-full rounded-md border border-border/60 bg-background px-3 py-1.5 text-xs text-foreground outline-none focus:border-primary"
                     />
                   </div>
-                  <Button variant="gradient" className="w-full" onClick={handleAddHook} disabled={!newHookText.trim()}>
-                    Adicionar ao Banco
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Categoria</Label>
+                    <select
+                      value={newHookCategory}
+                      onChange={(e) => setNewHookCategory(e.target.value)}
+                      className="w-full h-9 rounded-md border border-border/60 bg-background px-2 text-xs outline-none focus:border-primary"
+                    >
+                      {HOOK_CATEGORIES.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Tag (opcional)</Label>
+                    <input
+                      type="text"
+                      value={newHookTag}
+                      onChange={(e) => setNewHookTag(e.target.value)}
+                      placeholder="Ex: Vendas, Curiosidade"
+                      className="w-full h-9 rounded-md border border-border/60 bg-background px-3 text-xs outline-none focus:border-primary"
+                    />
+                  </div>
+                  <Button
+                    variant="gradient"
+                    className="w-full"
+                    onClick={handleAddHook}
+                    disabled={!newHookText.trim() || createHook.isPending}
+                  >
+                    {createHook.isPending ? "Salvando..." : "Salvar no Banco"}
                   </Button>
                 </CardContent>
               </Card>

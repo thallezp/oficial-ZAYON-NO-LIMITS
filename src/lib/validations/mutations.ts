@@ -308,6 +308,20 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
     .passthrough(),
   deleteFolder: simpleDelete,
   inviteMember,
+  createHook: z
+    .object({
+      workspaceId: id,
+      personaId: optionalId,
+      text: z.string().min(3, "Hook precisa de pelo menos 3 caracteres"),
+      category: z.string().optional(),
+      tag: z.string().optional().nullable(),
+      notes: z.string().optional().nullable(),
+    })
+    .passthrough(),
+  updateHook: z
+    .object({ id, input: z.object({}).passthrough() })
+    .passthrough(),
+  deleteHook: simpleDelete,
   markNotificationRead: simpleDelete,
   markAllNotificationsRead: z.object({}).passthrough(),
   archiveNotification: simpleDelete,

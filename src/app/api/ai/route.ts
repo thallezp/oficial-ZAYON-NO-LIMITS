@@ -128,7 +128,13 @@ Contexto Operacional:
 
 Instruções:
 - Seja extremamente conciso, profissional, objetivo e focado na produtividade.
-- Você tem acesso a ferramentas de banco reais para criar tarefas, documentos, planejar posts, registrar leads, finanças e compromissos. Use-as sempre que o usuário pedir para criar, agendar ou registrar algo.
+- Você tem acesso a ferramentas de banco reais. Use-as sempre que o usuário pedir para criar, agendar, registrar ou qualificar algo:
+  * createTask, createDocument, createContent, createLead, createFinancial, createCalendarEvent
+  * createHook (salva ganchos no Banco de Hooks da persona ativa)
+  * qualifyLead (atualiza score 0-100 + status + rationale de um lead existente)
+  * addActivityInsight (registra insight estratégico no audit log)
+- Toda execução é persistida em ai_actions + ai_tool_calls + activity_logs.
+- Para qualifyLead, peça o ID do lead se não estiver no contexto.
 - Escreva em português.`;
 
   try {
@@ -311,6 +317,96 @@ Instruções:
                 .returning();
               return log;
             });
+          },
+        } as any,
+        createHook: {
+          description:
+            "Salva um novo hook/gancho no banco de hooks da persona ativa (usado em roteiros de TikTok/Reels)",
+          inputSchema: zs(
+            z.object({
+              text: z.string().describe("Texto do hook"),
+              category: z
+                .enum([
+                  "educational",
+                  "objection",
+                  "authority",
+                  "pain",
+                  "curiosity",
+                  "contrast",
+                  "custom",
+                ])
+                .optional()
+                .default("custom")
+                .describe("Categoria do hook"),
+              tag: z.string().optional().describe("Tag livre (ex: Vendas, Algoritmo)"),
+              notes: z.string().optional().describe("Notas sobre o gatilho"),
+            }),
+          ),
+          execute: async (args: any) => {
+            return executeWithLogging(wsId, persId, "createHook", args, async () => {
+              const [hook] = await db
+                .insert(s.contentHooks)
+                .values({
+                  workspaceId: wsId,
+                  personaId: persId || null,
+                  text: args.text,
+                  category: args.category ?? "custom",
+                  tag: args.tag || null,
+                  notes: args.notes || null,
+                })
+                .returning();
+              return hook;
+            });
+          },
+        } as any,
+        qualifyLead: {
+          description:
+            "Qualifica um lead: atualiza o score (0-100) com base em critérios e adiciona uma nota com o raciocínio",
+          inputSchema: zs(
+            z.object({
+              leadId: z.string().describe("UUID do lead a qualificar"),
+              score: z
+                .number()
+                .min(0)
+                .max(100)
+                .describe("Score de qualificação 0-100"),
+              rationale: z
+                .string()
+                .describe("Justificativa curta da pontuação"),
+              status: z
+                .enum([
+                  "open",
+                  "approached",
+                  "qualified",
+                  "converted",
+                  "lost",
+                  "no_response",
+                ])
+                .optional()
+                .describe("Atualizar status do lead"),
+            }),
+          ),
+          execute: async (args: any) => {
+            return executeWithLogging(
+              wsId,
+              persId,
+              "qualifyLead",
+              args,
+              async () => {
+                const patch: any = {
+                  score: args.score,
+                  notes: args.rationale,
+                  updatedAt: new Date(),
+                };
+                if (args.status) patch.status = args.status;
+                const [updated] = await db
+                  .update(s.leads)
+                  .set(patch)
+                  .where(eq(s.leads.id, args.leadId))
+                  .returning();
+                return updated;
+              },
+            );
           },
         } as any,
       },

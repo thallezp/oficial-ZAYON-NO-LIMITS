@@ -198,6 +198,59 @@ export function useTeam(workspaceId?: string | null) {
   });
 }
 
+export function useContentHooks(
+  workspaceId?: string | null,
+  personaId?: string | null,
+) {
+  return useQuery({
+    queryKey: ["contentHooks", workspaceId, personaId],
+    queryFn: () =>
+      qa.getContentHooksAction({
+        workspaceId: workspaceId ?? undefined,
+        personaId: personaId ?? undefined,
+      }),
+    enabled: !!workspaceId,
+  });
+}
+
+export function useCreateHookMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      workspaceId: string;
+      personaId?: string | null;
+      text: string;
+      category?: string;
+      tag?: string | null;
+      notes?: string | null;
+    }) => callMutate("createHook", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contentHooks"] });
+    },
+  });
+}
+
+export function useUpdateHookMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: any }) =>
+      callMutate("updateHook", { id, input }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contentHooks"] });
+    },
+  });
+}
+
+export function useDeleteHookMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deleteHook", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contentHooks"] });
+    },
+  });
+}
+
 export function useNotifications(userId?: string | null) {
   return useQuery({
     queryKey: ["notifications", userId],

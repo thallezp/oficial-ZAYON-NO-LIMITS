@@ -90,6 +90,11 @@ export async function getFoldersAction(filter?: ScopeFilter) {
   return queries.folders.list(filter);
 }
 
+export async function getContentHooksAction(filter?: ScopeFilter) {
+  await assertScope(filter);
+  return queries.contentHooks.list(filter);
+}
+
 export async function getToolsAction(workspaceId?: string) {
   await assertWorkspaceMember(workspaceId);
   return queries.tools.list(workspaceId);

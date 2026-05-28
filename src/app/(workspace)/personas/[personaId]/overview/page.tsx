@@ -442,7 +442,7 @@ export default function PersonaOverviewPage() {
           <CardHeader>
             <CardTitle>Pilares de conteúdo</CardTitle>
             <p className="text-xs text-muted-foreground mt-1">
-              Distribuição da semana
+              Distribuição real dos content_items publicados.
             </p>
           </CardHeader>
           <CardContent>

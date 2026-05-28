@@ -139,6 +139,35 @@ export const contentComments = pgTable("content_comments", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// ============================================================================
+// Banco de Hooks (atrativos/ganchos reutilizaveis para roteiros TikTok/Reels)
+// ============================================================================
+export const contentHooks = pgTable(
+  "content_hooks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }).notNull(),
+    personaId: uuid("persona_id").references(() => personas.id, { onDelete: "cascade" }),
+    text: text("text").notNull(),
+    // ex: educational, objection, authority, pain, curiosity, contrast, custom
+    category: text("category").default("custom"),
+    tag: text("tag"),
+    // marca se ja foi testado em conteudo real
+    tested: jsonb("tested"), // { count, lastUsedAt, contentItemIds }
+    // performance dos vídeos que usaram esse hook (auto-calculado)
+    performanceScore: integer("performance_score"),
+    notes: text("notes"),
+    createdBy: uuid("created_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    workspaceIdx: index("content_hooks_workspace_idx").on(table.workspaceId),
+    personaIdx: index("content_hooks_persona_idx").on(table.personaId),
+    categoryIdx: index("content_hooks_category_idx").on(table.category),
+  }),
+);
+
 export const modelingContentExamples = pgTable("modeling_content_examples", {
   id: uuid("id").primaryKey().defaultRandom(),
   profileId: uuid("profile_id").references(() => modelingProfiles.id, { onDelete: "cascade" }).notNull(),
