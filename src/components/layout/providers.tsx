@@ -68,6 +68,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // CRÍTICO: rotas públicas (login, forgot-password, invite) NÃO devem
+    // chamar /api/bootstrap. O middleware já permite acesso sem sessão e
+    // tentar bootstrap retorna 401 → redirect → loop infinito.
+    const pathname = window.location.pathname;
+    const isPublicPath =
+      pathname === "/" ||
+      pathname.startsWith("/login") ||
+      pathname.startsWith("/forgot-password") ||
+      pathname.startsWith("/invite");
+
+    if (isPublicPath) return;
+
     let cancelled = false;
 
     const fetchBootstrap = async () => {
@@ -95,10 +107,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
           if (cancelled) return;
 
           if (res.status === 401) {
-            // Sessão realmente expirou — redireciona para login em vez de
-            // mostrar um toast preso na página.
+            // Sessão realmente expirou. Só redireciona se NÃO estiver já
+            // numa rota pública (evita loop /login → /login).
+            const currentPath = window.location.pathname;
+            if (
+              currentPath.startsWith("/login") ||
+              currentPath.startsWith("/forgot-password") ||
+              currentPath.startsWith("/invite")
+            ) {
+              return;
+            }
             const next = encodeURIComponent(
-              window.location.pathname + window.location.search,
+              currentPath + window.location.search,
             );
             window.location.replace(`/login?next=${next}`);
             return;
