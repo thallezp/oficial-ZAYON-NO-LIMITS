@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "sonner";
+import { Toaster, toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { usePersonaStore } from "@/stores/persona-store";
@@ -60,7 +60,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   const bootstrap = useWorkspaceStore((s) => s.bootstrap);
   const setPersonas = usePersonaStore((s) => s.setPersonas);
-  const [bootstrapError, setBootstrapError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (isMockModeClient) {
@@ -71,26 +70,44 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
     let cancelled = false;
 
+    const fetchBootstrap = async () => {
+      const res = await fetch("/api/bootstrap", {
+        credentials: "include",
+        cache: "no-store",
+      });
+      return res;
+    };
+
     const loadBootstrap = async () => {
       try {
-        const res = await fetch("/api/bootstrap", {
-          credentials: "include",
-          cache: "no-store",
-        });
+        let res = await fetchBootstrap();
+
+        // Retry uma vez em 401 — cold start do Vercel pode falhar transientemente
+        // mesmo o middleware tendo validado o cookie segundos antes.
+        if (res.status === 401) {
+          await new Promise((r) => setTimeout(r, 800));
+          if (cancelled) return;
+          res = await fetchBootstrap();
+        }
 
         if (!res.ok) {
-          // Em modo real (Supabase ligado), NÃO contaminar com mocks —
-          // mocks têm IDs string ("ws_nexus") que não existem no banco e
-          // travam todas as queries. Apenas registra erro pra dev e segue
-          // com estado vazio (UI mostra empty states).
           console.warn("[bootstrap] Falhou com status", res.status);
-          if (!cancelled) {
-            setBootstrapError(
-              res.status === 401
-                ? "Sessão expirada. Faça login novamente."
-                : "Não foi possível carregar o workspace. Recarregue a página.",
+          if (cancelled) return;
+
+          if (res.status === 401) {
+            // Sessão realmente expirou — redireciona para login em vez de
+            // mostrar um toast preso na página.
+            const next = encodeURIComponent(
+              window.location.pathname + window.location.search,
             );
+            window.location.replace(`/login?next=${next}`);
+            return;
           }
+
+          toast.error("Não foi possível carregar o workspace", {
+            description: "Recarregue a página para tentar novamente.",
+            duration: 6000,
+          });
           return;
         }
 
@@ -101,7 +118,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
         };
 
         if (cancelled) return;
-        setBootstrapError(null);
 
         // ⚠️ Em modo real, NUNCA misturar com MOCK_WORKSPACES — seus IDs
         // são strings ("ws_nexus") que não batem com nada no banco e
@@ -114,9 +130,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.error("Erro ao carregar bootstrap real do Supabase:", error);
         if (cancelled) return;
-        setBootstrapError(
-          "Falha ao conectar com o servidor. Verifique sua conexão.",
-        );
+        toast.error("Falha ao conectar com o servidor", {
+          description: "Verifique sua conexão e recarregue a página.",
+          duration: 6000,
+        });
       }
     };
 
@@ -132,14 +149,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     process.env.NEXT_PUBLIC_USE_MOCK_DATA !== "true";
 
   const content = (
-    <TooltipProvider delayDuration={200}>
-      {bootstrapError && (
-        <div className="fixed inset-x-4 top-4 z-[9999] rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive shadow-glow md:left-auto md:w-[420px]">
-          {bootstrapError}
-        </div>
-      )}
-      {children}
-    </TooltipProvider>
+    <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
   );
 
   return (

@@ -1,26 +1,40 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const supabase = supabaseServer();
-  const {
-    data: { user: authUser },
-    error: authError,
-  } = await supabase.auth.getUser();
 
-  if (authError || !authUser) {
+  // getSession() lê do cookie (local, sem round-trip). Confiamos no middleware
+  // que já validou via getUser(). Isso elimina ~200-500ms de cold-start.
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const authUser = session?.user;
+  if (!authUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // --- Upsert do perfil do usuário ---
-  let { data: user, error: userError } = await supabase
-    .from("users")
-    .select("id, email, full_name, avatar_url, role, metadata")
-    .eq("id", authUser.id)
-    .single();
+  // Fase 1: users + workspace_members em paralelo (ambos dependem só de authUser.id).
+  const [userRes, membershipRes] = await Promise.all([
+    supabase
+      .from("users")
+      .select("id, email, full_name, avatar_url, role, metadata")
+      .eq("id", authUser.id)
+      .maybeSingle(),
+    supabase
+      .from("workspace_members")
+      .select("workspace_id")
+      .eq("user_id", authUser.id),
+  ]);
 
-  if (userError || !user) {
-    // Criar perfil se não existir
+  let user = userRes.data;
+
+  // Cria perfil se não existir
+  if (!user) {
     const { data: newUser, error: createUserError } = await supabase
       .from("users")
       .upsert({
@@ -43,20 +57,16 @@ export async function GET() {
     user = newUser;
   }
 
-  // --- Verificar memberships ---
-  const { data: memberships, error: membershipError } = await supabase
-    .from("workspace_members")
-    .select("workspace_id")
-    .eq("user_id", authUser.id);
-
-  if (membershipError) {
-    console.error("[bootstrap] Erro ao buscar memberships:", membershipError);
-    return NextResponse.json({ error: membershipError.message }, { status: 400 });
+  if (membershipRes.error) {
+    console.error("[bootstrap] Erro ao buscar memberships:", membershipRes.error);
+    return NextResponse.json({ error: membershipRes.error.message }, { status: 400 });
   }
 
-  let workspaceIds = [...new Set((memberships ?? []).map((m) => m.workspace_id))];
+  let workspaceIds = [
+    ...new Set((membershipRes.data ?? []).map((m) => m.workspace_id)),
+  ];
 
-  // --- Auto-criar workspace se não existir ---
+  // Auto-cria workspace se não existir nenhum
   if (workspaceIds.length === 0) {
     const { data: newWorkspace, error: wsError } = await supabase
       .from("workspaces")
@@ -69,17 +79,14 @@ export async function GET() {
       .single();
 
     if (!wsError && newWorkspace) {
-      // Adicionar como membro admin
       await supabase.from("workspace_members").insert({
         workspace_id: newWorkspace.id,
         user_id: authUser.id,
         role: "admin",
       });
-
       workspaceIds = [newWorkspace.id];
     } else {
       console.warn("[bootstrap] Não foi possível criar workspace automático:", wsError);
-      // Retornar listas vazias — o client vai usar mock
       return NextResponse.json({
         user: {
           id: user.id,
@@ -95,44 +102,28 @@ export async function GET() {
     }
   }
 
-  // --- Buscar workspaces ---
-  const { data: workspaces, error: workspacesError } = await supabase
-    .from("workspaces")
-    .select("id, name, slug, description, logo_url, owner_id, created_at")
-    .in("id", workspaceIds);
+  // Fase 2: workspaces + personas em paralelo.
+  const [workspacesRes, personasRes] = await Promise.all([
+    supabase
+      .from("workspaces")
+      .select("id, name, slug, description, logo_url, owner_id, created_at")
+      .in("id", workspaceIds),
+    supabase
+      .from("personas")
+      .select(
+        `id, workspace_id, name, codename, status, niche, big_idea, bio_short,
+         objective, voice_tone, archetype, personality, visual_style, dress_style,
+         forbidden_words, preferred_words, guidelines, reference_links`,
+      )
+      .in("workspace_id", workspaceIds)
+      .order("name"),
+  ]);
 
-  if (workspacesError) {
-    return NextResponse.json({ error: workspacesError.message }, { status: 400 });
+  if (workspacesRes.error) {
+    return NextResponse.json({ error: workspacesRes.error.message }, { status: 400 });
   }
-
-  // --- Buscar personas ---
-  const { data: personas, error: personasError } = await supabase
-    .from("personas")
-    .select(`
-      id,
-      workspace_id,
-      name,
-      codename,
-      status,
-      niche,
-      big_idea,
-      bio_short,
-      objective,
-      voice_tone,
-      archetype,
-      personality,
-      visual_style,
-      dress_style,
-      forbidden_words,
-      preferred_words,
-      guidelines,
-      reference_links
-    `)
-    .in("workspace_id", workspaceIds)
-    .order("name");
-
-  if (personasError) {
-    return NextResponse.json({ error: personasError.message }, { status: 400 });
+  if (personasRes.error) {
+    return NextResponse.json({ error: personasRes.error.message }, { status: 400 });
   }
 
   return NextResponse.json({
@@ -144,7 +135,7 @@ export async function GET() {
       role: user.role,
       metadata: (user as any).metadata ?? {},
     },
-    workspaces: (workspaces ?? []).map((workspace) => ({
+    workspaces: (workspacesRes.data ?? []).map((workspace) => ({
       id: workspace.id,
       name: workspace.name,
       slug: workspace.slug,
@@ -153,7 +144,7 @@ export async function GET() {
       ownerId: workspace.owner_id,
       createdAt: workspace.created_at,
     })),
-    personas: (personas ?? []).map((persona) => ({
+    personas: (personasRes.data ?? []).map((persona) => ({
       id: persona.id,
       workspaceId: persona.workspace_id,
       name: persona.name,
