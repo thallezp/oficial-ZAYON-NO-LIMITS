@@ -15,6 +15,7 @@ import type { CalendarEvent } from "@/components/calendar/full-calendar";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useQuickCreate } from "@/stores/quick-create-store";
 import { useTasks, useContent, useBills } from "@/hooks/use-queries";
+import { useNewEntityShortcut } from "@/hooks/use-page-shortcuts";
 
 const FullCalendarView = dynamic(
   () => import("@/components/calendar/full-calendar").then((m) => m.FullCalendarView),
@@ -31,6 +32,7 @@ export default function CalendarPage() {
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
   const openQuickCreate = useQuickCreate((s) => s.setOpen);
   const openWith = useQuickCreate((s) => s.openWith);
+  useNewEntityShortcut("event");
 
   const { data: dbTasks = [] } = useTasks(activeWorkspaceId);
   const { data: dbContent = [] } = useContent(activeWorkspaceId);
@@ -91,12 +93,9 @@ export default function CalendarPage() {
             <Button
               variant="gradient"
               size="sm"
-              onClick={() => {
-                openWith("task");
-                openQuickCreate(true);
-              }}
+              onClick={() => openWith("event")}
             >
-              <Plus className="h-4 w-4" /> Novo evento
+              <Plus className="h-4 w-4" /> Novo Evento
             </Button>
           </>
         }

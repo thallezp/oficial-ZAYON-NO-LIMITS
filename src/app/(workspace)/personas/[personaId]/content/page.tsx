@@ -33,6 +33,7 @@ import { useContent } from "@/hooks/use-queries";
 import { useQuickCreate } from "@/stores/quick-create-store";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRealtimeContent } from "@/hooks/use-realtime";
+import { useNewEntityShortcut } from "@/hooks/use-page-shortcuts";
 
 const STATUS_COLS: { id: ContentStatus; label: string; color: string }[] = [
   { id: "idea", label: "Ideia", color: "bg-muted/40" },
@@ -59,6 +60,7 @@ export default function ContentStudioPage() {
   const { data: dbContent = [] } = useContent(activeWorkspaceId, persona.id);
   const { openWith } = useQuickCreate();
   const queryClient = useQueryClient();
+  useNewEntityShortcut("content");
 
   useRealtimeContent(activeWorkspaceId ?? undefined, persona.id, () => {
     queryClient.invalidateQueries({ queryKey: ["content"] });
@@ -92,7 +94,7 @@ export default function ContentStudioPage() {
               <Sparkles className="h-3.5 w-3.5" /> Sugerir pauta
             </Button>
             <Button variant="gradient" size="sm" onClick={() => openWith("content")}>
-              <Plus className="h-4 w-4" /> Nova peça
+              <Plus className="h-4 w-4" /> Novo Conteúdo
             </Button>
           </>
         }

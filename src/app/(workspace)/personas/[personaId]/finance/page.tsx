@@ -31,12 +31,14 @@ import { useQuickCreate } from "@/stores/quick-create-store";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRealtimeFinance } from "@/hooks/use-realtime";
+import { useNewEntityShortcut } from "@/hooks/use-page-shortcuts";
 
 export default function FinancePage() {
   const persona = usePersonaFromRoute();
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
   const { openWith } = useQuickCreate();
   const queryClient = useQueryClient();
+  useNewEntityShortcut("revenue");
 
   useRealtimeFinance(activeWorkspaceId ?? undefined, () => {
     queryClient.invalidateQueries({ queryKey: ["finance"] });
@@ -108,8 +110,11 @@ export default function FinancePage() {
             <Button variant="outline" size="sm" onClick={handleAiSummary}>
               <Sparkles className="h-3.5 w-3.5" /> Resumo IA
             </Button>
-            <Button variant="gradient" size="sm" onClick={() => openWith("transaction")}>
-              <Plus className="h-4 w-4" /> Lançamento
+            <Button variant="outline" size="sm" onClick={() => openWith("expense")}>
+              <TrendingDown className="h-3.5 w-3.5" /> Nova Despesa
+            </Button>
+            <Button variant="gradient" size="sm" onClick={() => openWith("revenue")}>
+              <TrendingUp className="h-3.5 w-3.5" /> Nova Receita
             </Button>
           </>
         }
@@ -285,7 +290,7 @@ export default function FinancePage() {
               {payroll.map((p: any) => (
                 <div key={p.id} className="flex items-center gap-4 p-4">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-white text-xs font-bold">
-                    {p.name.split(" ").map((s: string) => s[0]).join("").slice(0, 2)}
+                    {(p.name || "").split(" ").map((s: string) => s[0]).join("").slice(0, 2)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium">{p.name}</p>

@@ -38,6 +38,7 @@ import { useQuickCreate } from "@/stores/quick-create-store";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRealtimeLeads } from "@/hooks/use-realtime";
+import { useNewEntityShortcut } from "@/hooks/use-page-shortcuts";
 
 const statusVariant = {
   open: "outline",
@@ -54,6 +55,7 @@ export default function LeadsPage() {
   const { data: dbLeads = [] } = useLeads(activeWorkspaceId, persona.id);
   const { openWith } = useQuickCreate();
   const queryClient = useQueryClient();
+  useNewEntityShortcut("lead");
 
   useRealtimeLeads(activeWorkspaceId ?? undefined, persona.id, () => {
     queryClient.invalidateQueries({ queryKey: ["leads"] });

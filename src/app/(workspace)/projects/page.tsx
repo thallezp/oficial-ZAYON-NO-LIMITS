@@ -14,11 +14,13 @@ import { isMockModeClient } from "@/lib/mock-mode-client";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useQuickCreate } from "@/stores/quick-create-store";
 import { useProjects, usePersonas } from "@/hooks/use-queries";
+import { useNewEntityShortcut } from "@/hooks/use-page-shortcuts";
 
 export default function ProjectsPage() {
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
   const openQuickCreate = useQuickCreate((s) => s.setOpen);
   const openWith = useQuickCreate((s) => s.openWith);
+  useNewEntityShortcut("project");
 
   const { data: dbProjects = [] } = useProjects(activeWorkspaceId);
   const { data: dbPersonas = [] } = usePersonas(activeWorkspaceId);
@@ -39,7 +41,7 @@ export default function ProjectsPage() {
         description="Iniciativas de longo prazo · podem ser globais ou vinculadas a uma persona."
         actions={
           <Button variant="gradient" size="sm" onClick={handleCreateProject}>
-            <Plus className="h-4 w-4" /> Novo projeto
+            <Plus className="h-4 w-4" /> Novo Projeto
           </Button>
         }
       />

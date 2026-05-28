@@ -1,6 +1,6 @@
 "use client";
 
-import { Mail, Plus, Shield, UserPlus } from "lucide-react";
+import { Mail, Shield, UserPlus } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { initials } from "@/lib/utils/format";
 import { isMockModeClient } from "@/lib/mock-mode-client";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useTeam } from "@/hooks/use-queries";
+import { useQuickCreate } from "@/stores/quick-create-store";
 import { toast } from "sonner";
 
 const roleColor = {
@@ -24,17 +25,9 @@ const roleColor = {
 export default function TeamPage() {
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
   const { data: dbTeam = [] } = useTeam(activeWorkspaceId);
+  const openQuickCreate = useQuickCreate((s) => s.openWith);
 
   const team = isMockModeClient && dbTeam.length === 0 ? MOCK_USERS : dbTeam;
-
-  const handleInvite = () => {
-    const email = prompt("Digite o e-mail do membro que deseja convidar:");
-    if (email?.trim()) {
-      toast.success(`Convite enviado para ${email}!`, {
-        description: "O membro receberá um e-mail de acesso em instantes.",
-      });
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -46,8 +39,12 @@ export default function TeamPage() {
             <Button variant="outline" size="sm">
               <Shield className="h-3.5 w-3.5" /> Permissões
             </Button>
-            <Button variant="gradient" size="sm" onClick={handleInvite}>
-              <UserPlus className="h-4 w-4" /> Convidar
+            <Button
+              variant="gradient"
+              size="sm"
+              onClick={() => openQuickCreate("invite")}
+            >
+              <UserPlus className="h-4 w-4" /> Convidar Membro
             </Button>
           </>
         }

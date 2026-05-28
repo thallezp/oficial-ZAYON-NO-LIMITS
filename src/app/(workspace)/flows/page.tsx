@@ -19,6 +19,7 @@ import { isMockModeClient } from "@/lib/mock-mode-client";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useFlows, usePersonas } from "@/hooks/use-queries";
 import { useQuickCreate } from "@/stores/quick-create-store";
+import { useNewEntityShortcut } from "@/hooks/use-page-shortcuts";
 
 const iconMap = {
   Workflow: WorkflowIcon,
@@ -30,6 +31,7 @@ const iconMap = {
 export default function FlowsPage() {
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
   const { openWith } = useQuickCreate();
+  useNewEntityShortcut("flow");
   const { data: dbFlows = [] } = useFlows(activeWorkspaceId);
   const { data: dbPersonas = [] } = usePersonas(activeWorkspaceId);
 
@@ -48,7 +50,7 @@ export default function FlowsPage() {
               <Sparkles className="h-3.5 w-3.5" /> Templates
             </Button>
             <Button variant="gradient" size="sm" onClick={() => openWith("flow")}>
-              <Plus className="h-4 w-4" /> Novo flow
+              <Plus className="h-4 w-4" /> Novo Flow
             </Button>
           </>
         }

@@ -24,12 +24,14 @@ import { isMockModeClient } from "@/lib/mock-mode-client";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useQuickCreate } from "@/stores/quick-create-store";
 import { useDocuments, usePersonas } from "@/hooks/use-queries";
+import { useNewEntityShortcut } from "@/hooks/use-page-shortcuts";
 import { toast } from "sonner";
 
 export default function DocumentsPage() {
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
   const openQuickCreate = useQuickCreate((s) => s.setOpen);
   const openWith = useQuickCreate((s) => s.openWith);
+  useNewEntityShortcut("document");
 
   const { data: dbDocs = [] } = useDocuments(activeWorkspaceId);
   const { data: dbPersonas = [] } = usePersonas(activeWorkspaceId);
@@ -65,7 +67,7 @@ export default function DocumentsPage() {
               <Sparkles className="h-3.5 w-3.5" /> Resumir com IA
             </Button>
             <Button variant="gradient" size="sm" onClick={handleCreateDocument}>
-              <Plus className="h-4 w-4" /> Novo documento
+              <Plus className="h-4 w-4" /> Novo Documento
             </Button>
           </>
         }

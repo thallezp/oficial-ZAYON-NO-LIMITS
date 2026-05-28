@@ -1,6 +1,21 @@
 "use client";
 
-import { Bot, Plus, Search, Settings, User as UserIcon } from "lucide-react";
+import * as React from "react";
+import {
+  Bot,
+  CalendarPlus,
+  FileText,
+  Image as ImageIcon,
+  ListChecks,
+  Plus,
+  Search,
+  Settings,
+  Sparkles,
+  TrendingDown,
+  TrendingUp,
+  User as UserIcon,
+  UserPlus,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +24,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -24,6 +40,18 @@ export function Topbar() {
   const toggleAI = useUIStore((s) => s.toggleAIPanel);
   const user = useWorkspaceStore((s) => s.user);
   const openQuickCreate = useQuickCreate((s) => s.openWith);
+  const [createOpen, setCreateOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "n") {
+        e.preventDefault();
+        setCreateOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border/60 bg-background/80 px-4 backdrop-blur-2xl">
@@ -65,7 +93,7 @@ export function Topbar() {
                 </AvatarFallback>
               </Avatar>
               <span className="hidden md:inline text-xs font-medium">
-                {user?.fullName.split(" ")[0] ?? "Usuário"}
+                {user?.fullName ? user.fullName.split(" ")[0] : "Usuário"}
               </span>
             </button>
           </DropdownMenuTrigger>
@@ -100,15 +128,58 @@ export function Topbar() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Button
-          variant="gradient"
-          size="sm"
-          className="ml-2 hidden md:inline-flex"
-          onClick={() => openQuickCreate("task")}
-        >
-          <Plus className="h-4 w-4" />
-          Novo
-        </Button>
+        <DropdownMenu open={createOpen} onOpenChange={setCreateOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="gradient"
+              size="sm"
+              className="ml-2 hidden md:inline-flex"
+              aria-label="Criar"
+            >
+              <Plus className="h-4 w-4" />
+              Criar
+              <Kbd className="ml-1 hidden lg:inline-flex">⌘⇧N</Kbd>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuLabel>Criação rápida</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => openQuickCreate("task")}>
+              <ListChecks className="h-4 w-4" />
+              Nova Tarefa
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openQuickCreate("document")}>
+              <FileText className="h-4 w-4" />
+              Novo Documento
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openQuickCreate("content")}>
+              <ImageIcon className="h-4 w-4" />
+              Novo Conteúdo
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openQuickCreate("lead")}>
+              <UserPlus className="h-4 w-4" />
+              Novo Lead
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Financeiro</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => openQuickCreate("revenue")}>
+              <TrendingUp className="h-4 w-4" />
+              Nova Receita
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openQuickCreate("expense")}>
+              <TrendingDown className="h-4 w-4" />
+              Nova Despesa
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => openQuickCreate("event")}>
+              <CalendarPlus className="h-4 w-4" />
+              Novo Evento
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={toggleAI}>
+              <Sparkles className="h-4 w-4" />
+              Nova Conversa com IA
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );

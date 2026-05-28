@@ -21,7 +21,8 @@ import { isMockModeClient } from "@/lib/mock-mode-client";
 import type { PromptChain } from "@/types";
 import { relativeTime } from "@/lib/utils/format";
 import { usePrompts } from "@/hooks/use-queries";
-import { toast } from "sonner";
+import { useQuickCreate } from "@/stores/quick-create-store";
+import { useNewEntityShortcut } from "@/hooks/use-page-shortcuts";
 
 export default function PromptsPage() {
   const persona = usePersonaFromRoute();
@@ -33,6 +34,8 @@ export default function PromptsPage() {
 
   const [activeId, setActiveId] = React.useState<string | null>(null);
   const active = chains.find((c: any) => c.id === activeId) || chains[0];
+  const openQuickCreate = useQuickCreate((s) => s.openWith);
+  useNewEntityShortcut("promptChain");
 
   React.useEffect(() => {
     if (chains.length > 0 && !activeId) {
@@ -41,9 +44,7 @@ export default function PromptsPage() {
   }, [chains, activeId]);
 
   const handleNewChain = () => {
-    toast.info("Ação integrada com o Prompt Editor", {
-      description: "Nova cadeia de prompts iniciada.",
-    });
+    openQuickCreate("promptChain");
   };
 
   return (
@@ -53,7 +54,7 @@ export default function PromptsPage() {
         description="Banco de prompts encadeados por persona. Cada cadeia é uma sequência ordenada de instruções."
         actions={
           <Button variant="gradient" size="sm" onClick={handleNewChain}>
-            <Plus className="h-4 w-4" /> Nova cadeia
+            <Plus className="h-4 w-4" /> Nova Cadeia
           </Button>
         }
       />

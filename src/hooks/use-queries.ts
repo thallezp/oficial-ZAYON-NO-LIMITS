@@ -222,6 +222,34 @@ export function useAiActions(workspaceId?: string | null, personaId?: string | n
   });
 }
 
+export function useCalendarEvents(workspaceId?: string | null, personaId?: string | null) {
+  return useQuery({
+    queryKey: ["calendarEvents", workspaceId, personaId],
+    queryFn: () =>
+      qa.getCalendarEventsAction({
+        workspaceId: workspaceId ?? undefined,
+        personaId: personaId ?? undefined,
+      }),
+    enabled: !!workspaceId,
+  });
+}
+
+export function useTaskComments(taskId?: string | null) {
+  return useQuery({
+    queryKey: ["taskComments", taskId],
+    queryFn: () => qa.getTaskCommentsAction(taskId!),
+    enabled: !!taskId,
+  });
+}
+
+export function useTaskSubtasks(taskId?: string | null) {
+  return useQuery({
+    queryKey: ["taskSubtasks", taskId],
+    queryFn: () => qa.getTaskSubtasksAction(taskId!),
+    enabled: !!taskId,
+  });
+}
+
 // Mutation Hooks -----------------------------------------------------------
 
 export function useUpdateTaskStatusAndPositionMutation() {
@@ -344,7 +372,30 @@ export function useCreateProjectMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: any) => callMutate("createProject", input),
-    onSuccess: () => {
+    onSuccess: (result: any, input: any) => {
+      const created = result?.data;
+      if (created?.id) {
+        const project = {
+          id: created.id,
+          workspaceId: created.workspace_id ?? created.workspaceId ?? input.workspaceId,
+          personaId: created.persona_id ?? created.personaId ?? input.personaId,
+          name: created.name ?? input.name,
+          description: created.description ?? input.description,
+          color: created.color ?? input.color ?? "#3b82f6",
+          icon: created.icon ?? input.icon ?? "Folder",
+          status: created.status ?? input.status ?? "active",
+          createdAt: created.created_at ?? created.createdAt ?? new Date().toISOString(),
+          updatedAt: created.updated_at ?? created.updatedAt ?? new Date().toISOString(),
+          progress: 0,
+          members: [],
+          taskCount: { total: 0, done: 0 },
+        };
+        queryClient.setQueriesData({ queryKey: ["projects"] }, (old: any) => {
+          if (!Array.isArray(old)) return old;
+          if (old.some((item: any) => item.id === project.id)) return old;
+          return [project, ...old];
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
   });
@@ -423,4 +474,236 @@ export function useSanitizeDatabaseEncodingMutation() {
   });
 }
 
+export function useDeleteTaskMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deleteTask", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    },
+  });
+}
+
+export function useDeleteProjectMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deleteProject", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}
+
+export function useDeleteLeadMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deleteLead", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+    },
+  });
+}
+
+export function useDeleteFinancialMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deleteFinancial", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["finance"] });
+    },
+  });
+}
+
+export function useDeletePersonaMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deletePersona", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["personas"] });
+    },
+  });
+}
+
+export function useDeleteDocumentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deleteDocument", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+  });
+}
+
+export function useDeleteFlowMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deleteFlow", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["flows"] });
+    },
+  });
+}
+
+export function useDeleteToolMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deleteTool", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tools"] });
+    },
+  });
+}
+
+export function useDeleteMaterialMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deleteMaterial", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["materials"] });
+    },
+  });
+}
+
+export function useDeleteCalendarEventMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deleteCalendarEvent", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["calendarEvents"] });
+    },
+  });
+}
+
+export function useCreateTaskCommentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { taskId: string; body: string }) => callMutate("createTaskComment", input),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["taskComments", variables.taskId] });
+    },
+  });
+}
+
+export function useCreateSubtaskMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { parentTaskId: string; title: string; workspaceId: string; personaId?: string }) =>
+      callMutate("createSubtask", input),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["taskSubtasks", variables.parentTaskId] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    },
+  });
+}
+
+export function useCreateCalendarEventMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      workspaceId: string;
+      personaId?: string;
+      title: string;
+      description?: string;
+      startAt: string;
+      endAt?: string;
+      allDay?: boolean;
+      color?: string;
+      category?: string;
+    }) => callMutate("createCalendarEvent", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["calendarEvents"] });
+    },
+  });
+}
+
+export function useUpdateCalendarEventMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      id: string;
+      title?: string;
+      description?: string;
+      startAt?: string;
+      endAt?: string;
+      allDay?: boolean;
+      color?: string;
+      category?: string;
+    }) => callMutate("updateCalendarEvent", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["calendarEvents"] });
+    },
+  });
+}
+
+export function useCreatePromptChainMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      workspaceId: string;
+      personaId?: string | null;
+      name: string;
+      description?: string;
+      status?: "building" | "robust" | "deprecated";
+      basePrompt?: string;
+      tags?: string[];
+    }) => callMutate("createPromptChain", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["prompts"] });
+    },
+  });
+}
+
+export function useCreateModelingProfileMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      workspaceId: string;
+      personaId?: string | null;
+      name: string;
+      socialNetwork?: string;
+      country?: string;
+      link?: string;
+      niche?: string;
+      category?: string;
+      notes?: string;
+      tags?: string[];
+    }) => callMutate("createModelingProfile", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["modeling"] });
+    },
+  });
+}
+
+export function useCreateFolderMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      workspaceId: string;
+      personaId?: string | null;
+      name: string;
+      parentId?: string;
+      color?: string;
+    }) => callMutate("createFolder", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["folders"] });
+      queryClient.invalidateQueries({ queryKey: ["materials"] });
+    },
+  });
+}
+
+export function useInviteMemberMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      workspaceId: string;
+      email: string;
+      role?: "owner" | "admin" | "editor" | "viewer" | "financeiro";
+      message?: string;
+    }) => callMutate("inviteMember", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team"] });
+      queryClient.invalidateQueries({ queryKey: ["invitations"] });
+    },
+  });
+}
 

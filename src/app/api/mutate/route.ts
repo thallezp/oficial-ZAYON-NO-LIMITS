@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { useMockData } from "@/lib/config";
+import { parseMutationPayload } from "@/lib/validations/mutations";
 
 /**
  * API Route universal para mutations via Supabase SDK.
@@ -13,7 +14,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "action é obrigatório" }, { status: 400 });
     }
 
-    const { action, payload } = body;
+    const action = body.action as string;
+    let payload = body.payload;
 
     // Modo mock: retorna sucesso sem tocar no banco
     if (useMockData) {
@@ -28,6 +30,8 @@ export async function POST(req: Request) {
     if (!user) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
+
+    payload = parseMutationPayload(action, payload);
 
     let result: any;
 
@@ -153,6 +157,18 @@ export async function POST(req: Request) {
 
       // ── FINANCIAL ─────────────────────────────────────────────────────────
       case "createFinancial": {
+        let categoryId: string | null = null;
+        if (payload.category) {
+          const { data: catData } = await supabase
+            .from("financial_categories")
+            .select("id")
+            .eq("workspace_id", payload.workspaceId)
+            .ilike("name", payload.category)
+            .limit(1);
+          if (catData && catData.length > 0) {
+            categoryId = catData[0].id;
+          }
+        }
         const { data, error } = await supabase
           .from("financial_transactions")
           .insert({
@@ -161,10 +177,10 @@ export async function POST(req: Request) {
             type: payload.type || "revenue",
             amount: String(payload.amount || 0),
             description: payload.description,
-            category: payload.category || "Geral",
+            category_id: categoryId,
             status: payload.status || "pending",
             source: payload.source || "other",
-            occurred_at: payload.occurredAt || new Date().toISOString(),
+            occurred_at: payload.occurredAt ? payload.occurredAt.split("T")[0] : new Date().toISOString().split("T")[0],
           })
           .select()
           .single();
@@ -213,7 +229,7 @@ export async function POST(req: Request) {
             persona_id: payload.personaId || null,
             title: payload.title,
             content: payload.content || "",
-            created_by: user.id,
+            author_id: user.id,
           })
           .select()
           .single();
@@ -244,11 +260,13 @@ export async function POST(req: Request) {
           .insert({
             workspace_id: payload.workspaceId,
             persona_id: payload.personaId || null,
-            name: payload.name || payload.title,
-            type: payload.type || "file",
-            url: payload.url || null,
+            title: payload.title || payload.name,
+            file_type: payload.fileType || payload.type || "file",
+            file_url: payload.fileUrl || payload.url || null,
+            size_bytes: payload.sizeBytes || null,
             description: payload.description || null,
             tags: payload.tags || null,
+            uploaded_by: user.id,
           })
           .select()
           .single();
@@ -323,6 +341,7 @@ export async function POST(req: Request) {
               description: n.data?.description || n.description || "",
               position: n.position,
               data: n.data || null,
+              metrics: n.metrics || n.data?.metrics || null,
             }))
           );
         }
@@ -350,6 +369,28 @@ export async function POST(req: Request) {
 
       // ── TOOLS ─────────────────────────────────────────────────────────────
       case "createTool": {
+        let categoryId: string | null = null;
+        if (payload.category) {
+          const { data: catData } = await supabase
+            .from("tool_categories")
+            .select("id")
+            .eq("workspace_id", payload.workspaceId)
+            .ilike("slug", payload.category)
+            .limit(1);
+          if (catData && catData.length > 0) {
+            categoryId = catData[0].id;
+          } else {
+            const { data: catDataByName } = await supabase
+              .from("tool_categories")
+              .select("id")
+              .eq("workspace_id", payload.workspaceId)
+              .ilike("name", payload.category)
+              .limit(1);
+            if (catDataByName && catDataByName.length > 0) {
+              categoryId = catDataByName[0].id;
+            }
+          }
+        }
         const { data, error } = await supabase
           .from("tools")
           .insert({
@@ -358,7 +399,8 @@ export async function POST(req: Request) {
             name: payload.name,
             description: payload.description || null,
             url: payload.url || "https://",
-            category: payload.category || "IA",
+            category_id: categoryId,
+            created_by: user.id,
           })
           .select()
           .single();
@@ -426,6 +468,249 @@ export async function POST(req: Request) {
       case "sanitizeDatabaseEncoding": {
         // No-op via Supabase SDK — encoding is handled by the DB
         result = { ok: true };
+        break;
+      }
+
+      // ── DELETIONS ─────────────────────────────────────────────────────────
+      case "deleteTask": {
+        const { id } = payload;
+        const { error } = await supabase.from("tasks").delete().eq("id", id);
+        if (error) throw error;
+        result = { ok: true };
+        break;
+      }
+
+      case "deleteProject": {
+        const { id } = payload;
+        const { error } = await supabase.from("projects").delete().eq("id", id);
+        if (error) throw error;
+        result = { ok: true };
+        break;
+      }
+
+      case "deleteLead": {
+        const { id } = payload;
+        const { error } = await supabase.from("leads").delete().eq("id", id);
+        if (error) throw error;
+        result = { ok: true };
+        break;
+      }
+
+      case "deleteFinancial": {
+        const { id } = payload;
+        const { error } = await supabase.from("financial_transactions").delete().eq("id", id);
+        if (error) throw error;
+        result = { ok: true };
+        break;
+      }
+
+      case "deletePersona": {
+        const { id } = payload;
+        const { error } = await supabase.from("personas").delete().eq("id", id);
+        if (error) throw error;
+        result = { ok: true };
+        break;
+      }
+
+      case "deleteDocument": {
+        const { id } = payload;
+        const { error } = await supabase.from("documents").delete().eq("id", id);
+        if (error) throw error;
+        result = { ok: true };
+        break;
+      }
+
+      case "deleteFlow": {
+        const { id } = payload;
+        const { error } = await supabase.from("flows").delete().eq("id", id);
+        if (error) throw error;
+        result = { ok: true };
+        break;
+      }
+
+      case "deleteTool": {
+        const { id } = payload;
+        const { error } = await supabase.from("tools").delete().eq("id", id);
+        if (error) throw error;
+        result = { ok: true };
+        break;
+      }
+
+      case "deleteMaterial": {
+        const { id } = payload;
+        const { error } = await supabase.from("materials").delete().eq("id", id);
+        if (error) throw error;
+        result = { ok: true };
+        break;
+      }
+
+      case "deleteCalendarEvent": {
+        const { id } = payload;
+        const { error } = await supabase.from("calendar_events").delete().eq("id", id);
+        if (error) throw error;
+        result = { ok: true };
+        break;
+      }
+
+      // ── ADDITIONAL TASK CRUD ──────────────────────────────────────────────
+      case "createTaskComment": {
+        const { taskId, body: commentBody } = payload;
+        const { data, error } = await supabase
+          .from("task_comments")
+          .insert({
+            task_id: taskId,
+            author_id: user.id,
+            body: commentBody,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "createSubtask": {
+        const { parentTaskId, title, workspaceId, personaId } = payload;
+        const { data, error } = await supabase
+          .from("tasks")
+          .insert({
+            workspace_id: workspaceId,
+            persona_id: personaId || null,
+            parent_task_id: parentTaskId,
+            title,
+            status: "todo",
+            priority: "medium",
+            creator_id: user.id,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      // ── CALENDAR EVENTS CRUD ──────────────────────────────────────────────
+      case "createCalendarEvent": {
+        const { workspaceId, personaId, title, description, startAt, endAt, allDay, color, category } = payload;
+        const { data, error } = await supabase
+          .from("calendar_events")
+          .insert({
+            workspace_id: workspaceId,
+            persona_id: personaId || null,
+            title,
+            description: description || null,
+            start_at: startAt,
+            end_at: endAt || null,
+            all_day: allDay ?? false,
+            color: color || null,
+            category: category || null,
+            created_by: user.id,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "updateCalendarEvent": {
+        const { id, title, description, startAt, endAt, allDay, color, category } = payload;
+        const { data, error } = await supabase
+          .from("calendar_events")
+          .update({
+            title,
+            description: description !== undefined ? description : undefined,
+            start_at: startAt,
+            end_at: endAt,
+            all_day: allDay,
+            color,
+            category,
+          })
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "createPromptChain": {
+        const { data, error } = await supabase
+          .from("prompt_chains")
+          .insert({
+            workspace_id: payload.workspaceId,
+            persona_id: payload.personaId || null,
+            name: payload.name,
+            description: payload.description || null,
+            status: payload.status || "building",
+            base_prompt: payload.basePrompt || null,
+            tags: payload.tags || null,
+            chain: payload.chain || [],
+            created_by: user.id,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "createModelingProfile": {
+        const { data, error } = await supabase
+          .from("modeling_profiles")
+          .insert({
+            workspace_id: payload.workspaceId,
+            persona_id: payload.personaId || null,
+            name: payload.name,
+            social_network: payload.socialNetwork || null,
+            country: payload.country || null,
+            link: payload.link || null,
+            niche: payload.niche || null,
+            category: payload.category || "emerging",
+            notes: payload.notes || null,
+            tags: payload.tags || null,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "createFolder": {
+        const { data, error } = await supabase
+          .from("folders")
+          .insert({
+            workspace_id: payload.workspaceId,
+            persona_id: payload.personaId || null,
+            name: payload.name,
+            parent_id: payload.parentId || null,
+            color: payload.color || null,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "inviteMember": {
+        const token = crypto.randomUUID();
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        const { data, error } = await supabase
+          .from("invitations")
+          .insert({
+            workspace_id: payload.workspaceId,
+            email: payload.email,
+            role: payload.role || "editor",
+            token,
+            invited_by: user.id,
+            expires_at: expiresAt,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
         break;
       }
 

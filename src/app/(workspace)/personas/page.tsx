@@ -13,6 +13,7 @@ import { isMockModeClient } from "@/lib/mock-mode-client";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { usePersonas } from "@/hooks/use-queries";
 import { useQuickCreate } from "@/stores/quick-create-store";
+import { useNewEntityShortcut } from "@/hooks/use-page-shortcuts";
 
 const statusVariant = {
   active: "success",
@@ -25,6 +26,7 @@ export default function PersonasIndexPage() {
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
   const { data: dbPersonas = [] } = usePersonas(activeWorkspaceId);
   const { openWith } = useQuickCreate();
+  useNewEntityShortcut("persona");
 
   const personas =
     isMockModeClient && dbPersonas.length === 0 ? MOCK_PERSONAS : dbPersonas;
@@ -36,7 +38,7 @@ export default function PersonasIndexPage() {
         description="Cada persona opera como uma unidade de negócio · identidade, conteúdo, funil, finance e leads próprios."
         actions={
           <Button variant="gradient" size="sm" onClick={() => openWith("persona")}>
-            <Plus className="h-4 w-4" /> Nova persona
+            <Plus className="h-4 w-4" /> Nova Persona
           </Button>
         }
       />

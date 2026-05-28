@@ -13,7 +13,8 @@ import { MOCK_MODELING } from "@/data";
 import { isMockModeClient } from "@/lib/mock-mode-client";
 import { formatCompact, initials } from "@/lib/utils/format";
 import { useModeling } from "@/hooks/use-queries";
-import { toast } from "sonner";
+import { useQuickCreate } from "@/stores/quick-create-store";
+import { useNewEntityShortcut } from "@/hooks/use-page-shortcuts";
 
 const categoryColor = {
   emerging: "info",
@@ -41,11 +42,9 @@ export default function ModelingPage() {
       p.niche?.toLowerCase().includes(search.toLowerCase()),
   );
 
-  const handleAddProfile = () => {
-    toast.info("Ação integrada com o backend de Engenharia Reversa", {
-      description: "Nova modelagem de perfil tático foi acionada.",
-    });
-  };
+  const openQuickCreate = useQuickCreate((s) => s.openWith);
+  useNewEntityShortcut("modelingProfile");
+  const handleAddProfile = () => openQuickCreate("modelingProfile");
 
   return (
     <div className="space-y-6">
@@ -54,7 +53,7 @@ export default function ModelingPage() {
         description="Engenharia reversa · perfis estudados, padrões, categorias."
         actions={
           <Button variant="gradient" size="sm" onClick={handleAddProfile}>
-            <Plus className="h-4 w-4" /> Adicionar perfil
+            <Plus className="h-4 w-4" /> Adicionar Perfil
           </Button>
         }
       />

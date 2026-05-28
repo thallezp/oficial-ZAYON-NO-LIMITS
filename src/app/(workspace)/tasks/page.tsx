@@ -32,6 +32,7 @@ import { useQuickCreate } from "@/stores/quick-create-store";
 import { useTasks, useUpdateTaskStatusAndPositionMutation } from "@/hooks/use-queries";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRealtimeTasks } from "@/hooks/use-realtime";
+import { useNewEntityShortcut } from "@/hooks/use-page-shortcuts";
 
 const columns: KanbanColumn<TaskStatus>[] = [
   { id: "backlog", label: "Backlog", tone: "bg-muted/40" },
@@ -60,6 +61,7 @@ export default function TasksPage() {
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
   const openQuickCreate = useQuickCreate((s) => s.setOpen);
   const openWith = useQuickCreate((s) => s.openWith);
+  useNewEntityShortcut("task");
 
   const { data: dbTasks = [] } = useTasks(activeWorkspaceId);
   const updateStatusMutation = useUpdateTaskStatusAndPositionMutation();
@@ -193,7 +195,7 @@ export default function TasksPage() {
                 openQuickCreate(true);
               }}
             >
-              <Plus className="h-4 w-4" /> Nova tarefa
+              <Plus className="h-4 w-4" /> Nova Tarefa
             </Button>
           </>
         }
@@ -290,7 +292,7 @@ export default function TasksPage() {
                     ))}
                   </div>
                 )}
-                {t.assignee && (
+                {t.assignee?.fullName && (
                   <div className="mt-2 flex items-center gap-1.5">
                     <Avatar size="xs">
                       <AvatarFallback>

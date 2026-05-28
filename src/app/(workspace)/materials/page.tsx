@@ -24,6 +24,7 @@ import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useQuickCreate } from "@/stores/quick-create-store";
 import { useMaterials, useCreateMaterialMutation } from "@/hooks/use-queries";
 import { UploadDropzone } from "@/lib/uploadthing";
+import { useNewEntityShortcut } from "@/hooks/use-page-shortcuts";
 import { toast } from "sonner";
 
 const typeIcon = {
@@ -55,6 +56,7 @@ export default function MaterialsPage() {
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
   const { data: dbMaterials = [] } = useMaterials(activeWorkspaceId);
   const createMaterialMutation = useCreateMaterialMutation();
+  useNewEntityShortcut("folder");
 
   const [search, setSearch] = React.useState("");
   const items =
@@ -74,11 +76,21 @@ export default function MaterialsPage() {
         description="Upload, organização e vínculos. PDFs, vídeos, imagens, prints, áudios — todos rastreáveis."
         actions={
           <>
-            <Button variant="outline" size="sm" onClick={() => toast.info("Use a área de dropzone abaixo para fazer upload")}>
-              <Upload className="h-3.5 w-3.5" /> Upload
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                toast.info("Use a área de dropzone abaixo para fazer upload")
+              }
+            >
+              <Upload className="h-3.5 w-3.5" /> Enviar Arquivo
             </Button>
-            <Button variant="gradient" size="sm" onClick={() => toast.success("Criar pasta")}>
-              <Plus className="h-4 w-4" /> Nova pasta
+            <Button
+              variant="gradient"
+              size="sm"
+              onClick={() => useQuickCreate.getState().openWith("folder")}
+            >
+              <Plus className="h-4 w-4" /> Nova Pasta
             </Button>
           </>
         }

@@ -2,27 +2,45 @@
 
 import { create } from "zustand";
 
-type Entity =
+export type QuickCreateEntity =
   | "task"
+  | "subtask"
   | "document"
   | "content"
   | "lead"
-  | "transaction"
+  | "revenue"
+  | "expense"
   | "persona"
   | "flow"
   | "tool"
-  | "project";
+  | "project"
+  | "event"
+  | "folder"
+  | "promptChain"
+  | "modelingProfile"
+  | "invite";
+
+export interface QuickCreateContext {
+  parentTaskId?: string;
+  projectId?: string;
+  defaultChannel?: string;
+  defaultContentType?: string;
+}
 
 interface QuickCreateState {
   open: boolean;
-  entity: Entity | null;
+  entity: QuickCreateEntity | null;
+  context: QuickCreateContext;
   setOpen: (open: boolean) => void;
-  openWith: (entity: Entity) => void;
+  openWith: (entity: QuickCreateEntity, context?: QuickCreateContext) => void;
+  close: () => void;
 }
 
 export const useQuickCreate = create<QuickCreateState>((set) => ({
   open: false,
   entity: null,
-  setOpen: (open) => set({ open }),
-  openWith: (entity) => set({ open: true, entity }),
+  context: {},
+  setOpen: (open) => set({ open, ...(open ? {} : { context: {} }) }),
+  openWith: (entity, context = {}) => set({ open: true, entity, context }),
+  close: () => set({ open: false, context: {} }),
 }));

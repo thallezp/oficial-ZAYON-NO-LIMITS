@@ -22,6 +22,7 @@ import { BrandLogo } from "@/components/ui/brand-logo";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useTools, useToggleToolFavoriteMutation } from "@/hooks/use-queries";
 import { useQuickCreate } from "@/stores/quick-create-store";
+import { useNewEntityShortcut } from "@/hooks/use-page-shortcuts";
 import { toast } from "sonner";
 
 export default function ToolsPage() {
@@ -32,6 +33,7 @@ export default function ToolsPage() {
   const { data: dbTools = [] } = useTools(activeWorkspaceId);
   const toggleFavoriteMutation = useToggleToolFavoriteMutation();
   const { openWith } = useQuickCreate();
+  useNewEntityShortcut("tool");
 
   const allTools = isMockModeClient && dbTools.length === 0 ? MOCK_TOOLS : dbTools;
 
@@ -69,7 +71,7 @@ export default function ToolsPage() {
               <Filter className="h-3.5 w-3.5" /> Filtros
             </Button>
             <Button variant="gradient" size="sm" onClick={() => openWith("tool")}>
-              <Plus className="h-4 w-4" /> Adicionar ferramenta
+              <Plus className="h-4 w-4" /> Adicionar Ferramenta
             </Button>
           </>
         }
