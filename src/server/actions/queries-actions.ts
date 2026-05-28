@@ -85,6 +85,11 @@ export async function getMaterialsAction(filter?: ScopeFilter) {
   return queries.materials.list(filter);
 }
 
+export async function getFoldersAction(filter?: ScopeFilter) {
+  await assertScope(filter);
+  return queries.folders.list(filter);
+}
+
 export async function getToolsAction(workspaceId?: string) {
   await assertWorkspaceMember(workspaceId);
   return queries.tools.list(workspaceId);

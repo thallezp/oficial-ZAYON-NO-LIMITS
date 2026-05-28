@@ -150,6 +150,11 @@ export const folders = pgTable("folders", {
   name: text("name").notNull(),
   parentId: uuid("parent_id"),
   color: text("color"),
+  // URL de uma pasta do Google Drive (ou outro provider) para visualizar em embed.
+  // Pode ser uma share URL como https://drive.google.com/drive/folders/<id>
+  // que o front-end converte para o endpoint /embeddedfolderview no iframe.
+  driveUrl: text("drive_url"),
+  driveProvider: text("drive_provider"), // "google" | "dropbox" | "onedrive"
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

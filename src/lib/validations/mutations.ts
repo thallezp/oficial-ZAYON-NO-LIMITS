@@ -216,6 +216,8 @@ const createFolder = z
     name: z.string().min(2, "Nome da pasta e obrigatorio"),
     parentId: optionalId,
     color: z.string().optional().nullable(),
+    driveUrl: z.string().url().optional().nullable().or(z.literal("")),
+    driveProvider: z.string().optional().nullable(),
   })
   .passthrough();
 
@@ -297,6 +299,10 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
   createPromptChain,
   createModelingProfile,
   createFolder,
+  updateFolder: z
+    .object({ id, input: z.object({}).passthrough() })
+    .passthrough(),
+  deleteFolder: simpleDelete,
   inviteMember,
 };
 

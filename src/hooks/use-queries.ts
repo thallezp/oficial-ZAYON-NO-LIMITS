@@ -704,11 +704,47 @@ export function useCreateFolderMutation() {
       name: string;
       parentId?: string;
       color?: string;
+      driveUrl?: string;
+      driveProvider?: string;
     }) => callMutate("createFolder", input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["folders"] });
       queryClient.invalidateQueries({ queryKey: ["materials"] });
     },
+  });
+}
+
+export function useUpdateFolderMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: any }) =>
+      callMutate("updateFolder", { id, input }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["folders"] });
+    },
+  });
+}
+
+export function useDeleteFolderMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deleteFolder", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["folders"] });
+      queryClient.invalidateQueries({ queryKey: ["materials"] });
+    },
+  });
+}
+
+export function useFolders(workspaceId?: string | null, personaId?: string | null) {
+  return useQuery({
+    queryKey: ["folders", workspaceId, personaId],
+    queryFn: () =>
+      qa.getFoldersAction({
+        workspaceId: workspaceId ?? undefined,
+        personaId: personaId ?? undefined,
+      }),
+    enabled: !!workspaceId,
   });
 }
 

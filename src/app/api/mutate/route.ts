@@ -303,6 +303,7 @@ export async function POST(req: Request) {
             size_bytes: payload.sizeBytes || null,
             description: payload.description || null,
             tags: payload.tags || null,
+            folder_id: payload.folderId || null,
             uploaded_by: user.id,
           })
           .select()
@@ -715,19 +716,50 @@ export async function POST(req: Request) {
       }
 
       case "createFolder": {
+        const insertPayload: Record<string, any> = {
+          workspace_id: payload.workspaceId,
+          persona_id: payload.personaId || null,
+          name: payload.name,
+          parent_id: payload.parentId || null,
+          color: payload.color || null,
+        };
+        if (payload.driveUrl) insertPayload.drive_url = payload.driveUrl;
+        if (payload.driveProvider) insertPayload.drive_provider = payload.driveProvider;
         const { data, error } = await supabase
           .from("folders")
-          .insert({
-            workspace_id: payload.workspaceId,
-            persona_id: payload.personaId || null,
-            name: payload.name,
-            parent_id: payload.parentId || null,
-            color: payload.color || null,
-          })
+          .insert(insertPayload)
           .select()
           .single();
         if (error) throw error;
         result = data;
+        break;
+      }
+
+      case "updateFolder": {
+        const { id, input } = payload;
+        const patch: Record<string, any> = {};
+        if (input.name !== undefined) patch.name = input.name;
+        if (input.color !== undefined) patch.color = input.color;
+        if (input.driveUrl !== undefined) patch.drive_url = input.driveUrl || null;
+        if (input.driveProvider !== undefined)
+          patch.drive_provider = input.driveProvider || null;
+        if (input.parentId !== undefined) patch.parent_id = input.parentId || null;
+        const { data, error } = await supabase
+          .from("folders")
+          .update(patch)
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deleteFolder": {
+        const { id } = payload;
+        const { error } = await supabase.from("folders").delete().eq("id", id);
+        if (error) throw error;
+        result = { id };
         break;
       }
 

@@ -1065,16 +1065,32 @@ function FolderForm({ workspaceId, personaId, submitLabel, onSuccess }: EntityFo
   const create = useCreateFolderMutation();
   const [name, setName] = React.useState("");
   const [color, setColor] = React.useState("#6366f1");
+  const [driveUrl, setDriveUrl] = React.useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !workspaceId) return;
+    const url = driveUrl.trim();
+    if (url && !/^https?:\/\//i.test(url)) {
+      toast.error("URL precisa começar com http(s)://");
+      return;
+    }
     try {
       await create.mutateAsync({
         workspaceId,
         personaId: personaId ?? undefined,
         name: name.trim(),
         color,
+        driveUrl: url || undefined,
+        driveProvider: url
+          ? url.includes("drive.google.com")
+            ? "google"
+            : url.includes("dropbox.com")
+              ? "dropbox"
+              : url.includes("onedrive")
+                ? "onedrive"
+                : "external"
+          : undefined,
       });
       toast.success("Pasta criada!", { description: name });
       onSuccess();
@@ -1086,10 +1102,20 @@ function FolderForm({ workspaceId, personaId, submitLabel, onSuccess }: EntityFo
   return (
     <form className="space-y-3" onSubmit={handleSubmit}>
       <Field label="Nome da pasta" required>
-        <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+        <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus placeholder="Ex: Brand kit" />
       </Field>
       <Field label="Cor">
         <Input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-9 w-20 p-1" />
+      </Field>
+      <Field label="Link Google Drive / OneDrive / Dropbox (opcional)">
+        <Input
+          value={driveUrl}
+          onChange={(e) => setDriveUrl(e.target.value)}
+          placeholder="https://drive.google.com/drive/folders/..."
+        />
+        <p className="text-[10px] text-muted-foreground mt-1">
+          Quando preenchido, a pasta será navegada como Drive embed dentro do sistema.
+        </p>
       </Field>
       <FormFooter
         submitLabel={submitLabel}
