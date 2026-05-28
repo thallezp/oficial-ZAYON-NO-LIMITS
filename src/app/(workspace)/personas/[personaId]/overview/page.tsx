@@ -6,11 +6,13 @@ import {
   CircleDollarSign,
   Eye,
   Flame,
+  Plus,
   Sparkles,
   Target,
   TrendingUp,
   Users,
 } from "lucide-react";
+import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,17 +28,144 @@ import {
   formatCompact,
   formatPercent,
 } from "@/lib/utils/format";
-import { useFinance, useContent, useLeads, useFunnel } from "@/hooks/use-queries";
+import {
+  useFinance,
+  useContent,
+  useLeads,
+  useFunnel,
+  useTasks,
+} from "@/hooks/use-queries";
 import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useQuickCreate } from "@/stores/quick-create-store";
+
+type PeriodFilter = "7d" | "30d" | "90d" | "all";
 
 export default function PersonaOverviewPage() {
   const persona = usePersonaFromRoute();
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const openQuickCreate = useQuickCreate((s) => s.openWith);
+
+  const [period, setPeriod] = React.useState<PeriodFilter>("30d");
 
   const { data: dbFinance = [] } = useFinance(activeWorkspaceId, persona.id);
   const { data: dbContent = [] } = useContent(activeWorkspaceId, persona.id);
   const { data: dbLeads = [] } = useLeads(activeWorkspaceId, persona.id);
   const { data: dbFunnel } = useFunnel(persona.id);
+  const { data: dbTasks = [] } = useTasks(activeWorkspaceId, persona.id);
+
+  // ==========================================================================
+  // Calculos reais — TUDO vem de queries do Supabase
+  // ==========================================================================
+
+  const periodDays = period === "7d" ? 7 : period === "30d" ? 30 : period === "90d" ? 90 : 36500;
+  const now = Date.now();
+  const periodStart = now - periodDays * 24 * 60 * 60 * 1000;
+  const prevPeriodStart = periodStart - periodDays * 24 * 60 * 60 * 1000;
+
+  // Receita real do periodo
+  const realRevenuePeriod = React.useMemo(() => {
+    return (dbFinance as any[])
+      .filter((t) => {
+        if (t.type !== "revenue" || t.status !== "paid") return false;
+        const ts = new Date(t.occurredAt ?? t.occurred_at ?? t.createdAt ?? 0).getTime();
+        return ts >= periodStart && ts <= now;
+      })
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  }, [dbFinance, periodStart, now]);
+
+  const realRevenuePrev = React.useMemo(() => {
+    return (dbFinance as any[])
+      .filter((t) => {
+        if (t.type !== "revenue" || t.status !== "paid") return false;
+        const ts = new Date(t.occurredAt ?? t.occurred_at ?? t.createdAt ?? 0).getTime();
+        return ts >= prevPeriodStart && ts < periodStart;
+      })
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  }, [dbFinance, prevPeriodStart, periodStart]);
+
+  const realRevenueDelta = realRevenuePrev > 0
+    ? ((realRevenuePeriod - realRevenuePrev) / realRevenuePrev) * 100
+    : 0;
+
+  // Receita acumulada de toda historia
+  const realRevenueAll = React.useMemo(() => {
+    return (dbFinance as any[])
+      .filter((t) => t.type === "revenue" && t.status === "paid")
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  }, [dbFinance]);
+
+  // Leads real do periodo
+  const realLeadsPeriod = React.useMemo(() => {
+    return (dbLeads as any[]).filter((l) => {
+      const ts = new Date(l.createdAt ?? l.created_at ?? 0).getTime();
+      return ts >= periodStart && ts <= now;
+    }).length;
+  }, [dbLeads, periodStart, now]);
+
+  const realLeadsPrev = React.useMemo(() => {
+    return (dbLeads as any[]).filter((l) => {
+      const ts = new Date(l.createdAt ?? l.created_at ?? 0).getTime();
+      return ts >= prevPeriodStart && ts < periodStart;
+    }).length;
+  }, [dbLeads, prevPeriodStart, periodStart]);
+
+  const realLeadsDelta = realLeadsPrev > 0
+    ? ((realLeadsPeriod - realLeadsPrev) / realLeadsPrev) * 100
+    : 0;
+
+  // Posts real
+  const realPostedPeriod = React.useMemo(() => {
+    return (dbContent as any[]).filter((c) => {
+      if (c.status !== "posted") return false;
+      const ts = new Date(c.publishedAt ?? c.published_at ?? c.scheduledAt ?? c.scheduled_at ?? c.createdAt ?? 0).getTime();
+      return ts >= periodStart && ts <= now;
+    }).length;
+  }, [dbContent, periodStart, now]);
+
+  // Views totais reais do periodo (de content_items.metrics.views)
+  const realViewsPeriod = React.useMemo(() => {
+    return (dbContent as any[])
+      .filter((c) => {
+        if (c.status !== "posted") return false;
+        const ts = new Date(c.publishedAt ?? c.published_at ?? c.scheduledAt ?? c.scheduled_at ?? c.createdAt ?? 0).getTime();
+        return ts >= periodStart && ts <= now;
+      })
+      .reduce((sum, c) => sum + Number(c.metrics?.views ?? 0), 0);
+  }, [dbContent, periodStart, now]);
+
+  // Engajamento medio (likes + comments + shares + saves) / views
+  const realEngagement = React.useMemo(() => {
+    const posted = (dbContent as any[]).filter(
+      (c) => c.status === "posted" && c.metrics?.views,
+    );
+    if (posted.length === 0) return 0;
+    let totalEng = 0;
+    let totalViews = 0;
+    posted.forEach((c) => {
+      const m = c.metrics ?? {};
+      totalEng +=
+        Number(m.likes ?? 0) +
+        Number(m.comments ?? 0) +
+        Number(m.shares ?? 0) +
+        Number(m.saves ?? 0);
+      totalViews += Number(m.views ?? 0);
+    });
+    return totalViews > 0 ? (totalEng / totalViews) * 100 : 0;
+  }, [dbContent]);
+
+  // Conversao = leads convertidos / total leads
+  const realConversion = React.useMemo(() => {
+    if (dbLeads.length === 0) return 0;
+    const converted = (dbLeads as any[]).filter((l) => l.status === "converted").length;
+    return (converted / dbLeads.length) * 100;
+  }, [dbLeads]);
+
+  // Tarefas pendentes desta persona
+  const openTasksCount = React.useMemo(() => {
+    return (dbTasks as any[]).filter(
+      (t) => t.status !== "done" && t.status !== "archived",
+    ).length;
+  }, [dbTasks]);
 
   const m = persona.metrics ?? {};
 
@@ -69,15 +198,14 @@ export default function PersonaOverviewPage() {
     };
   });
 
-  // 2. Crescimento de seguidores realistas
-  const totalFollowers = m.followers ?? 0;
+  // 2. Crescimento de seguidores — placeholder zerado ate ter snapshots reais
+  // (precisa de tabela persona_follower_snapshots — fica como follow-up)
   const followersSeries = Array.from({ length: 30 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (29 - i));
-    const val = Math.round(totalFollowers * (1 - (29 - i) * 0.002));
     return {
       label: d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" }),
-      value: val,
+      value: 0,
     };
   });
 
@@ -141,23 +269,72 @@ export default function PersonaOverviewPage() {
     <div className="space-y-6">
       <PageHeader
         title="Overview"
-        description="Dashboard analítico da persona ativa · receita, alcance, leads, performance."
+        description="Dashboard analítico da persona ativa · todos os números vêm do banco em tempo real."
         actions={
           <>
-            <Button variant="outline" size="sm">7d</Button>
-            <Button variant="default" size="sm">30d</Button>
-            <Button variant="outline" size="sm">90d</Button>
-            <Button variant="outline" size="sm">total</Button>
+            {(["7d", "30d", "90d", "all"] as const).map((p) => (
+              <Button
+                key={p}
+                variant={period === p ? "default" : "outline"}
+                size="sm"
+                onClick={() => setPeriod(p)}
+              >
+                {p === "all" ? "total" : p}
+              </Button>
+            ))}
           </>
         }
       />
       <PersonaHero persona={persona} pageBadge="overview" />
 
+      {/* Empty state quando não há nenhum dado real */}
+      {dbFinance.length === 0 &&
+        dbContent.length === 0 &&
+        dbLeads.length === 0 && (
+          <Card variant="elevated">
+            <CardContent className="py-10 text-center space-y-4">
+              <Sparkles className="h-8 w-8 mx-auto text-primary" />
+              <div>
+                <p className="text-sm font-medium">
+                  Nenhum dado real cadastrado para esta persona ainda
+                </p>
+                <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+                  Métricas aparecem automaticamente assim que você criar conteúdos,
+                  registrar leads ou lançamentos financeiros.
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-2 flex-wrap">
+                <Button
+                  variant="gradient"
+                  size="sm"
+                  onClick={() => openQuickCreate("content")}
+                >
+                  <Plus className="h-3.5 w-3.5" /> Cadastrar conteúdo
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openQuickCreate("lead")}
+                >
+                  <Plus className="h-3.5 w-3.5" /> Importar leads
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openQuickCreate("revenue")}
+                >
+                  <Plus className="h-3.5 w-3.5" /> Registrar receita
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
-          label="Receita 30d"
-          value={formatCurrency(m.revenuePeriod ?? 0)}
-          delta={m.revenueDelta}
+          label={`Receita ${period === "all" ? "total" : period}`}
+          value={formatCurrency(realRevenuePeriod)}
+          delta={Number(realRevenueDelta.toFixed(1))}
           icon={<CircleDollarSign className="h-4 w-4" />}
           accent="success"
         />
@@ -167,48 +344,72 @@ export default function PersonaOverviewPage() {
           delta={m.followersDelta}
           icon={<Users className="h-4 w-4" />}
           accent="primary"
+          hint="cadastrar canais para tracking real"
         />
         <StatCard
-          label="Views 30d"
-          value={formatCompact(m.views ?? 0)}
-          delta={m.viewsDelta}
+          label={`Views ${period === "all" ? "total" : period}`}
+          value={formatCompact(realViewsPeriod)}
           icon={<Eye className="h-4 w-4" />}
           accent="info"
+          hint="de content_items publicados"
         />
         <StatCard
-          label="Engajamento"
-          value={`${m.engagement?.toFixed(1) ?? "0.0"}%`}
-          delta={m.engagementDelta}
+          label="Engajamento médio"
+          value={`${realEngagement.toFixed(1)}%`}
           icon={<Activity className="h-4 w-4" />}
           accent="warning"
+          hint="(likes+comments+shares+saves)/views"
         />
         <StatCard
-          label="Leads captados"
-          value={String(m.leads ?? 0)}
-          delta={m.leadsDelta}
+          label={`Leads ${period === "all" ? "total" : period}`}
+          value={String(realLeadsPeriod)}
+          delta={Number(realLeadsDelta.toFixed(1))}
           icon={<Target className="h-4 w-4" />}
         />
         <StatCard
-          label="Posts publicados"
-          value={String(m.posts ?? 0)}
+          label={`Posts ${period === "all" ? "total" : period}`}
+          value={String(realPostedPeriod)}
           icon={<Flame className="h-4 w-4" />}
-          hint="contando todos os canais"
+          hint="todos os canais somados"
         />
         <StatCard
-          label="Conversão"
-          value={`${m.conversion?.toFixed(1) ?? "0.0"}%`}
-          delta={m.conversionDelta}
+          label="Conversão real"
+          value={`${realConversion.toFixed(1)}%`}
           icon={<TrendingUp className="h-4 w-4" />}
           accent="success"
+          hint="leads convertidos / total leads"
         />
         <StatCard
           label="Receita acumulada"
-          value={formatCurrency(m.revenue ?? 0)}
+          value={formatCurrency(realRevenueAll)}
           icon={<Sparkles className="h-4 w-4" />}
           accent="primary"
-          hint="histórico total"
+          hint="todo histórico de financial_transactions"
         />
       </div>
+
+      {/* Tarefas pendentes desta persona */}
+      {openTasksCount > 0 && (
+        <Card>
+          <CardContent className="py-3 flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary/15 flex items-center justify-center">
+              <Target className="h-4 w-4 text-primary" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">
+                {openTasksCount} tarefa{openTasksCount === 1 ? "" : "s"} pendente
+                {openTasksCount === 1 ? "" : "s"} para esta persona
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Veja na aba de Tarefas filtradas por {persona.name}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/tasks">Abrir tarefas</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card variant="elevated" className="lg:col-span-2">
@@ -219,8 +420,12 @@ export default function PersonaOverviewPage() {
                 Últimos 30 dias.
               </p>
             </div>
-            <Badge variant="success" size="sm">
-              +{m.revenueDelta?.toFixed(1) ?? "0"}%
+            <Badge
+              variant={realRevenueDelta >= 0 ? "success" : "danger"}
+              size="sm"
+            >
+              {realRevenueDelta >= 0 ? "+" : ""}
+              {realRevenueDelta.toFixed(1)}%
             </Badge>
           </CardHeader>
           <CardContent>

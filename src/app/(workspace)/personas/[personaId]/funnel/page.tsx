@@ -36,34 +36,10 @@ const FunnelCanvas = dynamic(
   { ssr: false, loading: () => <div className="h-[560px] rounded-xl border border-border/60 bg-card/40 animate-pulse" /> },
 );
 
-const TEMPLATES = {
-  organic: {
-    name: "Funil Orgânico (TikTok → Direct)",
-    nodes: [
-      { id: "node-1", type: "content", title: "Vídeo Orgânico TikTok", description: "Atração por alcance", position: { x: 50, y: 150 }, metrics: { traffic: 25000, conversion: 3.5, revenue: 0 } },
-      { id: "node-2", type: "direct", title: "Chamada Direct", description: "Primeira qualificação", position: { x: 300, y: 150 }, metrics: { traffic: 875, conversion: 40, revenue: 0 } },
-      { id: "node-3", type: "whatsapp", title: "WhatsApp Comercial", description: "Fechamento consultivo", position: { x: 550, y: 150 }, metrics: { traffic: 350, conversion: 20, revenue: 70000 } },
-    ],
-    edges: [
-      { id: "edge-1", source: "node-1", target: "node-2" },
-      { id: "edge-2", source: "node-2", target: "node-3" },
-    ],
-  },
-  escalator: {
-    name: "Escada de Valor",
-    nodes: [
-      { id: "node-1", type: "landing", title: "Isca Digital", description: "Lead Magnet PDF", position: { x: 50, y: 100 }, metrics: { traffic: 5000, conversion: 20, revenue: 0 } },
-      { id: "node-2", type: "community", title: "Comunidade de Alunos", description: "Comunidade Low Ticket", position: { x: 280, y: 100 }, metrics: { traffic: 1000, conversion: 10, revenue: 19000 } },
-      { id: "node-3", type: "checkout", title: "Curso Principal", description: "Core Offer", position: { x: 510, y: 100 }, metrics: { traffic: 100, conversion: 15, revenue: 49000 } },
-      { id: "node-4", type: "call", title: "Mentoria Individual", description: "High Ticket Back-end", position: { x: 740, y: 100 }, metrics: { traffic: 15, conversion: 30, revenue: 150000 } },
-    ],
-    edges: [
-      { id: "edge-1", source: "node-1", target: "node-2" },
-      { id: "edge-2", source: "node-2", target: "node-3" },
-      { id: "edge-3", source: "node-3", target: "node-4" },
-    ],
-  },
-};
+import { FUNNEL_TEMPLATES } from "@/components/flow/funnel-canvas";
+
+// Templates aqui re-utilizam FUNNEL_TEMPLATES do canvas (7 templates + vazio)
+const TEMPLATES = FUNNEL_TEMPLATES;
 
 export default function FunnelPage() {
   const persona = usePersonaFromRoute();
@@ -77,7 +53,9 @@ export default function FunnelPage() {
   const [createOpen, setCreateOpen] = React.useState(false);
   const [funnelName, setFunnelName] = React.useState("");
   const [funnelDesc, setFunnelDesc] = React.useState("");
-  const [selectedTemplate, setSelectedTemplate] = React.useState<keyof typeof TEMPLATES | "empty">("organic");
+  const [selectedTemplate, setSelectedTemplate] = React.useState<
+    keyof typeof TEMPLATES | "empty"
+  >("organic");
 
   const funnel = dbFunnel || (isMockModeClient ? MOCK_FUNNEL_AURORA : null);
 
@@ -307,10 +285,19 @@ export default function FunnelPage() {
                   onChange={(e) => setSelectedTemplate(e.target.value as any)}
                   className="w-full h-9 rounded-md border border-border/60 bg-background px-3 py-1 text-xs text-foreground outline-none focus:border-primary"
                 >
-                  <option value="organic">Funil Orgânico (TikTok → Direct → WhatsApp)</option>
-                  <option value="escalator">Escada de Valor (Isca → Low ticket → Core Offer → Mentoria)</option>
+                  {(Object.keys(TEMPLATES) as (keyof typeof TEMPLATES)[]).map(
+                    (k) => (
+                      <option key={k} value={k}>
+                        {TEMPLATES[k].name}
+                      </option>
+                    ),
+                  )}
                   <option value="empty">Começar Vazio</option>
                 </select>
+                <p className="text-[10px] text-muted-foreground">
+                  Cada template já vem com cards conectados e métricas de exemplo.
+                  Tudo é editável depois.
+                </p>
               </div>
             </div>
             <DialogFooter>
