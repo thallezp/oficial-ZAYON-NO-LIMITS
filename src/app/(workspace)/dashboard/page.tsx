@@ -4,17 +4,24 @@ import * as React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
+  AlertTriangle,
   ArrowUpRight,
   Bot,
+  CalendarClock,
   CheckCircle2,
   CircleDollarSign,
+  Clock,
   ExternalLink,
+  FileText,
   Flame,
   Gauge,
   ListChecks,
   Plus,
+  Receipt,
+  Send,
   Sparkles,
   Target,
+  UserPlus,
   Users,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -41,7 +48,7 @@ import {
   useUpdateUserMetadataMutation,
   useDocuments,
   useCalendarEvents,
-  useTeam,
+  useBills,
 } from "@/hooks/use-queries";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useQuickCreate } from "@/stores/quick-create-store";
@@ -54,6 +61,10 @@ import {
   MOCK_AI_ACTIONS,
   MOCK_NOTIFICATIONS,
   MOCK_ACTIVITY,
+  MOCK_DOCUMENTS,
+  MOCK_LEADS,
+  MOCK_CONTENT,
+  MOCK_BILLS,
 } from "@/data";
 import { isMockModeClient } from "@/lib/mock-mode-client";
 import { initials, relativeTime, formatCurrency, formatCompact } from "@/lib/utils/format";
@@ -94,11 +105,18 @@ interface Widget {
 const DEFAULT_WIDGETS: Widget[] = [
   { id: "revenue-chart", colSpan: "lg:col-span-2" },
   { id: "channel-distribution", colSpan: "lg:col-span-1" },
+  { id: "today-events", colSpan: "lg:col-span-1" },
+  { id: "overdue-tasks", colSpan: "lg:col-span-1" },
+  { id: "recent-leads", colSpan: "lg:col-span-1" },
   { id: "active-personas", colSpan: "lg:col-span-2" },
   { id: "followers-growth", colSpan: "lg:col-span-1" },
   { id: "focus-tasks", colSpan: "lg:col-span-2" },
   { id: "recent-activity", colSpan: "lg:col-span-1" },
   { id: "active-projects", colSpan: "lg:col-span-2" },
+  { id: "scheduled-content", colSpan: "lg:col-span-1" },
+  { id: "team-pending", colSpan: "lg:col-span-1" },
+  { id: "recent-documents", colSpan: "lg:col-span-1" },
+  { id: "bills-to-pay", colSpan: "lg:col-span-1" },
   { id: "favorite-tools", colSpan: "lg:col-span-1" },
   { id: "ai-actions", colSpan: "lg:col-span-1" },
   { id: "notifications", colSpan: "lg:col-span-1" },
@@ -167,6 +185,8 @@ export default function DashboardPage() {
   const { data: tools = [] } = useTools(activeWorkspaceId);
   const { data: aiActions = [] } = useAiActions(activeWorkspaceId);
   const { data: leads = [] } = useLeads(activeWorkspaceId);
+  const { data: calendarEvents = [] } = useCalendarEvents(activeWorkspaceId);
+  const { data: bills = [] } = useBills(activeWorkspaceId);
 
   const taskItems = isMockModeClient && tasks.length === 0 ? MOCK_TASKS : tasks;
   const projectItems =
@@ -180,12 +200,18 @@ export default function DashboardPage() {
       : notifications;
   const activityItems =
     isMockModeClient && activity.length === 0 ? MOCK_ACTIVITY : activity;
+  const leadItems = isMockModeClient && leads.length === 0 ? MOCK_LEADS : leads;
+  const contentItems =
+    isMockModeClient && content.length === 0 ? MOCK_CONTENT : content;
+  const billItems = isMockModeClient && bills.length === 0 ? MOCK_BILLS : bills;
 
   const todayTasks = taskItems.filter(
     (t: any) => t.status !== "done" && t.priority !== "low",
   ).slice(0, 6);
 
-  const { data: documents = [] } = useDocuments(activeWorkspaceId);
+  const { data: dbDocuments = [] } = useDocuments(activeWorkspaceId);
+  const documents =
+    isMockModeClient && dbDocuments.length === 0 ? MOCK_DOCUMENTS : dbDocuments;
 
   // Real calculations for Dashboard metrics and charts
   
@@ -342,6 +368,110 @@ export default function DashboardPage() {
     value,
   }));
 
+  // 8. Today events (próximas 24h)
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const endOfToday = new Date(startOfToday);
+  endOfToday.setHours(23, 59, 59, 999);
+
+  const todayEvents = calendarEvents
+    .filter((e: any) => {
+      if (!e.startAt) return false;
+      const t = new Date(e.startAt).getTime();
+      return t >= startOfToday.getTime() && t <= endOfToday.getTime();
+    })
+    .sort(
+      (a: any, b: any) =>
+        new Date(a.startAt).getTime() - new Date(b.startAt).getTime(),
+    )
+    .slice(0, 6);
+
+  // 9. Overdue tasks
+  const overdueTasks = taskItems
+    .filter((t: any) => {
+      if (t.status === "done" || !t.dueAt) return false;
+      return new Date(t.dueAt).getTime() < nowTime;
+    })
+    .sort(
+      (a: any, b: any) =>
+        new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime(),
+    )
+    .slice(0, 6);
+
+  // 10. Recent documents
+  const recentDocuments = [...documents]
+    .filter((d: any) => !d.archivedAt)
+    .sort(
+      (a: any, b: any) =>
+        new Date(b.updatedAt ?? b.createdAt).getTime() -
+        new Date(a.updatedAt ?? a.createdAt).getTime(),
+    )
+    .slice(0, 6);
+
+  // 11. Scheduled content (programados ou atrasados de publicação)
+  const scheduledContent = contentItems
+    .filter(
+      (c: any) =>
+        c.scheduledAt &&
+        c.status !== "posted" &&
+        c.status !== "archived" &&
+        c.status !== "analyzed",
+    )
+    .sort(
+      (a: any, b: any) =>
+        new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime(),
+    )
+    .slice(0, 6);
+
+  // 12. Recent leads (mais novos primeiro)
+  const recentLeads = [...leadItems]
+    .sort(
+      (a: any, b: any) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    )
+    .slice(0, 6);
+
+  // 13. Team pending (tarefas em aberto por membro)
+  const pendingByMember = new Map<
+    string,
+    { member: any; count: number; urgent: number }
+  >();
+  taskItems.forEach((t: any) => {
+    if (t.status === "done") return;
+    const member = t.assignee;
+    if (!member?.id) return;
+    const entry = pendingByMember.get(member.id) ?? {
+      member,
+      count: 0,
+      urgent: 0,
+    };
+    entry.count += 1;
+    if (t.priority === "urgent" || t.priority === "high") entry.urgent += 1;
+    pendingByMember.set(member.id, entry);
+  });
+  const teamPending = Array.from(pendingByMember.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6);
+
+  // 14. Bills to pay (contas pendentes ordenadas por vencimento)
+  const billsToPay = billItems
+    .filter((b: any) => b.status === "pending")
+    .sort(
+      (a: any, b: any) =>
+        new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime(),
+    )
+    .slice(0, 6);
+  const totalBills = billsToPay.reduce(
+    (sum: number, b: any) => sum + Number(b.amount ?? 0),
+    0,
+  );
+
+  const mergeWithDefaults = React.useCallback((ordered: Widget[]): Widget[] => {
+    const seen = new Set(ordered.map((w) => w.id));
+    const missing = DEFAULT_WIDGETS.filter((w) => !seen.has(w.id));
+    return [...ordered, ...missing];
+  }, []);
+
   React.useEffect(() => {
     setMounted(true);
     const dbOrder = user?.metadata?.dashboardWidgetsOrder;
@@ -350,7 +480,9 @@ export default function DashboardPage() {
         const ordered = dbOrder
           .map((id: string) => DEFAULT_WIDGETS.find((w) => w.id === id))
           .filter(Boolean) as Widget[];
-        setWidgets(ordered.length > 0 ? ordered : DEFAULT_WIDGETS);
+        setWidgets(
+          ordered.length > 0 ? mergeWithDefaults(ordered) : DEFAULT_WIDGETS,
+        );
       } catch (e) {
         setWidgets(DEFAULT_WIDGETS);
       }
@@ -358,13 +490,14 @@ export default function DashboardPage() {
       const saved = localStorage.getItem("zayon.dashboard.widgets");
       if (saved) {
         try {
-          setWidgets(JSON.parse(saved));
+          const parsed = JSON.parse(saved) as Widget[];
+          setWidgets(mergeWithDefaults(parsed));
         } catch (e) {
           setWidgets(DEFAULT_WIDGETS);
         }
       }
     }
-  }, [user]);
+  }, [user, mergeWithDefaults]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -653,17 +786,397 @@ export default function DashboardPage() {
           </Card>
         );
 
+      case "today-events":
+        return (
+          <Card className="h-full">
+            <CardHeader className="flex-row justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <CalendarClock className="h-4 w-4 text-primary" />
+                  Agenda de hoje
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {todayEvents.length} evento{todayEvents.length === 1 ? "" : "s"} programado{todayEvents.length === 1 ? "" : "s"}
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/calendar">Calendário <ArrowUpRight className="h-3.5 w-3.5" /></Link>
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {todayEvents.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border/60 p-4 text-center">
+                  <p className="text-xs text-muted-foreground">Sem eventos para hoje</p>
+                </div>
+              ) : (
+                todayEvents.map((e: any) => {
+                  const start = new Date(e.startAt);
+                  const hh = String(start.getHours()).padStart(2, "0");
+                  const mm = String(start.getMinutes()).padStart(2, "0");
+                  return (
+                    <Link
+                      key={e.id}
+                      href="/calendar"
+                      className="flex items-start gap-3 rounded-lg border border-border/60 bg-card-elevated p-2.5 transition hover:border-primary/40"
+                    >
+                      <div
+                        className="mt-0.5 flex h-9 w-12 flex-col items-center justify-center rounded-md text-[10px] font-semibold"
+                        style={{
+                          background: `${e.color || "#3b82f6"}20`,
+                          color: e.color || "#3b82f6",
+                        }}
+                      >
+                        <span className="text-sm leading-none">{hh}</span>
+                        <span className="leading-none opacity-70">:{mm}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{e.title}</p>
+                        {e.category && (
+                          <p className="text-[10px] text-muted-foreground truncate">{e.category}</p>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
+        );
+
+      case "overdue-tasks":
+        return (
+          <Card className="h-full">
+            <CardHeader className="flex-row justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                  Atrasadas
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {overdueTasks.length} tarefa{overdueTasks.length === 1 ? "" : "s"} fora do prazo
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/tasks">Resolver</Link>
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-1.5">
+              {overdueTasks.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border/60 p-4 text-center">
+                  <CheckCircle2 className="h-4 w-4 text-success mx-auto mb-1" />
+                  <p className="text-xs text-muted-foreground">Tudo em dia</p>
+                </div>
+              ) : (
+                overdueTasks.map((task: any) => (
+                  <div
+                    key={task.id}
+                    className="flex items-center gap-3 rounded-lg border border-destructive/20 bg-destructive/5 px-2.5 py-2"
+                  >
+                    <span className="h-2 w-2 rounded-full bg-destructive shrink-0 animate-pulse" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">{task.title}</p>
+                      <p className="text-[10px] text-destructive">
+                        venceu {relativeTime(task.dueAt)}
+                      </p>
+                    </div>
+                    {task.assignee && (
+                      <Avatar size="xs">
+                        <AvatarFallback>{initials(task.assignee.fullName)}</AvatarFallback>
+                      </Avatar>
+                    )}
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        );
+
+      case "recent-leads":
+        return (
+          <Card className="h-full">
+            <CardHeader className="flex-row justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <UserPlus className="h-4 w-4 text-primary" />
+                  Leads recentes
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Últimos contatos capturados
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => openQuickCreate("lead")}>
+                <Plus className="h-3.5 w-3.5" /> Add
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {recentLeads.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border/60 p-4 text-center">
+                  <p className="text-xs text-muted-foreground">Nenhum lead ainda</p>
+                </div>
+              ) : (
+                recentLeads.map((lead: any) => {
+                  const score = lead.score ?? 0;
+                  const tone =
+                    score >= 80 ? "success" : score >= 50 ? "warning" : "outline";
+                  return (
+                    <Link
+                      key={lead.id}
+                      href="/personas"
+                      className="flex items-center gap-3 rounded-lg border border-border/60 bg-card-elevated p-2.5 transition hover:border-primary/40"
+                    >
+                      <Avatar size="sm">
+                        <AvatarFallback>{initials(lead.name ?? lead.email ?? "??")}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">
+                          {lead.name ?? lead.email ?? lead.instagram ?? "Lead sem nome"}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          {lead.campaign ?? lead.status} · {relativeTime(lead.createdAt)}
+                        </p>
+                      </div>
+                      <Badge size="sm" variant={tone}>{score}</Badge>
+                    </Link>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
+        );
+
+      case "scheduled-content":
+        return (
+          <Card className="h-full">
+            <CardHeader className="flex-row justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Send className="h-4 w-4 text-primary" />
+                  Conteúdos programados
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Próximas publicações
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/personas">Pauta</Link>
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {scheduledContent.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border/60 p-4 text-center">
+                  <p className="text-xs text-muted-foreground">Nada agendado</p>
+                </div>
+              ) : (
+                scheduledContent.map((c: any) => {
+                  const sched = new Date(c.scheduledAt);
+                  const isLate = sched.getTime() < nowTime;
+                  return (
+                    <div
+                      key={c.id}
+                      className={cn(
+                        "flex items-start gap-3 rounded-lg border bg-card-elevated p-2.5",
+                        isLate ? "border-warning/40 bg-warning/5" : "border-border/60",
+                      )}
+                    >
+                      <Badge size="sm" variant="outline" className="capitalize">
+                        {c.channel}
+                      </Badge>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{c.title}</p>
+                        <p
+                          className={cn(
+                            "text-[10px] truncate",
+                            isLate ? "text-warning" : "text-muted-foreground",
+                          )}
+                        >
+                          {isLate ? "atrasado " : "publica "}
+                          {relativeTime(c.scheduledAt)}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
+        );
+
+      case "team-pending":
+        return (
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-primary" />
+                Pendências da equipe
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Tarefas em aberto por responsável
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {teamPending.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border/60 p-4 text-center">
+                  <p className="text-xs text-muted-foreground">Nenhuma pendência</p>
+                </div>
+              ) : (
+                teamPending.map(({ member, count, urgent }) => (
+                  <div
+                    key={member.id}
+                    className="flex items-center gap-3 rounded-lg border border-border/60 bg-card-elevated p-2.5"
+                  >
+                    <Avatar size="sm">
+                      <AvatarFallback>{initials(member.fullName ?? member.email ?? "??")}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">
+                        {member.fullName ?? member.email}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {count} aberta{count === 1 ? "" : "s"}
+                        {urgent > 0 ? ` · ${urgent} crítica${urgent === 1 ? "" : "s"}` : ""}
+                      </p>
+                    </div>
+                    {urgent > 0 ? (
+                      <Badge size="sm" variant="danger">{urgent}</Badge>
+                    ) : (
+                      <Badge size="sm" variant="outline">{count}</Badge>
+                    )}
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        );
+
+      case "recent-documents":
+        return (
+          <Card className="h-full">
+            <CardHeader className="flex-row justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" />
+                  Documentos recentes
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Editados por último
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => openQuickCreate("document")}>
+                <Plus className="h-3.5 w-3.5" /> Doc
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-1.5">
+              {recentDocuments.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border/60 p-4 text-center">
+                  <p className="text-xs text-muted-foreground">Sem documentos ainda</p>
+                </div>
+              ) : (
+                recentDocuments.map((d: any) => (
+                  <Link
+                    key={d.id}
+                    href={`/documents/${d.id}`}
+                    className="flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-accent"
+                  >
+                    <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary text-sm">
+                      {d.emoji || d.icon || "📄"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">{d.title}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {relativeTime(d.updatedAt ?? d.createdAt)}
+                      </p>
+                    </div>
+                    {d.isStarred && (
+                      <Badge size="sm" variant="warning">★</Badge>
+                    )}
+                  </Link>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        );
+
+      case "bills-to-pay":
+        return (
+          <Card className="h-full">
+            <CardHeader className="flex-row justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Receipt className="h-4 w-4 text-warning" />
+                  Contas a pagar
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Total {formatCurrency(totalBills)}
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/personas">Financeiro</Link>
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-1.5">
+              {billsToPay.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border/60 p-4 text-center">
+                  <CheckCircle2 className="h-4 w-4 text-success mx-auto mb-1" />
+                  <p className="text-xs text-muted-foreground">Nada pendente</p>
+                </div>
+              ) : (
+                billsToPay.map((b: any) => {
+                  const due = new Date(b.dueAt);
+                  const isLate = due.getTime() < nowTime;
+                  return (
+                    <div
+                      key={b.id}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg border px-2.5 py-2",
+                        isLate
+                          ? "border-destructive/30 bg-destructive/5"
+                          : "border-border/60 bg-card-elevated",
+                      )}
+                    >
+                      <Clock
+                        className={cn(
+                          "h-3.5 w-3.5 shrink-0",
+                          isLate ? "text-destructive" : "text-muted-foreground",
+                        )}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{b.name}</p>
+                        <p
+                          className={cn(
+                            "text-[10px]",
+                            isLate ? "text-destructive" : "text-muted-foreground",
+                          )}
+                        >
+                          {isLate ? "venceu " : "vence "}
+                          {relativeTime(b.dueAt)}
+                        </p>
+                      </div>
+                      <span className="text-xs font-semibold num">
+                        {formatCurrency(Number(b.amount))}
+                      </span>
+                    </div>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
+        );
+
       default: return null;
     }
   };
 
   // Métricas dinâmicas reais já calculadas acima
 
+  const hour = now.getHours();
+  const greeting =
+    hour < 5 ? "Boa madrugada" : hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+
   return (
     <div className="space-y-8 pb-12">
       <PageHeader
-        title={<span>Boa noite, <span className="text-primary">{user?.fullName?.split(" ")[0] || "Alex"}</span></span>}
-        description={`Visão consolidada da operação. ${todayTasks.length} ações pendentes hoje · ${realLeads} leads quentes · ${documents.length} documentos · ${tools.length} ferramentas.`}
+        title={<span>{greeting}, <span className="text-primary">{user?.fullName?.split(" ")[0] || "Alex"}</span></span>}
+        description={`Visão consolidada da operação. ${todayTasks.length} pendentes hoje · ${overdueTasks.length} atrasadas · ${todayEvents.length} eventos · ${realLeads} leads quentes · ${billsToPay.length} contas a pagar.`}
         badge={<Badge variant="primary">premium</Badge>}
         actions={
           <>

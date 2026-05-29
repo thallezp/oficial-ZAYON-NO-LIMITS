@@ -147,6 +147,15 @@ export async function getTeamAction(workspaceId?: string) {
   return queries.team.list(workspaceId);
 }
 
+export async function getInvitationsAction(workspaceId: string) {
+  await assertWorkspaceMember(workspaceId);
+  return queries.invitations.list(workspaceId);
+}
+
+export async function getModelingContentExamplesAction(profileId: string) {
+  return queries.modelingExamples.list(profileId);
+}
+
 export async function getNotificationsAction(userId: string) {
   if (!useMockData) {
     const user = await getCurrentUserOrThrow();

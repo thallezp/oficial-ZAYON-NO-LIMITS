@@ -41,6 +41,11 @@ import {
   Users,
   Video,
   X,
+  FileText,
+  CheckSquare,
+  Paperclip,
+  PlusCircle,
+  Link2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,6 +56,7 @@ import type { Funnel } from "@/types";
 import { formatCompact, formatCurrency } from "@/lib/utils/format";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { useDocuments, useTasks, useMaterials } from "@/hooks/use-queries";
 
 // 15 tipos de card — Lennon-style
 export const NODE_TYPES = {
@@ -83,6 +89,10 @@ interface ProductData {
   nodeType: NodeTypeKey;
   accent?: string;
   status?: "draft" | "active" | "paused" | "archived";
+  documentIds?: string[];
+  taskIds?: string[];
+  materialIds?: string[];
+  customLinks?: { title: string; url: string }[];
   // produto
   price?: number;
   saleUrl?: string;
@@ -320,9 +330,11 @@ interface Props {
   funnel: Funnel;
   accent?: string;
   onSave?: (nodes: Node[], edges: Edge[]) => Promise<void> | void;
+  workspaceId?: string | null;
+  personaId?: string | null;
 }
 
-function FunnelInner({ funnel, accent = "#5b8cff", onSave }: Props) {
+function FunnelInner({ funnel, accent = "#5b8cff", onSave, workspaceId, personaId }: Props) {
   const initialNodes: Node[] = React.useMemo(
     () =>
       (funnel.nodes ?? []).map((n: any) => ({
@@ -538,6 +550,83 @@ function FunnelInner({ funnel, accent = "#5b8cff", onSave }: Props) {
     toast.success(`Template "${tmpl.name}" aplicado`);
   };
 
+  const layoutGrid = () => {
+    setNodes((nds) =>
+      nds.map((n, idx) => {
+        const col = idx % 4;
+        const row = Math.floor(idx / 4);
+        return {
+          ...n,
+          position: { x: col * 260 + 50, y: row * 200 + 80 },
+        };
+      })
+    );
+    toast.success("Organizado em Grade");
+  };
+
+  const layoutMindMap = () => {
+    // horizontal tree layout centering nodes vertically by level
+    const adjacency = new Map<string, string[]>();
+    const inDegree = new Map<string, number>();
+    nodes.forEach((n) => {
+      adjacency.set(n.id, []);
+      inDegree.set(n.id, 0);
+    });
+    edges.forEach((e) => {
+      adjacency.get(e.source)?.push(e.target);
+      inDegree.set(e.target, (inDegree.get(e.target) ?? 0) + 1);
+    });
+
+    const levels = new Map<string, number>();
+    const queue: string[] = [];
+    nodes.forEach((n) => {
+      if ((inDegree.get(n.id) ?? 0) === 0) {
+        levels.set(n.id, 0);
+        queue.push(n.id);
+      }
+    });
+
+    // Fallback in case of cycles or empty in-degree nodes
+    if (queue.length === 0 && nodes.length > 0) {
+      levels.set(nodes[0].id, 0);
+      queue.push(nodes[0].id);
+    }
+
+    while (queue.length > 0) {
+      const cur = queue.shift()!;
+      const curLevel = levels.get(cur) ?? 0;
+      for (const next of adjacency.get(cur) ?? []) {
+        if (!levels.has(next) || (levels.get(next) ?? 0) < curLevel + 1) {
+          levels.set(next, curLevel + 1);
+          queue.push(next);
+        }
+      }
+    }
+
+    const levelNodesMap = new Map<number, string[]>();
+    nodes.forEach((n) => {
+      const lvl = levels.get(n.id) ?? 0;
+      const list = levelNodesMap.get(lvl) ?? [];
+      list.push(n.id);
+      levelNodesMap.set(lvl, list);
+    });
+
+    setNodes((nds) =>
+      nds.map((n) => {
+        const lvl = levels.get(n.id) ?? 0;
+        const nodesInLevel = levelNodesMap.get(lvl) ?? [];
+        const idx = nodesInLevel.indexOf(n.id);
+        const total = nodesInLevel.length;
+        const yOffset = 250 - ((total - 1) * 200) / 2;
+        return {
+          ...n,
+          position: { x: lvl * 280 + 50, y: yOffset + idx * 200 },
+        };
+      })
+    );
+    toast.success("Organizado em Mind Map");
+  };
+
   const autoLayout = () => {
     // layout horizontal simples baseado em ordem das edges
     const adjacency = new Map<string, string[]>();
@@ -645,10 +734,22 @@ function FunnelInner({ funnel, accent = "#5b8cff", onSave }: Props) {
               )}
             </div>
             <button
+              onClick={layoutGrid}
+              className="flex items-center gap-1 rounded-lg border border-border/60 bg-card/80 px-2.5 py-1.5 text-[11px] font-medium hover:border-primary/40 hover:bg-card transition"
+            >
+              <Target className="h-3 w-3 text-sky-400" /> Layout Grade
+            </button>
+            <button
+              onClick={layoutMindMap}
+              className="flex items-center gap-1 rounded-lg border border-border/60 bg-card/80 px-2.5 py-1.5 text-[11px] font-medium hover:border-primary/40 hover:bg-card transition"
+            >
+              <Target className="h-3 w-3 text-purple-400" /> Layout Mind Map
+            </button>
+            <button
               onClick={autoLayout}
               className="flex items-center gap-1 rounded-lg border border-border/60 bg-card/80 px-2.5 py-1.5 text-[11px] font-medium hover:border-primary/40 hover:bg-card transition"
             >
-              <Target className="h-3 w-3" /> Auto Organizar
+              <Target className="h-3 w-3 text-emerald-400" /> Auto Organizar
             </button>
             <NodeAdderMenu onAdd={handleAddNode} />
           </Panel>
@@ -690,6 +791,8 @@ function FunnelInner({ funnel, accent = "#5b8cff", onSave }: Props) {
               onChange={handleUpdateNode}
               onDelete={handleDeleteNode}
               onDuplicate={handleDuplicateNode}
+              workspaceId={workspaceId || funnel.workspaceId}
+              personaId={personaId || funnel.personaId}
             />
           </motion.div>
         )}
@@ -751,6 +854,8 @@ interface DrawerProps {
   onChange: (patch: Partial<ProductData>) => void;
   onDelete: () => void;
   onDuplicate: () => void;
+  workspaceId?: string | null;
+  personaId?: string | null;
 }
 
 function NodeEditorDrawer({
@@ -759,9 +864,15 @@ function NodeEditorDrawer({
   onChange,
   onDelete,
   onDuplicate,
+  workspaceId,
+  personaId,
 }: DrawerProps) {
   const data = node.data as ProductData;
   const meta = NODE_TYPES[data.nodeType] ?? NODE_TYPES.custom;
+
+  const { data: documents = [] } = useDocuments(workspaceId, personaId);
+  const { data: tasks = [] } = useTasks(workspaceId, personaId);
+  const { data: materials = [] } = useMaterials(workspaceId, personaId);
 
   return (
     <div className="flex flex-col h-full">
@@ -1048,6 +1159,268 @@ function NodeEditorDrawer({
                 className="h-8 text-xs num"
               />
             </Field>
+          </div>
+        </div>
+
+        {/* --- DOCUMENTOS VINCULADOS --- */}
+        <div className="rounded-lg border border-border/60 p-3 space-y-3">
+          <Label className="text-[10px] uppercase tracking-wider text-sky-400 font-semibold flex items-center gap-1">
+            <FileText className="h-3.5 w-3.5" /> Documentos Vinculados
+          </Label>
+          <div className="flex gap-1.5">
+            <select
+              value=""
+              onChange={(e) => {
+                const docId = e.target.value;
+                if (!docId) return;
+                const current = data.documentIds ?? [];
+                if (!current.includes(docId)) {
+                  onChange({ documentIds: [...current, docId] });
+                  toast.success("Documento vinculado!");
+                }
+              }}
+              className="flex-1 h-8 rounded-md border border-border/60 bg-background px-2 text-xs outline-none focus:border-primary text-foreground cursor-pointer"
+            >
+              <option value="">Vincular documento...</option>
+              {documents
+                .filter((d: any) => !(data.documentIds ?? []).includes(d.id))
+                .map((d: any) => (
+                  <option key={d.id} value={d.id}>
+                    {d.emoji || "📄"} {d.title}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            {(data.documentIds ?? []).map((docId) => {
+              const doc = documents.find((d: any) => d.id === docId);
+              return (
+                <div key={docId} className="flex items-center justify-between p-1.5 rounded bg-card/60 border border-border/40 text-[11px]">
+                  <a
+                    href={`/documents/${docId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 text-primary hover:underline font-medium truncate max-w-[80%]"
+                  >
+                    <span>{doc?.emoji || "📄"}</span>
+                    <span className="truncate">{doc?.title || `Doc (${docId.slice(0, 6)})`}</span>
+                    <ExternalLink className="h-3 w-3 shrink-0" />
+                  </a>
+                  <button
+                    onClick={() => {
+                      const next = (data.documentIds ?? []).filter((id) => id !== docId);
+                      onChange({ documentIds: next });
+                      toast.success("Documento desvinculado");
+                    }}
+                    className="p-0.5 rounded hover:bg-rose-500/10 text-muted-foreground hover:text-destructive"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+            {(data.documentIds ?? []).length === 0 && (
+              <p className="text-[10px] text-muted-foreground/60 italic">Nenhum documento vinculado.</p>
+            )}
+          </div>
+        </div>
+
+        {/* --- TAREFAS VINCULADAS --- */}
+        <div className="rounded-lg border border-border/60 p-3 space-y-3">
+          <Label className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold flex items-center gap-1">
+            <CheckSquare className="h-3.5 w-3.5" /> Tarefas Vinculadas
+          </Label>
+          <div className="flex gap-1.5">
+            <select
+              value=""
+              onChange={(e) => {
+                const taskId = e.target.value;
+                if (!taskId) return;
+                const current = data.taskIds ?? [];
+                if (!current.includes(taskId)) {
+                  onChange({ taskIds: [...current, taskId] });
+                  toast.success("Tarefa vinculada!");
+                }
+              }}
+              className="flex-1 h-8 rounded-md border border-border/60 bg-background px-2 text-xs outline-none focus:border-primary text-foreground cursor-pointer"
+            >
+              <option value="">Vincular tarefa...</option>
+              {tasks
+                .filter((t: any) => !(data.taskIds ?? []).includes(t.id))
+                .map((t: any) => (
+                  <option key={t.id} value={t.id}>
+                    {t.title} ({t.status})
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            {(data.taskIds ?? []).map((taskId) => {
+              const task = tasks.find((t: any) => t.id === taskId);
+              return (
+                <div key={taskId} className="flex items-center justify-between p-1.5 rounded bg-card/60 border border-border/40 text-[11px]">
+                  <div className="flex items-center gap-1.5 truncate max-w-[80%]">
+                    <Badge variant={task?.status === "done" ? "success" : task?.status === "doing" ? "warning" : "outline"} size="sm" className="text-[8px] uppercase tracking-wide">
+                      {task?.status || "todo"}
+                    </Badge>
+                    <span className="truncate font-medium">{task?.title || `Tarefa (${taskId.slice(0, 6)})`}</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const next = (data.taskIds ?? []).filter((id) => id !== taskId);
+                      onChange({ taskIds: next });
+                      toast.success("Tarefa desvinculada");
+                    }}
+                    className="p-0.5 rounded hover:bg-rose-500/10 text-muted-foreground hover:text-destructive"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+            {(data.taskIds ?? []).length === 0 && (
+              <p className="text-[10px] text-muted-foreground/60 italic">Nenhuma tarefa vinculada.</p>
+            )}
+          </div>
+        </div>
+
+        {/* --- ANEXOS / MATERIAIS --- */}
+        <div className="rounded-lg border border-border/60 p-3 space-y-3">
+          <Label className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold flex items-center gap-1">
+            <Paperclip className="h-3.5 w-3.5" /> Anexos / Materiais
+          </Label>
+          <div className="flex gap-1.5">
+            <select
+              value=""
+              onChange={(e) => {
+                const matId = e.target.value;
+                if (!matId) return;
+                const current = data.materialIds ?? [];
+                if (!current.includes(matId)) {
+                  onChange({ materialIds: [...current, matId] });
+                  toast.success("Material anexado!");
+                }
+              }}
+              className="flex-1 h-8 rounded-md border border-border/60 bg-background px-2 text-xs outline-none focus:border-primary text-foreground cursor-pointer"
+            >
+              <option value="">Anexar material...</option>
+              {materials
+                .filter((m: any) => !(data.materialIds ?? []).includes(m.id))
+                .map((m: any) => (
+                  <option key={m.id} value={m.id}>
+                    📦 {m.title} ({m.fileType})
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            {(data.materialIds ?? []).map((matId) => {
+              const mat = materials.find((m: any) => m.id === matId);
+              return (
+                <div key={matId} className="flex items-center justify-between p-1.5 rounded bg-card/60 border border-border/40 text-[11px]">
+                  <a
+                    href={mat?.fileUrl || "#"}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 text-primary hover:underline font-medium truncate max-w-[80%]"
+                  >
+                    <span>📦</span>
+                    <span className="truncate">{mat?.title || `Arquivo (${matId.slice(0, 6)})`}</span>
+                    <ExternalLink className="h-3 w-3 shrink-0" />
+                  </a>
+                  <button
+                    onClick={() => {
+                      const next = (data.materialIds ?? []).filter((id) => id !== matId);
+                      onChange({ materialIds: next });
+                      toast.success("Material desvinculado");
+                    }}
+                    className="p-0.5 rounded hover:bg-rose-500/10 text-muted-foreground hover:text-destructive"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+            {(data.materialIds ?? []).length === 0 && (
+              <p className="text-[10px] text-muted-foreground/60 italic">Nenhum material anexado.</p>
+            )}
+          </div>
+        </div>
+
+        {/* --- LINKS ADICIONAIS DE VENDA --- */}
+        <div className="rounded-lg border border-border/60 p-3 space-y-3">
+          <Label className="text-[10px] uppercase tracking-wider text-amber-500 font-semibold flex items-center gap-1">
+            <Link2 className="h-3.5 w-3.5" /> Links Adicionais de Venda
+          </Label>
+          <div className="grid grid-cols-2 gap-1.5">
+            <Input
+              id="custom-link-title"
+              placeholder="Nome (ex: Checkout Boleto)"
+              className="h-8 text-xs bg-background"
+            />
+            <div className="flex gap-1">
+              <Input
+                id="custom-link-url"
+                placeholder="https://..."
+                className="h-8 text-xs bg-background"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 shrink-0 text-primary border-primary/20 hover:bg-primary/5"
+                onClick={() => {
+                  const titleEl = document.getElementById("custom-link-title") as HTMLInputElement;
+                  const urlEl = document.getElementById("custom-link-url") as HTMLInputElement;
+                  if (!titleEl?.value || !urlEl?.value) {
+                    toast.warning("Preencha o Nome e a URL do link.");
+                    return;
+                  }
+                  const title = titleEl.value.trim();
+                  const url = urlEl.value.trim();
+                  const current = data.customLinks ?? [];
+                  onChange({ customLinks: [...current, { title, url }] });
+                  titleEl.value = "";
+                  urlEl.value = "";
+                  toast.success("Link adicional adicionado!");
+                }}
+              >
+                <PlusCircle className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            {(data.customLinks ?? []).map((link, idx) => (
+              <div key={idx} className="flex items-center justify-between p-1.5 rounded bg-card/60 border border-border/40 text-[11px]">
+                <a
+                  href={link.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1 text-primary hover:underline font-medium truncate max-w-[80%]"
+                >
+                  <Link2 className="h-3 w-3 text-muted-foreground" />
+                  <span className="truncate">{link.title}</span>
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                </a>
+                <button
+                  onClick={() => {
+                    const next = (data.customLinks ?? []).filter((_, i) => i !== idx);
+                    onChange({ customLinks: next });
+                    toast.success("Link removido");
+                  }}
+                  className="p-0.5 rounded hover:bg-rose-500/10 text-muted-foreground hover:text-destructive"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+            {(data.customLinks ?? []).length === 0 && (
+              <p className="text-[10px] text-muted-foreground/60 italic">Nenhum link adicional cadastrado.</p>
+            )}
           </div>
         </div>
 

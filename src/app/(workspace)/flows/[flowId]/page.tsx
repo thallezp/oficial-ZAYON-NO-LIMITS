@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import dynamic from "next/dynamic";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ChevronRight, Edit3, Share2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MOCK_FLOWS } from "@/data";
 import { isMockModeClient } from "@/lib/mock-mode-client";
 import type { Edge, Node } from "reactflow";
-import { useFlow, useSaveFlowDataMutation } from "@/hooks/use-queries";
+import {
+  useFlow,
+  useSaveFlowDataMutation,
+  useDocuments,
+  useCreateTaskMutation,
+  useCreateProjectMutation,
+} from "@/hooks/use-queries";
+import { useWorkspaceStore } from "@/stores/workspace-store";
 import { toast } from "sonner";
+import type { NodeData } from "@/components/flow/process-canvas";
 
 const ProcessCanvas = dynamic(
   () => import("@/components/flow/process-canvas").then((m) => m.ProcessCanvas),
@@ -22,10 +30,26 @@ const ProcessCanvas = dynamic(
 
 export default function FlowDetailPage() {
   const params = useParams<{ flowId: string }>();
+  const router = useRouter();
   const flowId = params?.flowId;
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const user = useWorkspaceStore((s) => s.user);
 
   const { data: dbFlow, isLoading } = useFlow(flowId);
+  const { data: dbDocuments = [] } = useDocuments(activeWorkspaceId);
   const saveMutation = useSaveFlowDataMutation();
+  const createTaskMutation = useCreateTaskMutation();
+  const createProjectMutation = useCreateProjectMutation();
+
+  // Hooks devem rodar sempre na mesma ordem — manter antes de qualquer early return.
+  const documents = React.useMemo(
+    () =>
+      (dbDocuments as any[]).map((d) => ({
+        id: d.id,
+        title: d.title ?? "(sem título)",
+      })),
+    [dbDocuments],
+  );
 
   if (isLoading) {
     return (
@@ -133,6 +157,85 @@ export default function FlowDetailPage() {
     }
   };
 
+  const mapNodeStatusToTaskStatus = (status?: string) => {
+    if (status === "done") return "done";
+    if (status === "doing") return "doing";
+    if (status === "blocked") return "todo";
+    return "todo";
+  };
+
+  const handleCreateTaskFromNode = async (node: NodeData) => {
+    if (!activeWorkspaceId) {
+      toast.error("Workspace ativo não encontrado");
+      return;
+    }
+    try {
+      await createTaskMutation.mutateAsync({
+        workspaceId: activeWorkspaceId,
+        personaId: (flow as any)?.personaId ?? undefined,
+        title: node.title || "Tarefa do fluxo",
+        description: node.description ?? undefined,
+        status: mapNodeStatusToTaskStatus(node.status),
+        dueAt: node.dueAt
+          ? new Date(node.dueAt).toISOString()
+          : undefined,
+        labels: node.tags && node.tags.length > 0 ? node.tags : undefined,
+      });
+      toast.success(`Tarefa "${node.title}" criada`);
+    } catch (e: any) {
+      toast.error("Erro ao criar tarefa: " + (e?.message ?? "desconhecido"));
+    }
+  };
+
+  const handleConvertToProject = async (nodes: Node[]) => {
+    if (!activeWorkspaceId) {
+      toast.error("Workspace ativo não encontrado");
+      return;
+    }
+    try {
+      const created: any = await createProjectMutation.mutateAsync({
+        workspaceId: activeWorkspaceId,
+        personaId: (flow as any)?.personaId ?? undefined,
+        name: flow.name,
+        description: flow.description ?? undefined,
+        color: (flow as any).color ?? undefined,
+        icon: (flow as any).icon ?? undefined,
+      });
+      const projectId = created?.id ?? created?.data?.id;
+      if (!projectId) {
+        toast.success("Projeto criado");
+        return;
+      }
+      let createdTasks = 0;
+      for (const n of nodes) {
+        const data = n.data as NodeData;
+        try {
+          await createTaskMutation.mutateAsync({
+            workspaceId: activeWorkspaceId,
+            personaId: (flow as any)?.personaId ?? undefined,
+            projectId,
+            title: data.title || "Etapa",
+            description: data.description ?? undefined,
+            status: mapNodeStatusToTaskStatus(data.status),
+            dueAt: data.dueAt
+              ? new Date(data.dueAt).toISOString()
+              : undefined,
+            labels: data.tags && data.tags.length > 0 ? data.tags : undefined,
+          });
+          createdTasks += 1;
+        } catch (err) {
+          // segue com os outros nós mesmo se um falhar
+        }
+      }
+      toast.success(
+        `Projeto "${flow.name}" criado com ${createdTasks} tarefa${createdTasks === 1 ? "" : "s"}`,
+      );
+      router.push(`/projects?focus=${projectId}`);
+    } catch (e: any) {
+      toast.error("Erro ao converter em projeto: " + (e?.message ?? "desconhecido"));
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -169,7 +272,15 @@ export default function FlowDetailPage() {
           <CardTitle>Canvas</CardTitle>
         </CardHeader>
         <CardContent>
-          <ProcessCanvas initialNodes={initialNodes} initialEdges={initialEdges} onSave={handleSave} />
+          <ProcessCanvas
+            initialNodes={initialNodes}
+            initialEdges={initialEdges}
+            onSave={handleSave}
+            documents={documents}
+            onCreateTaskFromNode={handleCreateTaskFromNode}
+            onConvertToProject={handleConvertToProject}
+            currentUserName={user?.fullName}
+          />
         </CardContent>
       </Card>
     </div>

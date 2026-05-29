@@ -23,6 +23,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { EntityFormDialog } from "@/components/forms/entity-form-dialog";
 import {
   Dialog,
@@ -703,9 +711,32 @@ export default function LaunchPage() {
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => generateCopyWithAi()}>
-                      <Sparkles className="h-3.5 w-3.5" /> Gerar com IA
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="sm" variant="outline">
+                          <Sparkles className="h-3.5 w-3.5" /> Gerar com IA
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          Tipo de copy a gerar
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {copyTypeOptions.map((opt) => (
+                          <DropdownMenuItem
+                            key={opt.value}
+                            onClick={() =>
+                              generateCopyWithAi({
+                                type: opt.value as SalesCopy["type"],
+                                title: `${opt.label} · ${campaign.name}`,
+                              })
+                            }
+                          >
+                            <Wand2 className="h-3.5 w-3.5" /> {opt.label}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button size="sm" variant="gradient" onClick={() => setCopyDraft({} as any)}>
                       <Plus className="h-4 w-4" /> Nova copy
                     </Button>

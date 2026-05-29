@@ -412,6 +412,28 @@ export function CommandMenu() {
               ))}
             </Command.Group>
 
+            {/* ===== Buscar persona (navegação direta) ===== */}
+            <Command.Group heading="Abrir persona">
+              {personaItems.map((p: any) => (
+                <CmdItem
+                  key={`open-${p.id}`}
+                  onSelect={() => go(`/personas/${p.id}/overview`)}
+                  icon={
+                    <div
+                      className="h-5 w-5 rounded text-[9px] font-bold flex items-center justify-center text-white"
+                      style={{
+                        background: `linear-gradient(135deg, ${p.accent ?? "#5b8cff"}, #2a3ef5)`,
+                      }}
+                    >
+                      {p.name?.[0] ?? "?"}
+                    </div>
+                  }
+                  label={`Overview · ${p.name}`}
+                  trailing={p.niche ?? p.status}
+                />
+              ))}
+            </Command.Group>
+
             {/* ===== Páginas ===== */}
             <Command.Group heading="Páginas · Workspace">
               {workspaceLinks.map((l) => (

@@ -6,6 +6,7 @@ import {
   ArrowUpRight,
   ChevronDown,
   ChevronRight,
+  Code2,
   Copy,
   Download,
   Mail,
@@ -16,7 +17,16 @@ import {
   Sparkles,
   Trash2,
   Wand2,
+  Webhook,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
@@ -96,6 +106,7 @@ export default function LeadsPage() {
   const [expanded, setExpanded] = React.useState<string | null>(null);
   const [drawerLead, setDrawerLead] = React.useState<Lead | null>(null);
   const [editingLead, setEditingLead] = React.useState<Lead | null>(null);
+  const [webhookOpen, setWebhookOpen] = React.useState(false);
 
   const sourceOptions = Array.from(
     new Set(allLeads.map((lead: any) => lead.source).filter(Boolean)),
@@ -277,6 +288,13 @@ export default function LeadsPage() {
         description="CRM prático por persona, com qualificação, histórico, comentários e follow-up operacional."
         actions={
           <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setWebhookOpen(true)}
+            >
+              <Webhook className="h-3.5 w-3.5" /> Webhook
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -476,13 +494,43 @@ export default function LeadsPage() {
                         </td>
                         <td className="px-3 py-2.5">
                           <div className="flex flex-wrap gap-1">
-                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openWhatsApp(lead)}>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8"
+                              onClick={() => openWhatsApp(lead)}
+                              disabled={!lead.phone}
+                              title={lead.phone ? "Abrir WhatsApp" : "Sem telefone"}
+                            >
                               <MessageCircle className="h-3.5 w-3.5" />
                             </Button>
-                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => copyValue(lead.phone, "Telefone copiado")}>
-                              <Copy className="h-3.5 w-3.5" />
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8"
+                              onClick={() => copyValue(lead.phone, "Telefone copiado")}
+                              disabled={!lead.phone}
+                              title="Copiar telefone"
+                            >
+                              <Phone className="h-3.5 w-3.5" />
                             </Button>
-                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => generateApproach(lead)}>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8"
+                              onClick={() => copyValue(lead.email, "Email copiado")}
+                              disabled={!lead.email}
+                              title="Copiar email"
+                            >
+                              <Mail className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8"
+                              onClick={() => generateApproach(lead)}
+                              title="Gerar abordagem com IA"
+                            >
                               <Wand2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
@@ -628,6 +676,188 @@ export default function LeadsPage() {
         ]}
         onSubmit={saveLeadEdit}
       />
+
+      <WebhookImportDialog
+        open={webhookOpen}
+        onOpenChange={setWebhookOpen}
+        workspaceId={activeWorkspaceId}
+        personaId={persona.id}
+        personaName={persona.name}
+      />
     </div>
+  );
+}
+
+function WebhookImportDialog({
+  open,
+  onOpenChange,
+  workspaceId,
+  personaId,
+  personaName,
+}: {
+  open: boolean;
+  onOpenChange: (next: boolean) => void;
+  workspaceId: string | null | undefined;
+  personaId: string;
+  personaName: string;
+}) {
+  const baseUrl =
+    typeof window !== "undefined" ? window.location.origin : "https://app.zayon";
+  const endpoint = `${baseUrl}/api/webhooks/leads`;
+  const examplePayload = {
+    workspaceId: workspaceId ?? "<workspace_id>",
+    personaId,
+    source: "Tally",
+    campaign: "lead-magnet-junho",
+    name: "Nome do lead",
+    email: "lead@exemplo.com",
+    phone: "+5511999999999",
+    instagram: "@handle",
+    answers: [
+      { question: "Qual seu objetivo?", answer: "Escalar minha operação" },
+      { question: "Já investe em ads?", answer: "Sim, mensalmente" },
+    ],
+    metadata: { utm_source: "instagram_bio" },
+  };
+  const curl = `curl -X POST ${endpoint} \\
+  -H "Content-Type: application/json" \\
+  -d '${JSON.stringify(examplePayload, null, 0)}'`;
+
+  const copyText = async (value: string, label: string) => {
+    await navigator.clipboard.writeText(value);
+    toast.success(label);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Webhook className="h-4 w-4 text-primary" /> Importar leads via webhook
+          </DialogTitle>
+          <DialogDescription>
+            Cole esta URL no Tally, Typeform, Make, Zapier, Google Sheets ou
+            qualquer formulário externo. Cada POST com payload válido cria um
+            lead vinculado a <strong>{personaName}</strong>.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Endpoint
+            </p>
+            <div className="flex items-center gap-2 rounded-md border border-border/60 bg-card-elevated p-2 font-mono text-xs">
+              <code className="flex-1 truncate">{endpoint}</code>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => copyText(endpoint, "Endpoint copiado")}
+              >
+                <Copy className="h-3 w-3" /> URL
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-[11px]">
+            <div className="rounded-md border border-border/60 bg-card-elevated p-2 space-y-1">
+              <p className="uppercase tracking-wider text-muted-foreground text-[10px]">
+                workspaceId
+              </p>
+              <div className="flex items-center gap-1">
+                <code className="flex-1 truncate font-mono">
+                  {workspaceId ?? "—"}
+                </code>
+                {workspaceId && (
+                  <button
+                    onClick={() =>
+                      copyText(workspaceId, "workspaceId copiado")
+                    }
+                    className="text-muted-foreground hover:text-foreground"
+                    title="Copiar"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="rounded-md border border-border/60 bg-card-elevated p-2 space-y-1">
+              <p className="uppercase tracking-wider text-muted-foreground text-[10px]">
+                personaId
+              </p>
+              <div className="flex items-center gap-1">
+                <code className="flex-1 truncate font-mono">{personaId}</code>
+                <button
+                  onClick={() => copyText(personaId, "personaId copiado")}
+                  className="text-muted-foreground hover:text-foreground"
+                  title="Copiar"
+                >
+                  <Copy className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Code2 className="h-3 w-3" /> Exemplo de payload
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  copyText(
+                    JSON.stringify(examplePayload, null, 2),
+                    "Payload copiado",
+                  )
+                }
+              >
+                <Copy className="h-3 w-3" /> Copiar JSON
+              </Button>
+            </div>
+            <pre className="max-h-56 overflow-auto rounded-md border border-border/60 bg-background/40 p-3 text-[10px] font-mono">
+              {JSON.stringify(examplePayload, null, 2)}
+            </pre>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                cURL pronto pra testar
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => copyText(curl, "Comando copiado")}
+              >
+                <Copy className="h-3 w-3" /> Copiar
+              </Button>
+            </div>
+            <pre className="max-h-32 overflow-auto rounded-md border border-border/60 bg-background/40 p-3 text-[10px] font-mono">
+              {curl}
+            </pre>
+          </div>
+
+          <div className="rounded-md border border-border/60 bg-card-elevated p-3 text-[11px] text-muted-foreground space-y-1">
+            <p>
+              <strong>Status inicial:</strong> todo lead criado por webhook entra
+              como <code>open</code> com score <code>50</code>. Use o botão
+              "Qualificar com IA" depois para subir o score.
+            </p>
+            <p>
+              <strong>Conexão segura:</strong> alternativamente envie{" "}
+              <code>secret</code> em vez de <code>workspaceId</code> — o endpoint
+              resolve o workspace pela conexão cadastrada em{" "}
+              <code>google_sheets_connections</code>.
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button onClick={() => onOpenChange(false)}>Fechar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

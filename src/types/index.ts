@@ -293,6 +293,11 @@ export interface Tool {
   isPinned?: boolean;
   isEmbeddable?: boolean;
   brandColor?: string;
+  embedMode?: "new_tab" | "embed" | "modal";
+  projectId?: string;
+  documentId?: string;
+  urlCheckedAt?: string;
+  urlStatus?: number | string;
 }
 
 export interface FlowItem {

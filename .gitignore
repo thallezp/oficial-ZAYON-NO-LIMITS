@@ -17,6 +17,8 @@ build
 .env
 .env.local
 .env*.local
+.env.production
+.env.development
 
 # OS
 .DS_Store
@@ -37,3 +39,17 @@ coverage
 next-env.d.ts
 
 .vercel
+
+# Scripts de debug/manutenção locais (contêm credenciais — nunca commitar)
+/apply_rls_fixes.js
+/check_all.js
+/check_auth_users.js
+/check_user_workspaces.js
+/count_rows.js
+/find_seed_auth.js
+/sum_revenue.js
+/test_bootstrap.js
+/test_db.js
+/test_rls.js
+/test_rls_insert.js
+/update_password.js

@@ -3,12 +3,16 @@
 import * as React from "react";
 import {
   Activity,
+  CalendarClock,
   CircleDollarSign,
   Eye,
   Flame,
+  PiggyBank,
   Plus,
+  Rocket,
   Sparkles,
   Target,
+  TrendingDown,
   TrendingUp,
   Users,
 } from "lucide-react";
@@ -89,12 +93,42 @@ export default function PersonaOverviewPage() {
     ? ((realRevenuePeriod - realRevenuePrev) / realRevenuePrev) * 100
     : 0;
 
-  // Receita acumulada de toda historia
-  const realRevenueAll = React.useMemo(() => {
+  // Despesas reais do periodo (paid expenses)
+  const realExpensesPeriod = React.useMemo(() => {
     return (dbFinance as any[])
-      .filter((t) => t.type === "revenue" && t.status === "paid")
+      .filter((t) => {
+        if (t.type !== "expense" || t.status !== "paid") return false;
+        const ts = new Date(t.occurredAt ?? t.occurred_at ?? t.createdAt ?? 0).getTime();
+        return ts >= periodStart && ts <= now;
+      })
       .reduce((sum, t) => sum + Number(t.amount || 0), 0);
-  }, [dbFinance]);
+  }, [dbFinance, periodStart, now]);
+
+  const realExpensesPrev = React.useMemo(() => {
+    return (dbFinance as any[])
+      .filter((t) => {
+        if (t.type !== "expense" || t.status !== "paid") return false;
+        const ts = new Date(t.occurredAt ?? t.occurred_at ?? t.createdAt ?? 0).getTime();
+        return ts >= prevPeriodStart && ts < periodStart;
+      })
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  }, [dbFinance, prevPeriodStart, periodStart]);
+
+  const realExpensesDelta = realExpensesPrev > 0
+    ? ((realExpensesPeriod - realExpensesPrev) / realExpensesPrev) * 100
+    : 0;
+
+  // Lucro real do periodo = receita - despesa (ambas paid)
+  const realProfitPeriod = realRevenuePeriod - realExpensesPeriod;
+  const realProfitPrev = realRevenuePrev - realExpensesPrev;
+  const realProfitDelta =
+    realProfitPrev !== 0
+      ? ((realProfitPeriod - realProfitPrev) / Math.abs(realProfitPrev)) * 100
+      : 0;
+  const profitMargin =
+    realRevenuePeriod > 0
+      ? (realProfitPeriod / realRevenuePeriod) * 100
+      : 0;
 
   // Leads real do periodo
   const realLeadsPeriod = React.useMemo(() => {
@@ -226,6 +260,23 @@ export default function PersonaOverviewPage() {
     .sort((a: any, b: any) => (b.metrics?.views ?? 0) - (a.metrics?.views ?? 0))
     .slice(0, 5);
 
+  // Próximos posts agendados (content com scheduledAt no futuro, status != posted)
+  const upcomingPosts = React.useMemo(() => {
+    return (dbContent as any[])
+      .filter((c) => {
+        const sched = c.scheduledAt ?? c.scheduled_at;
+        if (!sched) return false;
+        if (c.status === "posted" || c.status === "archived") return false;
+        return new Date(sched).getTime() >= now;
+      })
+      .sort(
+        (a: any, b: any) =>
+          new Date(a.scheduledAt ?? a.scheduled_at).getTime() -
+          new Date(b.scheduledAt ?? b.scheduled_at).getTime(),
+      )
+      .slice(0, 5);
+  }, [dbContent, now]);
+
   const viewsByContent = topContent.length > 0
     ? topContent.map((c: any) => ({
         label: c.title,
@@ -320,7 +371,7 @@ export default function PersonaOverviewPage() {
                   size="sm"
                   onClick={() => openQuickCreate("content")}
                 >
-                  <Plus className="h-3.5 w-3.5" /> Cadastrar conteúdo
+                  <Plus className="h-3.5 w-3.5" /> Cadastrar primeiro conteúdo
                 </Button>
                 <Button
                   variant="outline"
@@ -336,6 +387,16 @@ export default function PersonaOverviewPage() {
                 >
                   <Plus className="h-3.5 w-3.5" /> Registrar receita
                 </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/personas/${persona.id}/content`}>
+                    <Plus className="h-3.5 w-3.5" /> Adicionar métrica
+                  </Link>
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/personas/${persona.id}/launch`}>
+                    <Rocket className="h-3.5 w-3.5" /> Criar lançamento
+                  </Link>
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -350,12 +411,35 @@ export default function PersonaOverviewPage() {
           accent="success"
         />
         <StatCard
+          label={`Despesas ${period === "all" ? "total" : period}`}
+          value={formatCurrency(realExpensesPeriod)}
+          delta={Number(realExpensesDelta.toFixed(1))}
+          icon={<TrendingDown className="h-4 w-4" />}
+          accent="danger"
+          hint="expenses pagas"
+        />
+        <StatCard
+          label={`Lucro ${period === "all" ? "total" : period}`}
+          value={formatCurrency(realProfitPeriod)}
+          delta={Number(realProfitDelta.toFixed(1))}
+          icon={<PiggyBank className="h-4 w-4" />}
+          accent={realProfitPeriod >= 0 ? "success" : "danger"}
+          hint={`margem ${profitMargin.toFixed(1)}%`}
+        />
+        <StatCard
+          label="Conversão real"
+          value={`${realConversion.toFixed(1)}%`}
+          icon={<TrendingUp className="h-4 w-4" />}
+          accent="success"
+          hint="leads convertidos / total leads"
+        />
+        <StatCard
           label="Seguidores"
           value={formatCompact(m.followers ?? 0)}
           delta={m.followersDelta}
           icon={<Users className="h-4 w-4" />}
           accent="primary"
-          hint="cadastrar canais para tracking real"
+          hint="soma de persona_channels"
         />
         <StatCard
           label={`Views ${period === "all" ? "total" : period}`}
@@ -376,26 +460,7 @@ export default function PersonaOverviewPage() {
           value={String(realLeadsPeriod)}
           delta={Number(realLeadsDelta.toFixed(1))}
           icon={<Target className="h-4 w-4" />}
-        />
-        <StatCard
-          label={`Posts ${period === "all" ? "total" : period}`}
-          value={String(realPostedPeriod)}
-          icon={<Flame className="h-4 w-4" />}
-          hint="todos os canais somados"
-        />
-        <StatCard
-          label="Conversão real"
-          value={`${realConversion.toFixed(1)}%`}
-          icon={<TrendingUp className="h-4 w-4" />}
-          accent="success"
-          hint="leads convertidos / total leads"
-        />
-        <StatCard
-          label="Receita acumulada"
-          value={formatCurrency(realRevenueAll)}
-          icon={<Sparkles className="h-4 w-4" />}
-          accent="primary"
-          hint="todo histórico de financial_transactions"
+          hint={`${realPostedPeriod} post${realPostedPeriod === 1 ? "" : "s"} no período`}
         />
       </div>
 
@@ -421,6 +486,88 @@ export default function PersonaOverviewPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Próximos posts agendados */}
+      <Card>
+        <CardHeader className="flex-row justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <CalendarClock className="h-4 w-4 text-primary" />
+              Próximos posts
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Conteúdos agendados de {persona.name} (content_items com
+              scheduled_at no futuro).
+            </p>
+          </div>
+          {upcomingPosts.length > 0 && (
+            <Button variant="ghost" size="sm" asChild>
+              <Link href={`/personas/${persona.id}/content`}>Ver pauta</Link>
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent>
+          {upcomingPosts.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border/60 p-6 text-center space-y-3">
+              <CalendarClock className="h-6 w-6 mx-auto text-muted-foreground/60" />
+              <div>
+                <p className="text-sm font-medium">Nenhum post agendado</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Programe conteúdos para esta persona e eles aparecerão aqui.
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-2 flex-wrap">
+                <Button
+                  variant="gradient"
+                  size="sm"
+                  onClick={() =>
+                    openQuickCreate("content", {
+                      defaultChannel: "instagram",
+                    })
+                  }
+                >
+                  <Plus className="h-3.5 w-3.5" /> Cadastrar conteúdo
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/calendar">Abrir calendário</Link>
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/60">
+              {upcomingPosts.map((c: any) => {
+                const sched = new Date(c.scheduledAt ?? c.scheduled_at);
+                return (
+                  <div
+                    key={c.id}
+                    className="flex items-center gap-3 py-2.5"
+                  >
+                    <Badge size="sm" variant="outline" className="capitalize">
+                      {c.channel}
+                    </Badge>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{c.title}</p>
+                      {c.hook && (
+                        <p className="text-[11px] text-muted-foreground truncate">
+                          {c.hook}
+                        </p>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                      {sched.toLocaleString("pt-BR", {
+                        day: "2-digit",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card variant="elevated" className="lg:col-span-2">

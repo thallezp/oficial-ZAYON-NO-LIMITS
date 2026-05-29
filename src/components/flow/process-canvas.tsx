@@ -25,9 +25,15 @@ import {
   FileText,
   GitBranch,
   ListChecks,
+  MessageSquare,
   PackageCheck,
+  Paperclip,
+  Play,
+  Plus,
+  Rocket,
   Save,
   Search,
+  Square,
   Trash2,
   UserPlus,
   Webhook,
@@ -100,7 +106,20 @@ const STATUS_LABELS: Record<string, string> = {
   blocked: "Bloqueada",
 };
 
-interface NodeData {
+export interface NodeComment {
+  id: string;
+  body: string;
+  author?: string;
+  createdAt: string;
+}
+
+export interface NodeAttachment {
+  id: string;
+  name: string;
+  url: string;
+}
+
+export interface NodeData {
   title: string;
   description?: string;
   kind: keyof typeof ICONS;
@@ -110,6 +129,14 @@ interface NodeData {
   links?: string[];
   dueAt?: string;
   tags?: string[];
+  comments?: NodeComment[];
+  attachments?: NodeAttachment[];
+  documentIds?: string[];
+}
+
+export interface FlowDocumentRef {
+  id: string;
+  title: string;
 }
 
 function StepNode({ data, selected }: NodeProps<NodeData>) {
@@ -117,6 +144,9 @@ function StepNode({ data, selected }: NodeProps<NodeData>) {
   const colorClass = KIND_COLORS[data.kind] ?? KIND_COLORS.action;
   const checklistDone = data.checklist?.filter((c) => c.done).length ?? 0;
   const checklistTotal = data.checklist?.length ?? 0;
+  const commentsCount = data.comments?.length ?? 0;
+  const attachmentsCount = data.attachments?.length ?? 0;
+  const docsCount = data.documentIds?.length ?? 0;
   return (
     <div
       className={cn(
@@ -124,6 +154,7 @@ function StepNode({ data, selected }: NodeProps<NodeData>) {
         "bg-gradient-to-br",
         colorClass,
         selected && "ring-2 ring-primary shadow-glow",
+        data.status === "doing" && "ring-1 ring-primary/60",
       )}
     >
       <div className="flex items-center justify-between rounded-t-xl px-3 py-2 border-b border-border/60">
@@ -160,6 +191,25 @@ function StepNode({ data, selected }: NodeProps<NodeData>) {
             </Badge>
           )}
         </div>
+        {(commentsCount > 0 || attachmentsCount > 0 || docsCount > 0) && (
+          <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">
+            {commentsCount > 0 && (
+              <span className="inline-flex items-center gap-0.5">
+                <MessageSquare className="h-2.5 w-2.5" /> {commentsCount}
+              </span>
+            )}
+            {attachmentsCount > 0 && (
+              <span className="inline-flex items-center gap-0.5">
+                <Paperclip className="h-2.5 w-2.5" /> {attachmentsCount}
+              </span>
+            )}
+            {docsCount > 0 && (
+              <span className="inline-flex items-center gap-0.5">
+                <FileText className="h-2.5 w-2.5" /> {docsCount}
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -171,15 +221,73 @@ interface Props {
   initialNodes: Node[];
   initialEdges: Edge[];
   onSave?: (nodes: Node[], edges: Edge[]) => Promise<void> | void;
+  documents?: FlowDocumentRef[];
+  onCreateTaskFromNode?: (node: NodeData) => Promise<void> | void;
+  onConvertToProject?: (nodes: Node[]) => Promise<void> | void;
+  currentUserName?: string;
 }
 
-function ProcessInner({ initialNodes, initialEdges, onSave }: Props) {
+function ProcessInner({
+  initialNodes,
+  initialEdges,
+  onSave,
+  documents = [],
+  onCreateTaskFromNode,
+  onConvertToProject,
+  currentUserName,
+}: Props) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isDirty, setIsDirty] = React.useState(false);
   const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null);
   const [menuOpen, setMenuOpen] = React.useState(false);
+  const [isExecuting, setIsExecuting] = React.useState(false);
+  const [isConverting, setIsConverting] = React.useState(false);
+  const [creatingTaskFor, setCreatingTaskFor] = React.useState<string | null>(null);
+
+  const handleToggleExecuting = React.useCallback(() => {
+    setIsExecuting((prev) => {
+      const next = !prev;
+      if (next) {
+        setNodes((nds) =>
+          nds.map((n) => {
+            const data = n.data as NodeData;
+            if ((data.status ?? "pending") === "pending") {
+              return { ...n, data: { ...data, status: "doing" } };
+            }
+            return n;
+          }),
+        );
+      }
+      return next;
+    });
+  }, [setNodes]);
+
+  const handleConvertToProject = React.useCallback(async () => {
+    if (!onConvertToProject) return;
+    setIsConverting(true);
+    try {
+      await onConvertToProject(nodes);
+    } finally {
+      setIsConverting(false);
+    }
+  }, [onConvertToProject, nodes]);
+
+  const handleCreateTaskFromNode = React.useCallback(
+    async (id: string) => {
+      if (!onCreateTaskFromNode) return;
+      const target = nodes.find((n) => n.id === id);
+      if (!target) return;
+      setCreatingTaskFor(id);
+      try {
+        await onCreateTaskFromNode(target.data as NodeData);
+      } finally {
+        setCreatingTaskFor(null);
+      }
+    },
+    [onCreateTaskFromNode, nodes],
+  );
 
   React.useEffect(() => {
     setNodes(initialNodes);
@@ -411,6 +519,37 @@ function ProcessInner({ initialNodes, initialEdges, onSave }: Props) {
               </button>
             </>
           )}
+          <button
+            onClick={handleToggleExecuting}
+            className={cn(
+              "flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition",
+              isExecuting
+                ? "border-warning/40 bg-warning/10 text-warning hover:bg-warning/20"
+                : "border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20",
+            )}
+            title={isExecuting ? "Parar execução do fluxo" : "Executar fluxo (passa todos os pendentes para 'fazendo')"}
+          >
+            {isExecuting ? (
+              <>
+                <Square className="h-3 w-3" /> Pausar
+              </>
+            ) : (
+              <>
+                <Play className="h-3 w-3" /> Executar
+              </>
+            )}
+          </button>
+          {onConvertToProject && (
+            <button
+              onClick={handleConvertToProject}
+              disabled={isConverting}
+              className="flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-2.5 py-1.5 text-[11px] font-medium text-primary hover:bg-primary/20 transition disabled:opacity-60"
+              title="Cria um projeto com uma tarefa por nó"
+            >
+              <Rocket className="h-3 w-3" />
+              {isConverting ? "Convertendo..." : "Virar projeto"}
+            </button>
+          )}
         </div>
 
         {/* save */}
@@ -470,10 +609,18 @@ function ProcessInner({ initialNodes, initialEdges, onSave }: Props) {
         <NodeEditorDrawer
           node={selectedNode}
           kinds={NODE_KINDS}
+          documents={documents}
           onClose={() => setSelectedNodeId(null)}
           onChange={(patch) => handleUpdateNode(selectedNode.id, patch)}
           onDelete={() => handleDeleteNode(selectedNode.id)}
           onDuplicate={() => handleDuplicateNode(selectedNode.id)}
+          onCreateTask={
+            onCreateTaskFromNode
+              ? () => handleCreateTaskFromNode(selectedNode.id)
+              : undefined
+          }
+          creatingTask={creatingTaskFor === selectedNode.id}
+          currentUserName={currentUserName}
         />
       )}
     </div>
@@ -487,22 +634,76 @@ function ProcessInner({ initialNodes, initialEdges, onSave }: Props) {
 interface DrawerProps {
   node: Node<NodeData>;
   kinds: (keyof typeof ICONS)[];
+  documents: FlowDocumentRef[];
   onClose: () => void;
   onChange: (patch: Partial<NodeData>) => void;
   onDelete: () => void;
   onDuplicate: () => void;
+  onCreateTask?: () => void;
+  creatingTask?: boolean;
+  currentUserName?: string;
 }
 
 function NodeEditorDrawer({
   node,
   kinds,
+  documents,
   onClose,
   onChange,
   onDelete,
   onDuplicate,
+  onCreateTask,
+  creatingTask = false,
+  currentUserName,
 }: DrawerProps) {
   const data = (node.data ?? {}) as NodeData;
   const checklist = data.checklist ?? [];
+  const comments = data.comments ?? [];
+  const attachments = data.attachments ?? [];
+  const documentIds = data.documentIds ?? [];
+
+  const [commentDraft, setCommentDraft] = React.useState("");
+  const [attachmentName, setAttachmentName] = React.useState("");
+  const [attachmentUrl, setAttachmentUrl] = React.useState("");
+
+  const addComment = () => {
+    const body = commentDraft.trim();
+    if (!body) return;
+    const newComment: NodeComment = {
+      id: `cm_${Date.now()}`,
+      body,
+      author: currentUserName,
+      createdAt: new Date().toISOString(),
+    };
+    onChange({ comments: [...comments, newComment] });
+    setCommentDraft("");
+  };
+
+  const removeComment = (id: string) => {
+    onChange({ comments: comments.filter((c) => c.id !== id) });
+  };
+
+  const addAttachment = () => {
+    const name = attachmentName.trim();
+    const url = attachmentUrl.trim();
+    if (!name || !url) return;
+    const next: NodeAttachment = { id: `at_${Date.now()}`, name, url };
+    onChange({ attachments: [...attachments, next] });
+    setAttachmentName("");
+    setAttachmentUrl("");
+  };
+
+  const removeAttachment = (id: string) => {
+    onChange({ attachments: attachments.filter((a) => a.id !== id) });
+  };
+
+  const toggleDocument = (id: string) => {
+    onChange({
+      documentIds: documentIds.includes(id)
+        ? documentIds.filter((d) => d !== id)
+        : [...documentIds, id],
+    });
+  };
 
   const addChecklistItem = () => {
     const next = [
@@ -719,20 +920,213 @@ function NodeEditorDrawer({
             placeholder="https://..."
           />
         </div>
+
+        {/* anexos */}
+        <div className="space-y-1.5 rounded-lg border border-border/60 p-2">
+          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+            <Paperclip className="h-3 w-3" /> Anexos ({attachments.length})
+          </Label>
+          <div className="space-y-1">
+            {attachments.map((a) => (
+              <div
+                key={a.id}
+                className="flex items-center gap-1.5 rounded-md border border-border/60 bg-background/40 px-2 py-1"
+              >
+                <Paperclip className="h-3 w-3 text-muted-foreground shrink-0" />
+                <a
+                  href={a.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-1 truncate text-[11px] text-primary hover:underline"
+                  title={a.url}
+                >
+                  {a.name}
+                </a>
+                <button
+                  onClick={() => removeAttachment(a.id)}
+                  className="text-muted-foreground hover:text-destructive transition"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            <Input
+              value={attachmentName}
+              onChange={(e) => setAttachmentName(e.target.value)}
+              placeholder="Nome"
+              className="h-7 text-[11px]"
+            />
+            <Input
+              value={attachmentUrl}
+              onChange={(e) => setAttachmentUrl(e.target.value)}
+              placeholder="URL"
+              className="h-7 text-[11px]"
+            />
+          </div>
+          <button
+            onClick={addAttachment}
+            disabled={!attachmentName.trim() || !attachmentUrl.trim()}
+            className="text-[10px] text-primary hover:underline disabled:opacity-50"
+          >
+            + adicionar anexo
+          </button>
+        </div>
+
+        {/* documentos vinculados */}
+        <div className="space-y-1.5 rounded-lg border border-border/60 p-2">
+          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+            <FileText className="h-3 w-3" /> Documentos ({documentIds.length})
+          </Label>
+          {documentIds.length > 0 && (
+            <div className="space-y-1">
+              {documentIds.map((id) => {
+                const doc = documents.find((d) => d.id === id);
+                return (
+                  <div
+                    key={id}
+                    className="flex items-center gap-1.5 rounded-md border border-border/60 bg-background/40 px-2 py-1"
+                  >
+                    <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
+                    {doc ? (
+                      <a
+                        href={`/documents/${doc.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex-1 truncate text-[11px] text-primary hover:underline"
+                      >
+                        {doc.title}
+                      </a>
+                    ) : (
+                      <span className="flex-1 truncate text-[11px] text-muted-foreground">
+                        Documento removido
+                      </span>
+                    )}
+                    <button
+                      onClick={() => toggleDocument(id)}
+                      className="text-muted-foreground hover:text-destructive transition"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {documents.length === 0 ? (
+            <p className="text-[10px] text-muted-foreground italic">
+              Nenhum documento no workspace.
+            </p>
+          ) : (
+            <Select
+              value=""
+              onValueChange={(v) => {
+                if (v) toggleDocument(v);
+              }}
+            >
+              <SelectTrigger className="h-7 text-[11px]">
+                <SelectValue placeholder="+ vincular documento" />
+              </SelectTrigger>
+              <SelectContent>
+                {documents
+                  .filter((d) => !documentIds.includes(d.id))
+                  .map((d) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.title}
+                    </SelectItem>
+                  ))}
+                {documents.filter((d) => !documentIds.includes(d.id)).length ===
+                  0 && (
+                  <div className="px-2 py-1.5 text-[11px] text-muted-foreground">
+                    Todos já vinculados
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+
+        {/* comentários */}
+        <div className="space-y-1.5 rounded-lg border border-border/60 p-2">
+          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+            <MessageSquare className="h-3 w-3" /> Comentários ({comments.length})
+          </Label>
+          <div className="space-y-1.5 max-h-48 overflow-y-auto">
+            {comments.map((c) => (
+              <div
+                key={c.id}
+                className="rounded-md border border-border/60 bg-background/40 p-2"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] text-muted-foreground">
+                    {c.author ?? "Anônimo"} ·{" "}
+                    {new Date(c.createdAt).toLocaleString("pt-BR", {
+                      day: "2-digit",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                  <button
+                    onClick={() => removeComment(c.id)}
+                    className="text-muted-foreground hover:text-destructive transition"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+                <p className="text-[11px] mt-0.5 whitespace-pre-wrap">{c.body}</p>
+              </div>
+            ))}
+            {comments.length === 0 && (
+              <p className="text-[10px] text-muted-foreground italic">
+                Sem comentários.
+              </p>
+            )}
+          </div>
+          <Textarea
+            value={commentDraft}
+            onChange={(e) => setCommentDraft(e.target.value)}
+            placeholder="Escreva um comentário..."
+            rows={2}
+            className="text-[11px]"
+          />
+          <button
+            onClick={addComment}
+            disabled={!commentDraft.trim()}
+            className="text-[10px] text-primary hover:underline disabled:opacity-50 inline-flex items-center gap-1"
+          >
+            <Plus className="h-2.5 w-2.5" /> Comentar
+          </button>
+        </div>
       </div>
 
-      <div className="border-t border-border/60 p-2 flex items-center gap-1.5">
-        <Button variant="outline" size="sm" onClick={onDuplicate} className="flex-1">
-          <Copy className="h-3 w-3" /> Duplicar
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onDelete}
-          className="flex-1 text-destructive hover:text-destructive"
-        >
-          <Trash2 className="h-3 w-3" /> Excluir
-        </Button>
+      <div className="border-t border-border/60 p-2 space-y-1.5">
+        {onCreateTask && (
+          <Button
+            variant="gradient"
+            size="sm"
+            onClick={onCreateTask}
+            disabled={creatingTask}
+            className="w-full"
+          >
+            <ListChecks className="h-3 w-3" />
+            {creatingTask ? "Criando tarefa..." : "Virar tarefa"}
+          </Button>
+        )}
+        <div className="flex items-center gap-1.5">
+          <Button variant="outline" size="sm" onClick={onDuplicate} className="flex-1">
+            <Copy className="h-3 w-3" /> Duplicar
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onDelete}
+            className="flex-1 text-destructive hover:text-destructive"
+          >
+            <Trash2 className="h-3 w-3" /> Excluir
+          </Button>
+        </div>
       </div>
     </aside>
   );

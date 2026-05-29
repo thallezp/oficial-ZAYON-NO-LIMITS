@@ -19,12 +19,38 @@ const ago = (d: number, h = 9) => {
   return x.toISOString();
 };
 
-export const MOCK_DOCUMENTS: DocumentItem[] = [
+export const MOCK_FOLDERS = [
+  {
+    id: "f_001",
+    workspaceId: "11111111-1111-1111-1111-111111111111",
+    name: "Playbooks & Processos",
+    color: "#6366f1",
+    createdAt: ago(10),
+  },
+  {
+    id: "f_002",
+    workspaceId: "11111111-1111-1111-1111-111111111111",
+    name: "Campanhas & Lançamentos",
+    color: "#3b82f6",
+    createdAt: ago(5),
+  },
+  {
+    id: "f_003",
+    workspaceId: "11111111-1111-1111-1111-111111111111",
+    name: "Atas & Reuniões",
+    color: "#10b981",
+    createdAt: ago(2),
+  },
+];
+
+export const MOCK_DOCUMENTS: (DocumentItem & { folderId?: string; projectId?: string; archivedAt?: string | null })[] = [
   {
     id: "d_001",
     workspaceId: "11111111-1111-1111-1111-111111111111",
+    projectId: "44444444-4444-4444-4444-444444444401",
+    folderId: "f_001",
     title: "Playbook editorial · pilares e tom",
-    emoji: "ðŸ“˜",
+    emoji: "📕",
     summary:
       "Como cada peça da ZAYON passa do conceito ao postado. Pilares, narrativa, governança.",
     type: "playbook",
@@ -37,8 +63,9 @@ export const MOCK_DOCUMENTS: DocumentItem[] = [
     id: "d_002",
     workspaceId: "11111111-1111-1111-1111-111111111111",
     personaId: "33333333-3333-3333-3333-333333333301",
+    projectId: "44444444-4444-4444-4444-444444444402",
     title: "Posicionamento · Aurora Voss",
-    emoji: "ðŸŽ­",
+    emoji: "🎭",
     summary: "Tom de voz, palavras-chave, palavras proibidas, gatilhos narrativos.",
     type: "doc",
     tags: ["persona", "aurora"],
@@ -50,8 +77,10 @@ export const MOCK_DOCUMENTS: DocumentItem[] = [
     id: "d_003",
     workspaceId: "11111111-1111-1111-1111-111111111111",
     personaId: "33333333-3333-3333-3333-333333333301",
+    projectId: "44444444-4444-4444-4444-444444444402",
+    folderId: "f_002",
     title: "Briefing · lançamento Aurora Q2",
-    emoji: "ðŸš€",
+    emoji: "🚀",
     summary: "Cronograma brutal · datas-chave · responsáveis · KPIs.",
     type: "briefing",
     tags: ["lancamento", "aurora"],
@@ -61,11 +90,12 @@ export const MOCK_DOCUMENTS: DocumentItem[] = [
   {
     id: "d_004",
     workspaceId: "11111111-1111-1111-1111-111111111111",
+    folderId: "f_001",
     title: "Onboarding · novo time criativo",
-    emoji: "ðŸ§­",
+    emoji: "🧭",
     summary: "Tudo que um novo membro precisa nos primeiros 7 dias.",
     type: "playbook",
-    tags: ["onboarding"],
+    tags: ["onboarding", "processo"],
     author: MOCK_USERS[0],
     updatedAt: ago(7, 16),
   },
@@ -73,8 +103,9 @@ export const MOCK_DOCUMENTS: DocumentItem[] = [
     id: "d_005",
     workspaceId: "11111111-1111-1111-1111-111111111111",
     personaId: "33333333-3333-3333-3333-333333333302",
+    projectId: "44444444-4444-4444-4444-444444444404",
     title: "Grade · curso Obsidian Forge",
-    emoji: "ðŸ”¥",
+    emoji: "🔥",
     summary: "Módulos, ementa, professores, deadlines.",
     type: "doc",
     tags: ["curso", "obsidian"],
@@ -84,11 +115,12 @@ export const MOCK_DOCUMENTS: DocumentItem[] = [
   {
     id: "d_006",
     workspaceId: "11111111-1111-1111-1111-111111111111",
+    folderId: "f_003",
     title: "Ata · reunião semanal #18",
-    emoji: "ðŸ—’ï¸",
+    emoji: "📝",
     summary: "Decisões, próximos passos, blockers.",
     type: "ata",
-    tags: ["reuniao"],
+    tags: ["reuniao", "processo"],
     author: MOCK_USERS[1],
     updatedAt: ago(0, 9),
   },

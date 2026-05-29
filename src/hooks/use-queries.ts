@@ -613,12 +613,141 @@ export function useCreateFinancialMutation() {
   });
 }
 
+export function useUpdateFinancialStatusMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      callMutate("updateFinancialStatus", { id, status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["finance"] });
+    },
+  });
+}
+
+export function useUpdateFinancialReceiptMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, receiptUrl }: { id: string; receiptUrl: string }) =>
+      callMutate("updateFinancialReceipt", { id, receiptUrl }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["finance"] });
+    },
+  });
+}
+
+export function useCreateBillMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: any) => callMutate("createBill", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bills"] });
+    },
+  });
+}
+
+export function useUpdateBillStatusMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      callMutate("updateBillStatus", { id, status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bills"] });
+      queryClient.invalidateQueries({ queryKey: ["finance"] });
+    },
+  });
+}
+
+export function useDeleteBillMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }: { id: string }) => callMutate("deleteBill", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bills"] });
+    },
+  });
+}
+
+export function useCreatePayrollMemberMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: any) => callMutate("createPayrollMember", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payroll"] });
+    },
+  });
+}
+
+export function useUpdatePayrollMemberMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: any) => callMutate("updatePayrollMember", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payroll"] });
+    },
+  });
+}
+
+export function useDeletePayrollMemberMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }: { id: string }) => callMutate("deletePayrollMember", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payroll"] });
+    },
+  });
+}
+
+export function usePayPayrollMemberMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }: { id: string }) => callMutate("payPayrollMember", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payroll"] });
+      queryClient.invalidateQueries({ queryKey: ["finance"] });
+    },
+  });
+}
+
 export function useUpsertPersonaMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: any) => callMutate("upsertPersona", input),
-    onSuccess: () => {
+    onSuccess: (_, input: any) => {
       queryClient.invalidateQueries({ queryKey: ["personas"] });
+      if (input?.id) {
+        queryClient.invalidateQueries({ queryKey: ["persona", input.id] });
+      }
+    },
+  });
+}
+
+export function useUpsertPersonaChannelMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      id?: string;
+      workspaceId: string;
+      personaId: string;
+      channel: string;
+      handle?: string;
+      url?: string;
+      followers?: number;
+    }) => callMutate("upsertPersonaChannel", input),
+    onSuccess: (_, input) => {
+      queryClient.invalidateQueries({ queryKey: ["personas"] });
+      queryClient.invalidateQueries({ queryKey: ["persona", input.personaId] });
+    },
+  });
+}
+
+export function useDeletePersonaChannelMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; personaId: string }) =>
+      callMutate("deletePersonaChannel", { id: input.id }),
+    onSuccess: (_, input) => {
+      queryClient.invalidateQueries({ queryKey: ["personas"] });
+      queryClient.invalidateQueries({ queryKey: ["persona", input.personaId] });
     },
   });
 }
@@ -801,6 +930,47 @@ export function useUpdateModelingProfileMutation() {
   });
 }
 
+export function useModelingContentExamples(profileId?: string | null) {
+  return useQuery({
+    queryKey: ["modelingExamples", profileId],
+    queryFn: () => qa.getModelingContentExamplesAction(profileId!),
+    enabled: !!profileId,
+  });
+}
+
+export function useUpsertModelingContentExampleMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      id?: string;
+      profileId: string;
+      title: string;
+      url: string;
+      channel?: string;
+      analysis?: string;
+      metrics?: Record<string, any>;
+    }) => callMutate("upsertModelingContentExample", input),
+    onSuccess: (_, input) => {
+      queryClient.invalidateQueries({
+        queryKey: ["modelingExamples", input.profileId],
+      });
+    },
+  });
+}
+
+export function useDeleteModelingContentExampleMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; profileId: string }) =>
+      callMutate("deleteModelingContentExample", { id: input.id }),
+    onSuccess: (_, input) => {
+      queryClient.invalidateQueries({
+        queryKey: ["modelingExamples", input.profileId],
+      });
+    },
+  });
+}
+
 export function useDeleteDocumentMutation() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -847,6 +1017,17 @@ export function useDeleteMaterialMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => callMutate("deleteMaterial", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["materials"] });
+    },
+  });
+}
+
+export function useUpdateMaterialMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: any }) =>
+      callMutate("updateMaterial", { id, input }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["materials"] });
     },
@@ -1199,6 +1380,128 @@ export function useInviteMemberMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["team"] });
       queryClient.invalidateQueries({ queryKey: ["invitations"] });
+    },
+  });
+}
+
+export function useInvitations(workspaceId?: string | null) {
+  return useQuery({
+    queryKey: ["invitations", workspaceId],
+    queryFn: () => qa.getInvitationsAction(workspaceId!),
+    enabled: !!workspaceId,
+  });
+}
+
+export function useResendInvitationMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { invitationId: string }) =>
+      callMutate("resendInvitation", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["invitations"] });
+    },
+  });
+}
+
+export function useCancelInvitationMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { invitationId: string }) =>
+      callMutate("cancelInvitation", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["invitations"] });
+    },
+  });
+}
+
+export function useUpdateMemberPermissionsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      workspaceId: string;
+      userId: string;
+      permissions: Record<string, string[]>;
+    }) => callMutate("updateMemberPermissions", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team"] });
+    },
+  });
+}
+
+export function useUpdateDocumentMetaMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: any }) =>
+      callMutate("updateDocumentMeta", { id, input }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["document", variables.id] });
+    },
+  });
+}
+
+export function useToggleDocumentStarMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("toggleDocumentStar", { id }),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["document", id] });
+    },
+  });
+}
+
+export function useArchiveDocumentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("archiveDocument", { id }),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["document", id] });
+    },
+  });
+}
+
+export function useUnarchiveDocumentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("unarchiveDocument", { id }),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["document", id] });
+    },
+  });
+}
+
+export function useMoveDocumentToFolderMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ids, folderId }: { ids: string | string[]; folderId: string | null }) =>
+      callMutate("moveDocumentToFolder", { ids, folderId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+  });
+}
+
+export function useBulkArchiveDocumentsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ids, archive }: { ids: string[]; archive: boolean }) =>
+      callMutate("bulkArchiveDocuments", { ids, archive }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+  });
+}
+
+export function useBulkTagDocumentsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ids, tags }: { ids: string[]; tags: string[] }) =>
+      callMutate("bulkTagDocuments", { ids, tags }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
     },
   });
 }

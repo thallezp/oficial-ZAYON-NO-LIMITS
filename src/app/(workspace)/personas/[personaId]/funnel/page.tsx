@@ -205,7 +205,13 @@ export default function FunnelPage() {
             </Badge>
           </CardHeader>
           <CardContent>
-            <FunnelCanvas funnel={funnel as any} accent={persona.accent} onSave={handleSave} />
+            <FunnelCanvas
+              funnel={funnel as any}
+              accent={persona.accent}
+              onSave={handleSave}
+              workspaceId={activeWorkspaceId}
+              personaId={persona.id}
+            />
           </CardContent>
         </Card>
       ) : (

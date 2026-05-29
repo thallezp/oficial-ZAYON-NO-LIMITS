@@ -168,8 +168,13 @@ export async function POST(req: Request) {
             hook: payload.hook || null,
             script: payload.script || null,
             caption: payload.caption || null,
+            visual_brief: payload.visualBrief || null,
+            audio_reference: payload.audioReference || null,
+            reference_links: payload.referenceLinks || null,
             pillar: payload.pillar || null,
             scheduled_at: payload.scheduledAt || null,
+            owner_id: payload.ownerId || null,
+            metadata: payload.metadata || null,
           })
           .select()
           .single();
@@ -177,7 +182,6 @@ export async function POST(req: Request) {
         result = data;
         break;
       }
-
       case "updateContent": {
         const { id, input } = payload;
         const patch: Record<string, any> = { updated_at: new Date().toISOString() };
@@ -185,6 +189,9 @@ export async function POST(req: Request) {
         if (input.hook !== undefined) patch.hook = input.hook;
         if (input.script !== undefined) patch.script = input.script;
         if (input.caption !== undefined) patch.caption = input.caption;
+        if (input.visualBrief !== undefined) patch.visual_brief = input.visualBrief;
+        if (input.audioReference !== undefined) patch.audio_reference = input.audioReference;
+        if (input.referenceLinks !== undefined) patch.reference_links = input.referenceLinks;
         if (input.pillar !== undefined) patch.pillar = input.pillar;
         if (input.channel !== undefined) patch.channel = input.channel;
         if (input.contentType !== undefined) patch.content_type = input.contentType;
@@ -192,7 +199,40 @@ export async function POST(req: Request) {
         if (input.scheduledAt !== undefined) patch.scheduled_at = input.scheduledAt;
         if (input.publishedAt !== undefined) patch.published_at = input.publishedAt;
         if (input.mediaUrl !== undefined) patch.media_url = input.mediaUrl;
-        if (input.metrics !== undefined) patch.metrics = input.metrics;
+        if (input.ownerId !== undefined) patch.owner_id = input.ownerId;
+        if (input.metadata !== undefined) patch.metadata = input.metadata;
+
+        if (input.metrics !== undefined && input.metrics !== null) {
+          const { data: existingMetrics } = await supabase
+            .from("content_metrics")
+            .select("id")
+            .eq("content_item_id", id)
+            .limit(1);
+
+          const metricsPayload = {
+            content_item_id: id,
+            views: input.metrics.views !== undefined ? Number(input.metrics.views) : 0,
+            likes: input.metrics.likes !== undefined ? Number(input.metrics.likes) : 0,
+            comments: input.metrics.comments !== undefined ? Number(input.metrics.comments) : 0,
+            shares: input.metrics.shares !== undefined ? Number(input.metrics.shares) : 0,
+            saves: input.metrics.saves !== undefined ? Number(input.metrics.saves) : 0,
+            reach: input.metrics.reach !== undefined ? Number(input.metrics.reach) : 0,
+            engagement_rate: input.metrics.engagementRate !== undefined ? Number(input.metrics.engagementRate) : 0,
+            retention: input.metrics.retention !== undefined ? Number(input.metrics.retention) : 0,
+          };
+
+          if (existingMetrics && existingMetrics.length > 0) {
+            await supabase
+              .from("content_metrics")
+              .update(metricsPayload)
+              .eq("id", existingMetrics[0].id);
+          } else {
+            await supabase
+              .from("content_metrics")
+              .insert(metricsPayload);
+          }
+        }
+
         const { data, error } = await supabase
           .from("content_items")
           .update(patch)
@@ -203,7 +243,6 @@ export async function POST(req: Request) {
         result = data;
         break;
       }
-
       case "deleteContent": {
         const { id } = payload;
         const { error } = await supabase
@@ -389,6 +428,182 @@ export async function POST(req: Request) {
         break;
       }
 
+      case "updateFinancialStatus": {
+        const { id, status } = payload;
+        const { data, error } = await supabase
+          .from("financial_transactions")
+          .update({
+            status,
+            paid_at: status === "paid" ? new Date().toISOString() : null,
+          })
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "updateFinancialReceipt": {
+        const { id, receiptUrl } = payload;
+        const { data, error } = await supabase
+          .from("financial_transactions")
+          .update({
+            receipt_url: receiptUrl,
+          })
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "createBill": {
+        const { data, error } = await supabase
+          .from("bills")
+          .insert({
+            workspace_id: payload.workspaceId,
+            persona_id: payload.personaId || null,
+            name: payload.name,
+            amount: String(payload.amount),
+            due_at: payload.dueAt ? payload.dueAt.split("T")[0] : new Date().toISOString().split("T")[0],
+            recurrence: payload.recurrence || null,
+            status: payload.status || "pending",
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "updateBillStatus": {
+        const { id, status } = payload;
+        const { data: bill, error: fetchErr } = await supabase
+          .from("bills")
+          .select("*")
+          .eq("id", id)
+          .single();
+        if (fetchErr) throw fetchErr;
+
+        const { data, error } = await supabase
+          .from("bills")
+          .update({ status })
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+
+        if (status === "paid") {
+          await supabase.from("financial_transactions").insert({
+            workspace_id: bill.workspace_id,
+            persona_id: bill.persona_id || null,
+            type: "expense",
+            status: "paid",
+            amount: bill.amount,
+            description: `Pagamento: ${bill.name}`,
+            occurred_at: new Date().toISOString().split("T")[0],
+            paid_at: new Date().toISOString(),
+          });
+        }
+        result = data;
+        break;
+      }
+
+      case "deleteBill": {
+        const { id } = payload;
+        const { error } = await supabase.from("bills").delete().eq("id", id);
+        if (error) throw error;
+        result = { ok: true };
+        break;
+      }
+
+      case "createPayrollMember": {
+        const { data, error } = await supabase
+          .from("payroll_members")
+          .insert({
+            workspace_id: payload.workspaceId,
+            name: payload.name,
+            role: payload.role || null,
+            base_salary: String(payload.baseSalary || 0),
+            commission: String(payload.commission || 0),
+            pix_key: payload.pixKey || null,
+            pay_day: payload.payDay || null,
+            status: payload.status || "active",
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "updatePayrollMember": {
+        const { id, name, role, baseSalary, commission, pixKey, payDay, status } = payload;
+        const { data, error } = await supabase
+          .from("payroll_members")
+          .update({
+            name,
+            role,
+            base_salary: baseSalary !== undefined ? String(baseSalary) : undefined,
+            commission: commission !== undefined ? String(commission) : undefined,
+            pix_key: pixKey,
+            pay_day: payDay,
+            status,
+          })
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deletePayrollMember": {
+        const { id } = payload;
+        const { error } = await supabase.from("payroll_members").delete().eq("id", id);
+        if (error) throw error;
+        result = { ok: true };
+        break;
+      }
+
+      case "payPayrollMember": {
+        const { id } = payload;
+        const { data: member, error: fetchErr } = await supabase
+          .from("payroll_members")
+          .select("*")
+          .eq("id", id)
+          .single();
+        if (fetchErr) throw fetchErr;
+
+        const metadata = member.metadata || {};
+        metadata.lastPaidAt = new Date().toISOString();
+        metadata.lastPaidMonth = new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+        
+        const { data, error } = await supabase
+          .from("payroll_members")
+          .update({ metadata })
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+
+        const totalPayout = Number(member.base_salary || 0) + Number(member.commission || 0);
+        await supabase.from("financial_transactions").insert({
+          workspace_id: member.workspace_id,
+          type: "expense",
+          status: "paid",
+          amount: String(totalPayout),
+          description: `Folha de Pagamento: ${member.name} (${metadata.lastPaidMonth})`,
+          occurred_at: new Date().toISOString().split("T")[0],
+          paid_at: new Date().toISOString(),
+        });
+
+        result = data;
+        break;
+      }
+
       // ── PERSONAS ──────────────────────────────────────────────────────────
       case "upsertPersona": {
         const upsertData: any = {
@@ -396,9 +611,26 @@ export async function POST(req: Request) {
           name: payload.name,
           status: payload.status || "building",
         };
-        if (payload.codename) upsertData.codename = payload.codename;
-        if (payload.niche) upsertData.niche = payload.niche;
-        if (payload.bigIdea) upsertData.big_idea = payload.bigIdea;
+        if (payload.codename !== undefined) upsertData.codename = payload.codename || null;
+        if (payload.niche !== undefined) upsertData.niche = payload.niche || null;
+        if (payload.bigIdea !== undefined) upsertData.big_idea = payload.bigIdea || null;
+        if (payload.bioShort !== undefined) upsertData.bio_short = payload.bioShort || null;
+        if (payload.voiceTone !== undefined) upsertData.voice_tone = payload.voiceTone || null;
+        if (payload.archetype !== undefined) upsertData.archetype = payload.archetype || null;
+        if (payload.visualStyle !== undefined) upsertData.visual_style = payload.visualStyle || null;
+        if (payload.dressStyle !== undefined) upsertData.dress_style = payload.dressStyle || null;
+        if (payload.avatarUrl !== undefined) upsertData.avatar_url = payload.avatarUrl || null;
+        if (payload.coverUrl !== undefined) upsertData.cover_url = payload.coverUrl || null;
+        if (payload.objective !== undefined) upsertData.objective = payload.objective || null;
+        if (payload.guidelines !== undefined) upsertData.guidelines = payload.guidelines || null;
+        if (Array.isArray(payload.personality))
+          upsertData.personality = payload.personality;
+        if (Array.isArray(payload.preferredWords))
+          upsertData.preferred_words = payload.preferredWords;
+        if (Array.isArray(payload.forbiddenWords))
+          upsertData.forbidden_words = payload.forbiddenWords;
+        if (Array.isArray(payload.referenceLinks))
+          upsertData.reference_links = payload.referenceLinks;
 
         let data, error;
         if (payload.id) {
@@ -417,6 +649,46 @@ export async function POST(req: Request) {
         }
         if (error) throw error;
         result = data;
+        break;
+      }
+
+      case "upsertPersonaChannel": {
+        const channelData: any = {
+          workspace_id: payload.workspaceId,
+          persona_id: payload.personaId,
+          channel: payload.channel,
+        };
+        if (payload.handle !== undefined) channelData.handle = payload.handle || null;
+        if (payload.url !== undefined) channelData.url = payload.url || null;
+        if (payload.followers !== undefined)
+          channelData.followers = Number(payload.followers) || 0;
+        let data, error;
+        if (payload.id) {
+          ({ data, error } = await supabase
+            .from("persona_channels")
+            .update(channelData)
+            .eq("id", payload.id)
+            .select()
+            .single());
+        } else {
+          ({ data, error } = await supabase
+            .from("persona_channels")
+            .insert(channelData)
+            .select()
+            .single());
+        }
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deletePersonaChannel": {
+        const { error } = await supabase
+          .from("persona_channels")
+          .delete()
+          .eq("id", payload.id);
+        if (error) throw error;
+        result = { id: payload.id };
         break;
       }
 
@@ -450,6 +722,127 @@ export async function POST(req: Request) {
           .single();
         if (error) throw error;
         result = data;
+        break;
+      }
+
+      case "updateDocumentMeta": {
+        // Atualiza metadados organizacionais (pasta, projeto, tarefa, tags, persona, etc.)
+        const { id, input } = payload;
+        const patch: Record<string, any> = { updated_at: new Date().toISOString() };
+        if (input.title !== undefined) patch.title = input.title;
+        if (input.summary !== undefined) patch.summary = input.summary;
+        if (input.emoji !== undefined) patch.emoji = input.emoji;
+        if (input.tags !== undefined) patch.tags = input.tags;
+        if (input.type !== undefined) patch.type = input.type;
+        if (input.folderId !== undefined) patch.folder_id = input.folderId || null;
+        if (input.personaId !== undefined) patch.persona_id = input.personaId || null;
+        if (input.projectId !== undefined) patch.project_id = input.projectId || null;
+        if (input.taskId !== undefined) patch.task_id = input.taskId || null;
+        const { data, error } = await supabase
+          .from("documents")
+          .update(patch)
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "toggleDocumentStar": {
+        const { id } = payload;
+        const { data: current } = await supabase
+          .from("documents")
+          .select("is_starred")
+          .eq("id", id)
+          .single();
+        const { data, error } = await supabase
+          .from("documents")
+          .update({ is_starred: !(current?.is_starred ?? false) })
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "archiveDocument": {
+        const { id } = payload;
+        const { data, error } = await supabase
+          .from("documents")
+          .update({ archived_at: new Date().toISOString() })
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "unarchiveDocument": {
+        const { id } = payload;
+        const { data, error } = await supabase
+          .from("documents")
+          .update({ archived_at: null })
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "moveDocumentToFolder": {
+        // Move um ou varios documentos para uma pasta (folderId=null = raiz)
+        const { ids, folderId } = payload;
+        const idList: string[] = Array.isArray(ids) ? ids : [ids];
+        const { data, error } = await supabase
+          .from("documents")
+          .update({
+            folder_id: folderId || null,
+            updated_at: new Date().toISOString(),
+          })
+          .in("id", idList)
+          .select();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "bulkArchiveDocuments": {
+        const { ids, archive } = payload;
+        const idList: string[] = Array.isArray(ids) ? ids : [ids];
+        const { error } = await supabase
+          .from("documents")
+          .update({
+            archived_at: archive ? new Date().toISOString() : null,
+          })
+          .in("id", idList);
+        if (error) throw error;
+        result = { ok: true, count: idList.length };
+        break;
+      }
+
+      case "bulkTagDocuments": {
+        // Aplica tags a múltiplos documentos preservando existentes
+        const { ids, tags } = payload;
+        const idList: string[] = Array.isArray(ids) ? ids : [ids];
+        const newTags: string[] = Array.isArray(tags) ? tags : [];
+        const { data: existing } = await supabase
+          .from("documents")
+          .select("id, tags")
+          .in("id", idList);
+        for (const doc of existing ?? []) {
+          const merged = Array.from(
+            new Set([...(doc.tags ?? []), ...newTags]),
+          );
+          await supabase
+            .from("documents")
+            .update({ tags: merged })
+            .eq("id", doc.id);
+        }
+        result = { ok: true, count: idList.length };
         break;
       }
 
@@ -878,6 +1271,7 @@ export async function POST(req: Request) {
       }
 
       // ── TOOLS ─────────────────────────────────────────────────────────────
+      // ── TOOLS ─────────────────────────────────────────────────────────────
       case "createTool": {
         let categoryId: string | null = null;
         if (payload.category) {
@@ -885,22 +1279,34 @@ export async function POST(req: Request) {
             .from("tool_categories")
             .select("id")
             .eq("workspace_id", payload.workspaceId)
-            .ilike("slug", payload.category)
+            .ilike("name", payload.category)
             .limit(1);
           if (catData && catData.length > 0) {
             categoryId = catData[0].id;
           } else {
-            const { data: catDataByName } = await supabase
+            const slug = payload.category.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+            const { data: newCat, error: catError } = await supabase
               .from("tool_categories")
+              .insert({
+                workspace_id: payload.workspaceId,
+                name: payload.category,
+                slug: slug,
+              })
               .select("id")
-              .eq("workspace_id", payload.workspaceId)
-              .ilike("name", payload.category)
-              .limit(1);
-            if (catDataByName && catDataByName.length > 0) {
-              categoryId = catDataByName[0].id;
+              .single();
+            if (!catError && newCat) {
+              categoryId = newCat.id;
             }
           }
         }
+
+        const metadata = {
+          embedMode: payload.embedMode || "new_tab",
+          brandColor: payload.brandColor || null,
+          projectId: payload.projectId || null,
+          documentId: payload.documentId || null,
+        };
+
         const { data, error } = await supabase
           .from("tools")
           .insert({
@@ -910,6 +1316,11 @@ export async function POST(req: Request) {
             description: payload.description || null,
             url: payload.url || "https://",
             category_id: categoryId,
+            icon_slug: payload.iconSlug || null,
+            tags: payload.tags || [],
+            metadata: metadata,
+            is_favorite: payload.isFavorite || false,
+            is_pinned: payload.isPinned || false,
             created_by: user.id,
           })
           .select()
@@ -925,32 +1336,64 @@ export async function POST(req: Request) {
         if (input.name !== undefined) patch.name = input.name;
         if (input.description !== undefined) patch.description = input.description;
         if (input.url !== undefined) patch.url = input.url;
-        if (input.iconUrl !== undefined) patch.icon_url = input.iconUrl;
-        if (input.embedMode !== undefined) patch.embed_mode = input.embedMode;
+        if (input.iconUrl !== undefined) patch.logo_url = input.iconUrl;
+        if (input.iconSlug !== undefined) patch.icon_slug = input.iconSlug;
         if (input.isFavorite !== undefined) patch.is_favorite = input.isFavorite;
         if (input.isPinned !== undefined) patch.is_pinned = input.isPinned;
         if (input.tags !== undefined) patch.tags = input.tags;
-        // categoria por slug/nome igual createTool
+        if (input.personaId !== undefined) patch.persona_id = input.personaId || null;
+
+        // Fetch existing metadata to merge
+        const { data: existingTool } = await supabase
+          .from("tools")
+          .select("metadata, workspace_id")
+          .eq("id", id)
+          .single();
+        const existingMeta = (existingTool?.metadata as Record<string, any>) || {};
+        const workspaceId = existingTool?.workspace_id;
+
+        const nextMeta = {
+          ...existingMeta,
+        };
+        if (input.embedMode !== undefined) nextMeta.embedMode = input.embedMode;
+        if (input.brandColor !== undefined) nextMeta.brandColor = input.brandColor;
+        if (input.projectId !== undefined) nextMeta.projectId = input.projectId;
+        if (input.documentId !== undefined) nextMeta.documentId = input.documentId;
+        if (input.urlCheckedAt !== undefined) nextMeta.urlCheckedAt = input.urlCheckedAt;
+        if (input.urlStatus !== undefined) nextMeta.urlStatus = input.urlStatus;
+
+        patch.metadata = nextMeta;
+
         if (input.category !== undefined) {
           let categoryId: string | null = null;
           if (input.category) {
             const { data: catData } = await supabase
               .from("tool_categories")
-              .select("id, workspace_id")
-              .ilike("slug", input.category)
+              .select("id")
+              .eq("workspace_id", workspaceId)
+              .ilike("name", input.category)
               .limit(1);
-            if (catData && catData.length > 0) categoryId = catData[0].id;
-            else {
-              const { data: byName } = await supabase
+            if (catData && catData.length > 0) {
+              categoryId = catData[0].id;
+            } else {
+              const slug = input.category.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+              const { data: newCat, error: catError } = await supabase
                 .from("tool_categories")
+                .insert({
+                  workspace_id: workspaceId,
+                  name: input.category,
+                  slug: slug,
+                })
                 .select("id")
-                .ilike("name", input.category)
-                .limit(1);
-              if (byName && byName.length > 0) categoryId = byName[0].id;
+                .single();
+              if (!catError && newCat) {
+                categoryId = newCat.id;
+              }
             }
           }
           patch.category_id = categoryId;
         }
+
         const { data, error } = await supabase
           .from("tools")
           .update(patch)
@@ -1094,6 +1537,30 @@ export async function POST(req: Request) {
         const { error } = await supabase.from("materials").delete().eq("id", id);
         if (error) throw error;
         result = { ok: true };
+        break;
+      }
+
+      case "updateMaterial": {
+        const { id, input } = payload;
+        const patch: Record<string, any> = {};
+        if (input.title !== undefined) patch.title = input.title;
+        if (input.description !== undefined) patch.description = input.description;
+        if (input.fileType !== undefined) patch.file_type = input.fileType;
+        if (input.fileUrl !== undefined) patch.file_url = input.fileUrl;
+        if (input.sizeBytes !== undefined) patch.size_bytes = input.sizeBytes;
+        if (input.folderId !== undefined) patch.folder_id = input.folderId;
+        if (input.tags !== undefined) patch.tags = input.tags;
+        if (input.isStarred !== undefined) patch.is_starred = input.isStarred;
+        if (input.relatedEntity !== undefined) patch.related_entity = input.relatedEntity;
+        if (input.personaId !== undefined) patch.persona_id = input.personaId;
+        const { data, error } = await supabase
+          .from("materials")
+          .update(patch)
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
         break;
       }
 
@@ -1241,6 +1708,8 @@ export async function POST(req: Request) {
         if (input.category !== undefined) patch.category = input.category;
         if (input.notes !== undefined) patch.notes = input.notes;
         if (input.tags !== undefined) patch.tags = input.tags;
+        if (input.refs !== undefined) patch.refs = input.refs;
+        if (input.photoUrl !== undefined) patch.photo_url = input.photoUrl;
         const { data, error } = await supabase
           .from("modeling_profiles")
           .update(patch)
@@ -1249,6 +1718,45 @@ export async function POST(req: Request) {
           .single();
         if (error) throw error;
         result = data;
+        break;
+      }
+
+      case "upsertModelingContentExample": {
+        const row: Record<string, any> = {
+          profile_id: payload.profileId,
+          title: payload.title,
+          url: payload.url,
+        };
+        if (payload.channel !== undefined) row.channel = payload.channel || null;
+        if (payload.analysis !== undefined) row.analysis = payload.analysis || null;
+        if (payload.metrics !== undefined) row.metrics = payload.metrics || null;
+        let data, error;
+        if (payload.id) {
+          ({ data, error } = await supabase
+            .from("modeling_content_examples")
+            .update(row)
+            .eq("id", payload.id)
+            .select()
+            .single());
+        } else {
+          ({ data, error } = await supabase
+            .from("modeling_content_examples")
+            .insert(row)
+            .select()
+            .single());
+        }
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deleteModelingContentExample": {
+        const { error } = await supabase
+          .from("modeling_content_examples")
+          .delete()
+          .eq("id", payload.id);
+        if (error) throw error;
+        result = { id: payload.id };
         break;
       }
 
@@ -1530,6 +2038,70 @@ export async function POST(req: Request) {
             invited_by: user.id,
             expires_at: expiresAt,
           })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "resendInvitation": {
+        const token = crypto.randomUUID();
+        const expiresAt = new Date(
+          Date.now() + 7 * 24 * 60 * 60 * 1000,
+        ).toISOString();
+        const { data, error } = await supabase
+          .from("invitations")
+          .update({
+            token,
+            expires_at: expiresAt,
+            invited_by: user.id,
+            accepted: false,
+          })
+          .eq("id", payload.invitationId)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "cancelInvitation": {
+        const { error } = await supabase
+          .from("invitations")
+          .delete()
+          .eq("id", payload.invitationId);
+        if (error) throw error;
+        result = { id: payload.invitationId };
+        break;
+      }
+
+      case "updateMemberPermissions": {
+        // Persiste em users.metadata.workspacePermissions[workspaceId].
+        // Sem mudança de schema. RLS de Supabase já é o gatekeeper real.
+        const { data: targetUser, error: fetchError } = await supabase
+          .from("users")
+          .select("metadata")
+          .eq("id", payload.userId)
+          .single();
+        if (fetchError) throw fetchError;
+        const existing =
+          (targetUser?.metadata as Record<string, any> | null) ?? {};
+        const wsPerms = (existing.workspacePermissions ?? {}) as Record<
+          string,
+          unknown
+        >;
+        const nextMetadata = {
+          ...existing,
+          workspacePermissions: {
+            ...wsPerms,
+            [payload.workspaceId]: payload.permissions,
+          },
+        };
+        const { data, error } = await supabase
+          .from("users")
+          .update({ metadata: nextMetadata })
+          .eq("id", payload.userId)
           .select()
           .single();
         if (error) throw error;

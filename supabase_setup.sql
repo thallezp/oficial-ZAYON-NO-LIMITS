@@ -148,6 +148,11 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   body TEXT,
   href TEXT,
   read_at TIMESTAMPTZ,
+  archived_at TIMESTAMPTZ,
+  deleted_at TIMESTAMPTZ,
+  persona_id UUID REFERENCES public.personas(id) ON DELETE CASCADE,
+  entity_type TEXT,
+  entity_id UUID,
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 

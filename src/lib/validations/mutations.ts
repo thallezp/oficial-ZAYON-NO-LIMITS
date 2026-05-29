@@ -261,6 +261,30 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
   updateDocumentContent: z
     .object({ id, content: z.any(), title: z.string().optional() })
     .passthrough(),
+  updateDocumentMeta: z
+    .object({ id, input: z.object({}).passthrough() })
+    .passthrough(),
+  toggleDocumentStar: simpleDelete,
+  archiveDocument: simpleDelete,
+  unarchiveDocument: simpleDelete,
+  moveDocumentToFolder: z
+    .object({
+      ids: z.union([z.string().uuid(), z.array(z.string().uuid())]),
+      folderId: z.string().uuid().nullable().optional(),
+    })
+    .passthrough(),
+  bulkArchiveDocuments: z
+    .object({
+      ids: z.array(z.string().uuid()),
+      archive: z.boolean(),
+    })
+    .passthrough(),
+  bulkTagDocuments: z
+    .object({
+      ids: z.array(z.string().uuid()),
+      tags: z.array(z.string()),
+    })
+    .passthrough(),
   createMaterial,
   createFlow,
   updateFlow: z.object({ id, input: z.object({ name: z.string().min(2).optional(), description: z.string().optional().nullable(), type: z.string().optional(), color: z.string().optional() }).passthrough() }).passthrough(),
@@ -289,6 +313,9 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
   deleteFlow: simpleDelete,
   deleteTool: simpleDelete,
   deleteMaterial: simpleDelete,
+  updateMaterial: z
+    .object({ id, input: z.object({}).passthrough() })
+    .passthrough(),
   createLaunchCampaign: z
     .object({
       workspaceId: id,
@@ -421,6 +448,27 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
   transferOwnership: z
     .object({ workspaceId: id, newOwnerId: id })
     .passthrough(),
+  resendInvitation: z.object({ invitationId: id }).passthrough(),
+  cancelInvitation: z.object({ invitationId: id }).passthrough(),
+  updateMemberPermissions: z
+    .object({
+      workspaceId: id,
+      userId: id,
+      permissions: z.record(z.array(z.string())),
+    })
+    .passthrough(),
+  upsertPersonaChannel: z
+    .object({
+      id: optionalId,
+      workspaceId: id,
+      personaId: id,
+      channel: z.string().min(1, "Canal e obrigatorio"),
+      handle: z.string().optional().nullable(),
+      url: z.string().optional().nullable(),
+      followers: z.coerce.number().nonnegative().optional(),
+    })
+    .passthrough(),
+  deletePersonaChannel: simpleDelete,
   createFunnel: z
     .object({
       workspaceId: id,
@@ -445,6 +493,18 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
   updateModelingProfile: z
     .object({ id, input: z.object({}).passthrough() })
     .passthrough(),
+  upsertModelingContentExample: z
+    .object({
+      id: optionalId,
+      profileId: id,
+      title: z.string().min(1, "Titulo e obrigatorio"),
+      url: z.string().min(1, "URL e obrigatoria"),
+      channel: z.string().optional().nullable(),
+      analysis: z.string().optional().nullable(),
+      metrics: z.record(z.any()).optional().nullable(),
+    })
+    .passthrough(),
+  deleteModelingContentExample: simpleDelete,
 };
 
 export function parseMutationPayload(action: string, payload: unknown) {

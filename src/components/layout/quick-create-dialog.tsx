@@ -64,7 +64,15 @@ import {
   useCreatePromptChainMutation,
   useCreateModelingProfileMutation,
   useInviteMemberMutation,
+  useProjects,
+  usePersonas,
+  useDocuments,
+  useTeam,
+  useLaunchCampaigns,
 } from "@/hooks/use-queries";
+import { TOOL_CATEGORIES } from "@/data/tools";
+import { BrandLogo } from "@/components/ui/brand-logo";
+import { getAutoPreview } from "@/lib/utils/tool-utils";
 
 type EntityMeta = {
   title: string;
@@ -490,6 +498,15 @@ function ContentForm({ workspaceId, personaId, context, submitLabel, onSuccess }
   const [contentType, setContentType] = React.useState<string>(context.defaultContentType ?? "reel");
   const [status, setStatus] = React.useState<string>("idea");
   const [scheduledAt, setScheduledAt] = React.useState("");
+  
+  // Extra fields
+  const [pillar, setPillar] = React.useState<string>("neutral");
+  const [responsibleId, setResponsibleId] = React.useState<string>("");
+  const [campaignId, setCampaignId] = React.useState<string>("");
+
+  // Queries for selectors
+  const { data: team = [] } = useTeam(workspaceId);
+  const { data: campaigns = [] } = useLaunchCampaigns(workspaceId, personaId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -504,6 +521,11 @@ function ContentForm({ workspaceId, personaId, context, submitLabel, onSuccess }
         contentType,
         status,
         scheduledAt: scheduledAt || undefined,
+        pillar: pillar && pillar !== "none" ? pillar : undefined,
+        ownerId: responsibleId && responsibleId !== "none" ? responsibleId : undefined,
+        metadata: {
+          campaignId: campaignId && campaignId !== "none" ? campaignId : undefined,
+        },
       });
       toast.success("Conteúdo criado!", { description: title });
       onSuccess();
@@ -576,6 +598,53 @@ function ContentForm({ workspaceId, personaId, context, submitLabel, onSuccess }
           </Select>
         </Field>
       </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <Field label="Pilar Editorial">
+          <Select value={pillar} onValueChange={setPillar}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="attraction">Atração</SelectItem>
+              <SelectItem value="educational">Educacional</SelectItem>
+              <SelectItem value="tips">Dicas</SelectItem>
+              <SelectItem value="opinion">Opinião</SelectItem>
+              <SelectItem value="offer">Oferta</SelectItem>
+              <SelectItem value="authority">Autoridade</SelectItem>
+              <SelectItem value="behind">Bastidores</SelectItem>
+              <SelectItem value="neutral">Neutro</SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
+
+        <Field label="Responsável">
+          <Select value={responsibleId} onValueChange={setResponsibleId}>
+            <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Nenhum</SelectItem>
+              {team.map((m: any) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.fullName || m.email}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+
+        <Field label="Campanha Lançamento">
+          <Select value={campaignId} onValueChange={setCampaignId}>
+            <SelectTrigger><SelectValue placeholder="Nenhuma" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Nenhuma</SelectItem>
+              {campaigns.map((c: any) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+      </div>
+
       <Field label="Agendar para">
         <Input
           type="datetime-local"
@@ -888,6 +957,29 @@ function ToolForm({ workspaceId, personaId, submitLabel, onSuccess }: EntityForm
   const [url, setUrl] = React.useState("");
   const [category, setCategory] = React.useState("IA");
   const [description, setDescription] = React.useState("");
+  
+  // Custom fields
+  const [iconSlug, setIconSlug] = React.useState("");
+  const [brandColor, setBrandColor] = React.useState("#3b82f6");
+  const [embedMode, setEmbedMode] = React.useState<"new_tab" | "embed" | "modal">("new_tab");
+  const [selectedPersonaId, setSelectedPersonaId] = React.useState(personaId || "");
+  const [projectId, setProjectId] = React.useState("");
+  const [documentId, setDocumentId] = React.useState("");
+  const [tags, setTags] = React.useState("");
+
+  // Queries for selectors
+  const { data: projects = [] } = useProjects(workspaceId);
+  const { data: personas = [] } = usePersonas(workspaceId);
+  const { data: documents = [] } = useDocuments(workspaceId);
+
+  // Auto detect icon and color as they type name/url
+  React.useEffect(() => {
+    if (name || url) {
+      const detect = getAutoPreview(name, url);
+      setIconSlug(detect.iconSlug);
+      setBrandColor(detect.brandColor);
+    }
+  }, [name, url]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -895,11 +987,20 @@ function ToolForm({ workspaceId, personaId, submitLabel, onSuccess }: EntityForm
     try {
       await create.mutateAsync({
         workspaceId,
-        personaId: personaId ?? undefined,
+        personaId: selectedPersonaId && selectedPersonaId !== "none" ? selectedPersonaId : undefined,
         name: name.trim(),
         url: url.trim() || "https://",
         category,
         description: description.trim() || undefined,
+        iconSlug: iconSlug.trim() || undefined,
+        brandColor,
+        embedMode,
+        projectId: projectId && projectId !== "none" ? projectId : undefined,
+        documentId: documentId && documentId !== "none" ? documentId : undefined,
+        tags: tags
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
       });
       toast.success("Ferramenta adicionada!", { description: name });
       onSuccess();
@@ -910,34 +1011,133 @@ function ToolForm({ workspaceId, personaId, submitLabel, onSuccess }: EntityForm
 
   return (
     <form className="space-y-3" onSubmit={handleSubmit}>
-      <Field label="Nome" required>
-        <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
-      </Field>
-      <Field label="URL" required>
+      <div className="grid grid-cols-12 gap-3">
+        <div className="col-span-8 space-y-3">
+          <Field label="Nome" required>
+            <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+          </Field>
+          <Field label="URL" required>
+            <Input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://"
+            />
+          </Field>
+        </div>
+        <div className="col-span-4 flex flex-col items-center justify-center border border-border/60 bg-card-elevated/40 rounded-xl p-2.5 space-y-2">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider text-center">Preview Logo</p>
+          <div
+            className="flex items-center justify-center rounded-lg text-white border border-border/60 h-14 w-14"
+            style={{ background: brandColor }}
+          >
+            <BrandLogo slug={iconSlug} fallback={name || "?"} size={28} monochrome brandColor={brandColor} />
+          </div>
+          <div className="flex gap-1.5 w-full">
+            <div className="flex-1">
+              <Label className="text-[9px] text-muted-foreground">Slug</Label>
+              <Input
+                value={iconSlug}
+                onChange={(e) => setIconSlug(e.target.value)}
+                className="h-6 text-[10px] px-1"
+                placeholder="slug"
+              />
+            </div>
+            <div className="w-10">
+              <Label className="text-[9px] text-muted-foreground">Cor</Label>
+              <Input
+                type="color"
+                value={brandColor}
+                onChange={(e) => setBrandColor(e.target.value)}
+                className="h-6 w-full p-0 border-0 bg-transparent cursor-pointer"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Categoria">
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {TOOL_CATEGORIES.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {c}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        
+        <Field label="Modo de abertura">
+          <Select value={embedMode} onValueChange={(val: any) => setEmbedMode(val)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="new_tab">Nova aba</SelectItem>
+              <SelectItem value="embed">Embed (iframe)</SelectItem>
+              <SelectItem value="modal">Modal</SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <Field label="Vincular Persona">
+          <Select value={selectedPersonaId} onValueChange={setSelectedPersonaId}>
+            <SelectTrigger><SelectValue placeholder="Nenhuma" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Nenhuma</SelectItem>
+              {personas.map((p: any) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+
+        <Field label="Vincular Projeto">
+          <Select value={projectId} onValueChange={setProjectId}>
+            <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Nenhum</SelectItem>
+              {projects.map((p: any) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+
+        <Field label="Vincular Documento">
+          <Select value={documentId} onValueChange={setDocumentId}>
+            <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Nenhum</SelectItem>
+              {documents.map((d: any) => (
+                <SelectItem key={d.id} value={d.id}>
+                  {d.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+      </div>
+
+      <Field label="Tags (separadas por vírgula)">
         <Input
-          type="url"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://"
+          value={tags}
+          onChange={(e) => setTags(e.target.value)}
+          placeholder="ex: design, llm, gratuito"
         />
       </Field>
-      <Field label="Categoria">
-        <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="IA">IA</SelectItem>
-            <SelectItem value="Design">Design</SelectItem>
-            <SelectItem value="Vídeo">Vídeo</SelectItem>
-            <SelectItem value="Produtividade">Produtividade</SelectItem>
-            <SelectItem value="Analytics">Analytics</SelectItem>
-            <SelectItem value="Comunicação">Comunicação</SelectItem>
-            <SelectItem value="Outros">Outros</SelectItem>
-          </SelectContent>
-        </Select>
-      </Field>
+
       <Field label="Descrição">
         <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
       </Field>
+      
       <FormFooter
         submitLabel={submitLabel}
         pending={create.isPending}

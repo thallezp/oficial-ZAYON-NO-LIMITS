@@ -20,6 +20,7 @@ import {
   MOCK_PROMPT_CHAINS,
   MOCK_MODELING,
   MOCK_PROJECTS,
+  MOCK_FOLDERS,
   MOCK_USERS,
   MOCK_PAYROLL,
   MOCK_BILLS,
@@ -203,14 +204,38 @@ export const queries = {
       const conditions = [];
       if (filter?.workspaceId) conditions.push(eq(s.contentItems.workspaceId, filter.workspaceId));
       if (filter?.personaId) conditions.push(eq(s.contentItems.personaId, filter.personaId));
-      const items = await db.select().from(s.contentItems).where(conditions.length > 0 ? and(...conditions) : undefined);
-      if (items.length === 0) return [];
-      const ids = items.map((it: any) => it.id);
-      const metrics = await db.select().from(s.contentMetrics).where(inArray(s.contentMetrics.contentItemId, ids));
-      return items.map((it: any) => {
+      
+      const selectFields = {
+        item: s.contentItems,
+        ownerName: s.users.fullName,
+        ownerAvatar: s.users.avatarUrl,
+        ownerEmail: s.users.email,
+      };
+
+      const rows = await db
+        .select(selectFields)
+        .from(s.contentItems)
+        .leftJoin(s.users, eq(s.contentItems.ownerId, s.users.id))
+        .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+      if (rows.length === 0) return [];
+      const ids = rows.map((r: any) => r.item.id);
+      const metrics = await db
+        .select()
+        .from(s.contentMetrics)
+        .where(inArray(s.contentMetrics.contentItemId, ids));
+
+      return rows.map((r: any) => {
+        const it = r.item;
         const m = metrics.find((met: any) => met.contentItemId === it.id);
         return {
           ...it,
+          owner: r.ownerName ? {
+            id: it.ownerId,
+            fullName: r.ownerName,
+            avatarUrl: r.ownerAvatar,
+            email: r.ownerEmail,
+          } : null,
           metrics: m || null,
         };
       });
@@ -440,7 +465,7 @@ export const queries = {
   },
   folders: {
     list: async (filter?: ScopeFilter) => {
-      if (useMockData) return [] as any[];
+      if (useMockData) return matchScope(MOCK_FOLDERS, filter);
       const conditions = [];
       if (filter?.workspaceId) conditions.push(eq(s.folders.workspaceId, filter.workspaceId));
       if (filter?.personaId) conditions.push(eq(s.folders.personaId, filter.personaId));
@@ -475,8 +500,53 @@ export const queries = {
         return MOCK_TOOLS.filter(
           (t) => !workspaceId || t.workspaceId === workspaceId,
         );
-      if (!workspaceId) return db.select().from(s.tools);
-      return db.select().from(s.tools).where(eq(s.tools.workspaceId, workspaceId));
+      
+      const selectFields = {
+        tool: s.tools,
+        categoryName: s.toolCategories.name,
+      };
+
+      if (!workspaceId) {
+        const rows = await db
+          .select(selectFields)
+          .from(s.tools)
+          .leftJoin(s.toolCategories, eq(s.tools.categoryId, s.toolCategories.id));
+        return rows.map((r: any) => {
+          const t = r.tool;
+          const meta = (t.metadata as any) || {};
+          return {
+            ...t,
+            category: r.categoryName || "Outros",
+            embedMode: meta.embedMode || "new_tab",
+            brandColor: meta.brandColor || null,
+            projectId: meta.projectId || null,
+            documentId: meta.documentId || null,
+            urlCheckedAt: meta.urlCheckedAt || null,
+            urlStatus: meta.urlStatus || null,
+          };
+        });
+      }
+
+      const rows = await db
+        .select(selectFields)
+        .from(s.tools)
+        .leftJoin(s.toolCategories, eq(s.tools.categoryId, s.toolCategories.id))
+        .where(eq(s.tools.workspaceId, workspaceId));
+
+      return rows.map((r: any) => {
+        const t = r.tool;
+        const meta = (t.metadata as any) || {};
+        return {
+          ...t,
+          category: r.categoryName || "Outros",
+          embedMode: meta.embedMode || "new_tab",
+          brandColor: meta.brandColor || null,
+          projectId: meta.projectId || null,
+          documentId: meta.documentId || null,
+          urlCheckedAt: meta.urlCheckedAt || null,
+          urlStatus: meta.urlStatus || null,
+        };
+      });
     },
   },
   flows: {
@@ -562,6 +632,16 @@ export const queries = {
       return db.select().from(s.modelingProfiles).where(eq(s.modelingProfiles.personaId, personaId));
     },
   },
+  modelingExamples: {
+    list: async (profileId: string) => {
+      if (useMockData) return [];
+      return db
+        .select()
+        .from(s.modelingContentExamples)
+        .where(eq(s.modelingContentExamples.profileId, profileId))
+        .orderBy(desc(s.modelingContentExamples.createdAt));
+    },
+  },
   team: {
     list: async (workspaceId?: string) => {
       if (useMockData) return MOCK_USERS;
@@ -573,11 +653,47 @@ export const queries = {
           fullName: s.users.fullName,
           avatarUrl: s.users.avatarUrl,
           role: s.workspaceMembers.role,
+          joinedAt: s.workspaceMembers.joinedAt,
+          metadata: s.users.metadata,
         })
         .from(s.users)
         .innerJoin(s.workspaceMembers, eq(s.workspaceMembers.userId, s.users.id))
         .where(eq(s.workspaceMembers.workspaceId, workspaceId));
       return rows;
+    },
+  },
+  invitations: {
+    list: async (workspaceId?: string) => {
+      if (useMockData) return [];
+      if (!workspaceId) return [];
+      const rows = await db
+        .select({
+          id: s.invitations.id,
+          email: s.invitations.email,
+          role: s.invitations.role,
+          token: s.invitations.token,
+          accepted: s.invitations.accepted,
+          expiresAt: s.invitations.expiresAt,
+          createdAt: s.invitations.createdAt,
+          invitedBy: s.invitations.invitedBy,
+          inviter: {
+            fullName: s.users.fullName,
+            email: s.users.email,
+          },
+        })
+        .from(s.invitations)
+        .leftJoin(s.users, eq(s.invitations.invitedBy, s.users.id))
+        .where(
+          and(
+            eq(s.invitations.workspaceId, workspaceId),
+            eq(s.invitations.accepted, false),
+          ),
+        )
+        .orderBy(desc(s.invitations.createdAt));
+      return rows.map((r: any) => ({
+        ...r,
+        inviter: r.inviter?.fullName ? r.inviter : null,
+      }));
     },
   },
   notifications: {

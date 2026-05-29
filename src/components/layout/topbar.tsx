@@ -1,20 +1,30 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
   Bot,
   CalendarPlus,
   FileText,
+  Flame,
+  Folders,
+  Hammer,
   Image as ImageIcon,
+  Instagram,
+  Library,
   ListChecks,
+  Music2,
   Plus,
   Search,
   Settings,
   Sparkles,
+  Target,
   TrendingDown,
   TrendingUp,
   User as UserIcon,
   UserPlus,
+  Users,
+  Workflow,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -31,16 +41,34 @@ import {
 import { useUIStore } from "@/stores/ui-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useQuickCreate } from "@/stores/quick-create-store";
+import { usePersonaStore } from "@/stores/persona-store";
 import { initials } from "@/lib/utils/format";
+import { toast } from "sonner";
 import { NotificationsPopover } from "./notifications-popover";
 import { MobileSidebar } from "./mobile-sidebar";
 
 export function Topbar() {
+  const router = useRouter();
   const setCommandOpen = useUIStore((s) => s.setCommandOpen);
   const toggleAI = useUIStore((s) => s.toggleAIPanel);
   const user = useWorkspaceStore((s) => s.user);
   const openQuickCreate = useQuickCreate((s) => s.openWith);
+  const activePersonaId = usePersonaStore((s) => s.activePersonaId);
+  const personas = usePersonaStore((s) => s.personas);
   const [createOpen, setCreateOpen] = React.useState(false);
+
+  const targetPersonaId =
+    activePersonaId ?? personas[0]?.id ?? null;
+
+  const goToPersonaPage = (segment: string) => {
+    setCreateOpen(false);
+    if (!targetPersonaId) {
+      toast.error("Selecione uma persona ativa primeiro");
+      router.push("/personas");
+      return;
+    }
+    router.push(`/personas/${targetPersonaId}/${segment}`);
+  };
 
   React.useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -141,24 +169,89 @@ export function Topbar() {
               <Kbd className="ml-1 hidden lg:inline-flex">⌘⇧N</Kbd>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64">
-            <DropdownMenuLabel>Criação rápida</DropdownMenuLabel>
+          <DropdownMenuContent
+            align="end"
+            className="w-72 max-h-[80vh] overflow-y-auto"
+          >
+            <DropdownMenuLabel>Trabalho</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => openQuickCreate("task")}>
               <ListChecks className="h-4 w-4" />
               Nova Tarefa
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openQuickCreate("project")}>
+              <Folders className="h-4 w-4" />
+              Novo Projeto
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => openQuickCreate("document")}>
               <FileText className="h-4 w-4" />
               Novo Documento
             </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                setCreateOpen(false);
+                router.push("/materials");
+              }}
+            >
+              <Library className="h-4 w-4" />
+              Novo Material
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openQuickCreate("tool")}>
+              <Hammer className="h-4 w-4" />
+              Nova Ferramenta
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openQuickCreate("flow")}>
+              <Workflow className="h-4 w-4" />
+              Novo Flow
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Personas & conteúdo</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => openQuickCreate("persona")}>
+              <Users className="h-4 w-4" />
+              Nova Persona
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => openQuickCreate("content")}>
               <ImageIcon className="h-4 w-4" />
               Novo Conteúdo
             </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() =>
+                openQuickCreate("content", {
+                  defaultChannel: "instagram",
+                  defaultContentType: "reel",
+                })
+              }
+            >
+              <Instagram className="h-4 w-4" />
+              Novo Roteiro Instagram
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() =>
+                openQuickCreate("content", {
+                  defaultChannel: "tiktok",
+                  defaultContentType: "video",
+                })
+              }
+            >
+              <Music2 className="h-4 w-4" />
+              Novo Roteiro TikTok
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => goToPersonaPage("funnel")}>
+              <Target className="h-4 w-4" />
+              Novo Funil
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => goToPersonaPage("launch")}>
+              <Flame className="h-4 w-4" />
+              Novo Lançamento
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Vendas</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => openQuickCreate("lead")}>
               <UserPlus className="h-4 w-4" />
               Novo Lead
             </DropdownMenuItem>
+
             <DropdownMenuSeparator />
             <DropdownMenuLabel>Financeiro</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => openQuickCreate("revenue")}>
@@ -169,7 +262,9 @@ export function Topbar() {
               <TrendingDown className="h-4 w-4" />
               Nova Despesa
             </DropdownMenuItem>
+
             <DropdownMenuSeparator />
+            <DropdownMenuLabel>Outros</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => openQuickCreate("event")}>
               <CalendarPlus className="h-4 w-4" />
               Novo Evento
