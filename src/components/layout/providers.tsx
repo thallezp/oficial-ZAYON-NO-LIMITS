@@ -9,6 +9,7 @@ import { usePersonaStore } from "@/stores/persona-store";
 import { CURRENT_USER, MOCK_WORKSPACES, MOCK_PERSONAS } from "@/data";
 import { isMockModeClient } from "@/lib/mock-mode-client";
 import type { Persona, User, Workspace } from "@/types";
+import { usePersonas } from "@/hooks/use-queries";
 
 /**
  * CopilotKit é carregado lazy e só monta quando a flag
@@ -35,6 +36,22 @@ const CopilotProvider = React.lazy(async () => {
     ),
   };
 });
+
+function PersonaStoreSync() {
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const setPersonas = usePersonaStore((s) => s.setPersonas);
+  const { data: dbPersonas } = usePersonas(
+    isMockModeClient ? null : activeWorkspaceId,
+  );
+
+  React.useEffect(() => {
+    if (!isMockModeClient && dbPersonas) {
+      setPersonas(dbPersonas);
+    }
+  }, [dbPersonas, setPersonas]);
+
+  return null;
+}
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = React.useState(
@@ -174,6 +191,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <PersonaStoreSync />
       {enableCopilot ? (
         <React.Suspense fallback={content}>
           <CopilotProvider>{content}</CopilotProvider>
