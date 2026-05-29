@@ -27,11 +27,12 @@ import {
   MOCK_ACTIVITY,
   MOCK_AI_ACTIONS,
   MOCK_FUNNEL_AURORA,
+  MOCK_LAUNCH_CAMPAIGNS,
 } from "@/data";
 import { useMockData } from "@/lib/config";
 import { db } from "@/lib/db";
 import { supabaseServer } from "@/lib/supabase/server";
-import { eq, and, sql, inArray } from "drizzle-orm";
+import { eq, and, sql, inArray, desc, isNull } from "drizzle-orm";
 import * as s from "@/drizzle/schema";
 
 interface ScopeFilter {
@@ -66,6 +67,10 @@ function mapProject(row: any, taskCount?: { total: number; done: number }) {
     taskCount: { total, done },
     progress: total > 0 ? Math.round((done / total) * 100) : 0,
   };
+}
+
+function isArchivedMetadata(metadata: unknown) {
+  return Boolean((metadata as Record<string, unknown> | null)?.archivedAt);
 }
 
 async function getPersonaMetrics(id: string) {
@@ -217,7 +222,144 @@ export const queries = {
       const conditions = [];
       if (filter?.workspaceId) conditions.push(eq(s.leads.workspaceId, filter.workspaceId));
       if (filter?.personaId) conditions.push(eq(s.leads.personaId, filter.personaId));
-      return db.select().from(s.leads).where(conditions.length > 0 ? and(...conditions) : undefined);
+      const rows = await db
+        .select()
+        .from(s.leads)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(s.leads.createdAt));
+
+      const leads = rows.filter((row: any) => !isArchivedMetadata(row.metadata));
+      if (leads.length === 0) return [];
+
+      const leadIds = leads.map((lead: any) => lead.id);
+      const sourceIds = Array.from(
+        new Set(leads.map((lead: any) => lead.sourceId).filter(Boolean)),
+      );
+      const responsibleIds = Array.from(
+        new Set(leads.map((lead: any) => lead.responsibleId).filter(Boolean)),
+      );
+      const personaIds = Array.from(
+        new Set(leads.map((lead: any) => lead.personaId).filter(Boolean)),
+      );
+
+      const [answers, history, sources, responsibles, personas, comments, relatedTasks] =
+        await Promise.all([
+          db
+            .select()
+            .from(s.leadAnswers)
+            .where(inArray(s.leadAnswers.leadId, leadIds)),
+          db
+            .select({
+              id: s.leadStatusHistory.id,
+              leadId: s.leadStatusHistory.leadId,
+              fromStatus: s.leadStatusHistory.fromStatus,
+              toStatus: s.leadStatusHistory.toStatus,
+              changedAt: s.leadStatusHistory.changedAt,
+              changedBy: {
+                id: s.users.id,
+                email: s.users.email,
+                fullName: s.users.fullName,
+                avatarUrl: s.users.avatarUrl,
+                role: s.users.role,
+              },
+            })
+            .from(s.leadStatusHistory)
+            .leftJoin(s.users, eq(s.leadStatusHistory.changedBy, s.users.id))
+            .where(inArray(s.leadStatusHistory.leadId, leadIds))
+            .orderBy(desc(s.leadStatusHistory.changedAt)),
+          sourceIds.length > 0
+            ? db.select().from(s.leadSources).where(inArray(s.leadSources.id, sourceIds as string[]))
+            : Promise.resolve([] as any[]),
+          responsibleIds.length > 0
+            ? db.select().from(s.users).where(inArray(s.users.id, responsibleIds as string[]))
+            : Promise.resolve([] as any[]),
+          personaIds.length > 0
+            ? db
+                .select({ id: s.personas.id, name: s.personas.name })
+                .from(s.personas)
+                .where(inArray(s.personas.id, personaIds as string[]))
+            : Promise.resolve([] as any[]),
+          db
+            .select({
+              id: s.comments.id,
+              entityId: s.comments.entityId,
+              content: s.comments.content,
+              createdAt: s.comments.createdAt,
+              author: {
+                id: s.users.id,
+                email: s.users.email,
+                fullName: s.users.fullName,
+                avatarUrl: s.users.avatarUrl,
+                role: s.users.role,
+              },
+            })
+            .from(s.comments)
+            .leftJoin(s.users, eq(s.comments.userId, s.users.id))
+            .where(
+              and(
+                eq(s.comments.entityType, "lead"),
+                inArray(s.comments.entityId, leadIds),
+              ),
+            )
+            .orderBy(desc(s.comments.createdAt)),
+          filter?.workspaceId
+            ? db
+                .select()
+                .from(s.tasks)
+                .where(eq(s.tasks.workspaceId, filter.workspaceId))
+            : Promise.resolve([] as any[]),
+        ]);
+
+      return leads.map((lead: any) => {
+        const source = sources.find((item: any) => item.id === lead.sourceId);
+        const responsible = responsibles.find((item: any) => item.id === lead.responsibleId) ?? null;
+        const persona = personas.find((item: any) => item.id === lead.personaId) ?? null;
+
+        return {
+          ...lead,
+          source: source?.name ?? (lead.metadata as any)?.source ?? null,
+          responsible,
+          persona,
+          answers: answers
+            .filter((answer: any) => answer.leadId === lead.id)
+            .map((answer: any) => ({
+              id: answer.id,
+              question: answer.question,
+              answer: answer.answer ?? "",
+              createdAt: answer.createdAt,
+            })),
+          history: history
+            .filter((entry: any) => entry.leadId === lead.id)
+            .map((entry: any) => ({
+              id: entry.id,
+              fromStatus: entry.fromStatus,
+              toStatus: entry.toStatus,
+              changedAt: entry.changedAt,
+              changedBy: entry.changedBy?.id ? entry.changedBy : null,
+            })),
+          comments: comments
+            .filter((comment: any) => comment.entityId === lead.id)
+            .map((comment: any) => ({
+              id: comment.id,
+              content: comment.content,
+              createdAt: comment.createdAt,
+              author: comment.author?.id ? comment.author : null,
+            })),
+          linkedTasks: relatedTasks
+            .filter((task: any) => {
+              const related = task.relatedEntity as any;
+              return related?.type === "lead" && related?.id === lead.id;
+            })
+            .map((task: any) => ({
+              id: task.id,
+              title: task.title,
+              status: task.status,
+              priority: task.priority,
+              dueAt: task.dueAt,
+            })),
+          archivedAt: (lead.metadata as any)?.archivedAt ?? null,
+        };
+      });
     },
   },
   finance: {
@@ -315,6 +457,16 @@ export const queries = {
         .select()
         .from(s.contentHooks)
         .where(conditions.length > 0 ? and(...conditions) : undefined);
+    },
+  },
+  followerSnapshots: {
+    list: async (personaId: string) => {
+      if (useMockData) return [] as any[];
+      return db
+        .select()
+        .from(s.personaFollowerSnapshots)
+        .where(eq(s.personaFollowerSnapshots.personaId, personaId))
+        .orderBy(desc(s.personaFollowerSnapshots.snapshotDate));
     },
   },
   tools: {
@@ -431,7 +583,16 @@ export const queries = {
   notifications: {
     list: async (userId: string) => {
       if (useMockData) return MOCK_NOTIFICATIONS;
-      return db.select().from(s.notifications).where(eq(s.notifications.userId, userId));
+      return db
+        .select()
+        .from(s.notifications)
+        .where(
+          and(
+            eq(s.notifications.userId, userId),
+            isNull(s.notifications.deletedAt)
+          )
+        )
+        .orderBy(desc(s.notifications.createdAt));
     },
   },
   activity: {
@@ -487,6 +648,43 @@ export const queries = {
         .from(s.calendarEvents)
         .where(conditions.length > 0 ? and(...conditions) : undefined)
         .orderBy(s.calendarEvents.startAt);
+    },
+  },
+  launch: {
+    campaigns: async (filter?: ScopeFilter) => {
+      if (useMockData) return matchScope(MOCK_LAUNCH_CAMPAIGNS, filter);
+
+      const conditions = [];
+      if (filter?.workspaceId) conditions.push(eq(s.launchCampaigns.workspaceId, filter.workspaceId));
+      if (filter?.personaId) conditions.push(eq(s.launchCampaigns.personaId, filter.personaId));
+
+      const campaigns = await db
+        .select()
+        .from(s.launchCampaigns)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(s.launchCampaigns.createdAt));
+
+      if (campaigns.length === 0) return [];
+
+      const campaignIds = campaigns.map((campaign: any) => campaign.id);
+      const [events, copies] = await Promise.all([
+        db
+          .select()
+          .from(s.launchEvents)
+          .where(inArray(s.launchEvents.campaignId, campaignIds))
+          .orderBy(s.launchEvents.startAt),
+        db
+          .select()
+          .from(s.salesCopies)
+          .where(inArray(s.salesCopies.campaignId, campaignIds))
+          .orderBy(desc(s.salesCopies.updatedAt)),
+      ]);
+
+      return campaigns.map((campaign: any) => ({
+        ...campaign,
+        events: events.filter((event: any) => event.campaignId === campaign.id),
+        copies: copies.filter((copy: any) => copy.campaignId === campaign.id),
+      }));
     },
   },
   taskExtensions: {

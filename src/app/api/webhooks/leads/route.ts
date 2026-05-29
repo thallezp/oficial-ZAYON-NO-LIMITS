@@ -1,8 +1,49 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { leads, leadAnswers, activityLogs, googleSheetsConnections } from "@/drizzle/schema";
-import { eq } from "drizzle-orm";
+import {
+  leads,
+  leadAnswers,
+  leadStatusHistory,
+  leadSources,
+  activityLogs,
+  googleSheetsConnections,
+} from "@/drizzle/schema";
+import { eq, and, ilike } from "drizzle-orm";
+
+async function resolveLeadSourceId(
+  workspaceId: string,
+  personaId?: string | null,
+  source?: string | null,
+) {
+  const normalized = source?.trim();
+  if (!normalized) return null;
+
+  const [existing] = await db
+    .select()
+    .from(leadSources)
+    .where(
+      and(
+        eq(leadSources.workspaceId, workspaceId),
+        ilike(leadSources.name, normalized),
+      ),
+    );
+
+  if (existing) return existing.id;
+
+  const [created] = await db
+    .insert(leadSources)
+    .values({
+      workspaceId,
+      personaId: personaId || null,
+      name: normalized,
+      type: "webhook",
+      metadata: { source: "webhook" },
+    })
+    .returning();
+
+  return created.id;
+}
 
 const LeadPayload = z.object({
   source: z.string().default("Google Sheets"),
@@ -56,12 +97,19 @@ export async function POST(req: Request) {
       );
     }
 
+    const sourceId = await resolveLeadSourceId(
+      workspaceId,
+      personaId || null,
+      data.source,
+    );
+
     // Salvar o Lead no banco de dados real
     const [newLead] = await db
       .insert(leads)
       .values({
         workspaceId,
         personaId: personaId || null,
+        sourceId,
         name: data.name || null,
         email: data.email || null,
         phone: data.phone || null,
@@ -69,8 +117,17 @@ export async function POST(req: Request) {
         campaign: data.campaign || null,
         status: "open",
         score: 50,
+        metadata: data.metadata
+          ? { ...data.metadata, source: data.source }
+          : { source: data.source },
       })
       .returning();
+
+    await db.insert(leadStatusHistory).values({
+      leadId: newLead.id,
+      fromStatus: null,
+      toStatus: "open",
+    });
 
     // Se houver respostas do formulário
     if (data.answers && Array.isArray(data.answers)) {

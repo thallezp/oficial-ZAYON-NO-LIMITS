@@ -10,6 +10,7 @@ import {
   CircleDollarSign,
   FileText,
   Target,
+  Users,
 } from "lucide-react";
 import {
   Popover,
@@ -33,10 +34,24 @@ import { toast } from "sonner";
 
 const ICONS = {
   "task.assigned": Activity,
+  "task": Activity,
+  "tarefa": Activity,
   "lead.new": Target,
+  "lead": Target,
   "ai.action": Bot,
+  "ai": Bot,
+  "IA": Bot,
   "finance.overdue": CircleDollarSign,
+  "finance": CircleDollarSign,
+  "financeiro": CircleDollarSign,
   "content.late": FileText,
+  "content": FileText,
+  "conteúdo": FileText,
+  "team": Users,
+  "equipe": Users,
+  "document": FileText,
+  "documento": FileText,
+  "documentos": FileText,
 } as const;
 
 export function NotificationsPopover() {
@@ -51,7 +66,7 @@ export function NotificationsPopover() {
   });
 
   const notifications = (dbNotifications as any[]).filter(
-    (n) => !n.archivedAt && !n.archived_at,
+    (n) => !n.archivedAt && !n.archived_at && !n.deletedAt && !n.deleted_at,
   );
   const unread = notifications.filter((n: any) => !(n.readAt ?? n.read_at)).length;
 
@@ -89,7 +104,7 @@ export function NotificationsPopover() {
             onClick={async () => {
               try {
                 await markAllRead.mutateAsync();
-                toast.success("Marcadas como lidas");
+                toast.success("Todas as notificações marcadas como lidas");
               } catch (e: any) {
                 toast.error(e?.message ?? "Erro");
               }
@@ -126,18 +141,22 @@ export function NotificationsPopover() {
                     key={n.id}
                     href={n.href ?? "#"}
                     onClick={() => {
-                      if (isUnread) markRead.mutate(n.id);
+                      if (isUnread) {
+                        markRead.mutate(n.id);
+                        toast.success("Notificação marcada como lida");
+                      }
                     }}
                     className={cn(
-                      "flex items-start gap-3 px-4 py-3 hover:bg-accent transition",
-                      isUnread ? "bg-primary/5" : "opacity-70",
+                      "flex items-start gap-3 px-4 py-3 hover:bg-accent transition border-l-2",
+                      isUnread ? "bg-primary/5 border-l-primary" : "opacity-50 border-l-transparent",
                     )}
                   >
                     <div className="flex h-8 w-8 items-center justify-center rounded-md border border-border/60 bg-card/60 text-primary">
                       <Icon className="h-3.5 w-3.5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={cn("text-xs", isUnread && "font-medium")}>
+                      <p className={cn("text-xs flex items-center gap-1", isUnread ? "font-semibold text-foreground" : "line-through text-muted-foreground")}>
+                        {!isUnread && <span className="text-[9px] text-green-500 shrink-0">✓</span>}
                         {n.title}
                       </p>
                       {n.body && (
@@ -166,23 +185,48 @@ export function NotificationsPopover() {
 
           <TabsContent value="ai" className="mt-2">
             <div className="max-h-96 overflow-y-auto divide-y divide-border/60">
-              {notifications.filter((n: any) => n.type === "ai.action").map(
-                (n: any) => (
-                  <div key={n.id} className="flex items-start gap-3 px-4 py-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/15 text-primary">
-                      <Bot className="h-3.5 w-3.5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium">{n.title}</p>
-                      {n.body && (
-                        <p className="text-[11px] text-muted-foreground line-clamp-2">
-                          {n.body}
-                        </p>
+              {notifications
+                .filter((n: any) => n.type === "ai.action" || n.type === "ai" || n.type === "IA")
+                .map((n: any) => {
+                  const isUnread = !(n.readAt ?? n.read_at);
+                  return (
+                    <Link
+                      key={n.id}
+                      href={n.href ?? "#"}
+                      onClick={() => {
+                        if (isUnread) {
+                          markRead.mutate(n.id);
+                          toast.success("Notificação marcada como lida");
+                        }
+                      }}
+                      className={cn(
+                        "flex items-start gap-3 px-4 py-3 hover:bg-accent transition border-l-2",
+                        isUnread ? "bg-primary/5 border-l-primary" : "opacity-50 border-l-transparent",
                       )}
-                    </div>
-                  </div>
-                ),
-              )}
+                    >
+                      <div className="flex h-8 w-8 items-center justify-center rounded-md border border-border/60 bg-card/60 text-primary">
+                        <Bot className="h-3.5 w-3.5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn("text-xs flex items-center gap-1", isUnread ? "font-semibold text-foreground" : "line-through text-muted-foreground")}>
+                          {!isUnread && <span className="text-[9px] text-green-500 shrink-0">✓</span>}
+                          {n.title}
+                        </p>
+                        {n.body && (
+                          <p className="text-[11px] text-muted-foreground line-clamp-2">
+                            {n.body}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                          {relativeTime(n.createdAt ?? n.created_at)}
+                        </p>
+                      </div>
+                      {isUnread && (
+                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" />
+                      )}
+                    </Link>
+                  );
+                })}
             </div>
           </TabsContent>
         </Tabs>

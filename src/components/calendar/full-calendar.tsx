@@ -25,6 +25,13 @@ interface Props {
   height?: number | string;
   onEventClick?: (id: string) => void;
   onDateClick?: (date: Date) => void;
+  /** Drag para selecionar um range -> abre criar evento com data/hora */
+  onRangeSelect?: (start: Date, end: Date, allDay: boolean) => void;
+  /** Drag de um evento existente para mover */
+  onEventMove?: (id: string, newStart: Date, newEnd: Date | null) => void;
+  /** Resize de um evento (mudar duracao) */
+  onEventResize?: (id: string, newStart: Date, newEnd: Date | null) => void;
+  editable?: boolean;
 }
 
 export function FullCalendarView({
@@ -33,6 +40,10 @@ export function FullCalendarView({
   height = 680,
   onEventClick,
   onDateClick,
+  onRangeSelect,
+  onEventMove,
+  onEventResize,
+  editable = true,
 }: Props) {
   return (
     <div className="zayon-fullcalendar">
@@ -48,8 +59,20 @@ export function FullCalendarView({
         height={height}
         nowIndicator
         dayMaxEvents={3}
+        selectable={editable}
+        editable={editable}
+        eventResizableFromStart={editable}
+        select={(info) => {
+          onRangeSelect?.(info.start, info.end, info.allDay);
+        }}
         eventClick={(info) => onEventClick?.(info.event.id)}
         dateClick={(info) => onDateClick?.(info.date)}
+        eventDrop={(info) => {
+          onEventMove?.(info.event.id, info.event.start!, info.event.end ?? null);
+        }}
+        eventResize={(info) => {
+          onEventResize?.(info.event.id, info.event.start!, info.event.end ?? null);
+        }}
         eventDisplay="block"
         locale="pt-br"
         firstDay={1}

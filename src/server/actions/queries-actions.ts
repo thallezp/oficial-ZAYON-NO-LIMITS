@@ -43,6 +43,11 @@ export async function getLeadsAction(filter?: ScopeFilter) {
   return queries.leads.list(filter);
 }
 
+export async function getLaunchCampaignsAction(filter?: ScopeFilter) {
+  await assertScope(filter);
+  return queries.launch.campaigns(filter);
+}
+
 export async function getFinanceAction(filter?: ScopeFilter) {
   await assertScope(filter);
   return queries.finance.list(filter);
@@ -93,6 +98,11 @@ export async function getFoldersAction(filter?: ScopeFilter) {
 export async function getContentHooksAction(filter?: ScopeFilter) {
   await assertScope(filter);
   return queries.contentHooks.list(filter);
+}
+
+export async function getFollowerSnapshotsAction(personaId: string) {
+  await assertPersonaAccess(personaId);
+  return queries.followerSnapshots.list(personaId);
 }
 
 export async function getToolsAction(workspaceId?: string) {

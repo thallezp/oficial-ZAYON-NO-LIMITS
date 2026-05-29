@@ -6,10 +6,11 @@ import { Command } from "cmdk";
 import {
   Activity,
   Bot,
+  Brain,
   Calendar,
   ChevronRight,
-  Cog,
   CircleDollarSign,
+  Cog,
   FileText,
   Flame,
   Folders,
@@ -26,9 +27,15 @@ import {
   Sparkles,
   Target,
   Users,
-  Workflow,
+  UserCheck,
   Wand2,
-  Brain,
+  Workflow,
+  Zap,
+  Lightbulb,
+  Rocket,
+  BarChart3,
+  ScrollText,
+  MessageSquare,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +47,7 @@ import { useQuickCreate } from "@/stores/quick-create-store";
 import {
   useContent,
   useDocuments,
+  useFlows,
   useLeads,
   useTasks,
   useTools,
@@ -50,10 +58,15 @@ import {
   MOCK_TOOLS,
   MOCK_LEADS,
   MOCK_CONTENT,
+  MOCK_FLOWS,
   MOCK_PERSONAS,
 } from "@/data";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils/cn";
+
+// ---------------------------------------------------------------------------
+// Navigation
+// ---------------------------------------------------------------------------
 
 const workspaceLinks = [
   { href: "/dashboard", label: "Home", icon: Home, group: "Workspace" },
@@ -66,6 +79,8 @@ const workspaceLinks = [
   { href: "/team", label: "Equipe", icon: Users, group: "Workspace" },
   { href: "/tools", label: "Tools Hub", icon: Hammer, group: "Workspace" },
   { href: "/ai", label: "AI Assistant", icon: Bot, group: "Inteligência" },
+  { href: "/ai/actions", label: "AI Actions (log)", icon: Activity, group: "Inteligência" },
+  { href: "/ai/history", label: "AI Histórico", icon: ScrollText, group: "Inteligência" },
   { href: "/settings", label: "Configurações", icon: Cog, group: "Sistema" },
 ];
 
@@ -82,26 +97,138 @@ const personaPages = (id: string) => [
   { href: `/personas/${id}/prompts`, label: "Prompt Chains", icon: Brain },
 ];
 
+// ---------------------------------------------------------------------------
+// AI quick actions — cada uma envia um prompt direto à IA, que então chama
+// a tool apropriada do /api/ai. As que mutam dados destrutivamente entram
+// no fluxo de confirmação automaticamente.
+// ---------------------------------------------------------------------------
+
+type AIQuickAction = {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  prompt: string;
+  tone?: "default" | "destructive";
+};
+
+const AI_QUICK_ACTIONS: AIQuickAction[] = [
+  {
+    label: "Gerar roteiro de Reel",
+    icon: Sparkles,
+    prompt:
+      "Gere um roteiro completo de Reel para a persona ativa. Use a tool generateScript com hook forte, 4-5 cenas e um CTA claro.",
+  },
+  {
+    label: "Gerar hook tático",
+    icon: Zap,
+    prompt:
+      "Gere 1 hook tático de alta retenção sobre o nicho da persona ativa. Use a tool generateHook e salve no banco de hooks.",
+  },
+  {
+    label: "Gerar legenda",
+    icon: MessageSquare,
+    prompt:
+      "Gere uma legenda otimizada (com ganchos e CTA) para o último conteúdo planejado. Use a tool generateCaption.",
+  },
+  {
+    label: "Gerar copy de venda",
+    icon: ScrollText,
+    prompt:
+      "Crie uma copy de venda (anúncio) com headline, corpo e CTA para o produto principal da persona ativa. Use a tool generateCopy.",
+  },
+  {
+    label: "Qualificar leads pendentes",
+    icon: UserCheck,
+    prompt:
+      "Liste os 3 leads abertos mais recentes da persona ativa, proponha score e justificativa, e chame qualifyLead para cada (com confirmação).",
+    tone: "destructive",
+  },
+  {
+    label: "Resumir documento",
+    icon: FileText,
+    prompt:
+      "Peça ao usuário qual documento resumir e use a tool summarizeDocument para criar um novo documento resumo (3-7 bullets).",
+  },
+  {
+    label: "Criar evento no calendário",
+    icon: Calendar,
+    prompt:
+      "Pergunte os detalhes de um compromisso e use a tool createCalendarEvent para registrá-lo na agenda.",
+  },
+  {
+    label: "Adicionar nó no funil",
+    icon: Workflow,
+    prompt:
+      "Adicione um nó no funil de vendas da persona ativa. Pergunte o tipo (landing, checkout, etc) e o nome, e use createFunnelNode.",
+    tone: "destructive",
+  },
+  {
+    label: "Sugerir ferramenta",
+    icon: Hammer,
+    prompt:
+      "Pergunte o objetivo do usuário e use a tool suggestTool para recomendar a ferramenta certa do Tools Hub.",
+  },
+  {
+    label: "Montar plano de lançamento",
+    icon: Rocket,
+    prompt:
+      "Monte um plano de lançamento de 30 dias para a persona ativa: campanha + 6-10 eventos importantes (warm-up, abertura, fechamento). Use createLaunchPlan.",
+    tone: "destructive",
+  },
+  {
+    label: "Melhorar prompt",
+    icon: Brain,
+    prompt:
+      "Peça ao usuário o prompt cru e use a tool improvePrompt para devolver uma versão melhor estruturada (papel, contexto, formato esperado).",
+  },
+  {
+    label: "Analisar métricas",
+    icon: BarChart3,
+    prompt:
+      "Analise métricas recentes de conteúdo, leads e finanças da persona ativa. Use a tool analyzeMetrics para registrar insight + recomendação.",
+  },
+  {
+    label: "Transformar insight em tarefa",
+    icon: Lightbulb,
+    prompt:
+      "Pergunte qual insight transformar em tarefa e use a tool insightToTask para criar uma tarefa acionável (com confirmação).",
+    tone: "destructive",
+  },
+  {
+    label: "Resumir reunião",
+    icon: Bot,
+    prompt:
+      "Resuma a última reunião que o usuário descrever em decisões, blockers e próximas ações, e salve com createDocument.",
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export function CommandMenu() {
   const router = useRouter();
   const open = useUIStore((s) => s.commandOpen);
   const setOpen = useUIStore((s) => s.setCommandOpen);
+  const triggerAIPrompt = useUIStore((s) => s.triggerAIPrompt);
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
   const personas = usePersonaStore((s) => s.personas);
   const activeId = usePersonaStore((s) => s.activePersonaId);
   const setActivePersona = usePersonaStore((s) => s.setActivePersona);
   const openQuickCreate = useQuickCreate((s) => s.openWith);
-  const setAIPanelOpen = useUIStore((s) => s.setAIPanelOpen);
+
   const { data: dbTasks = [] } = useTasks(activeWorkspaceId);
   const { data: dbDocuments = [] } = useDocuments(activeWorkspaceId);
   const { data: dbTools = [] } = useTools(activeWorkspaceId);
   const { data: dbLeads = [] } = useLeads(activeWorkspaceId);
   const { data: dbContent = [] } = useContent(activeWorkspaceId, activeId);
+  const { data: dbFlows = [] } = useFlows(activeWorkspaceId);
+
   const defaultPersonaId =
     activeId ??
     personas[0]?.id ??
     (isMockModeClient ? MOCK_PERSONAS[0]?.id : "") ??
     "";
+
   const taskItems = isMockModeClient && dbTasks.length === 0 ? MOCK_TASKS : dbTasks;
   const documentItems =
     isMockModeClient && dbDocuments.length === 0 ? MOCK_DOCUMENTS : dbDocuments;
@@ -109,7 +236,11 @@ export function CommandMenu() {
   const leadItems = isMockModeClient && dbLeads.length === 0 ? MOCK_LEADS : dbLeads;
   const contentItems =
     isMockModeClient && dbContent.length === 0 ? MOCK_CONTENT : dbContent;
+  const flowItems = isMockModeClient && dbFlows.length === 0 ? MOCK_FLOWS : dbFlows;
+  const personaItems =
+    isMockModeClient && personas.length === 0 ? MOCK_PERSONAS : personas;
 
+  // Cmd+K / Ctrl+K para abrir
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.key === "k" && (e.metaKey || e.ctrlKey)) || e.key === "/") {
@@ -132,11 +263,13 @@ export function CommandMenu() {
     router.push(href);
   };
 
-  const runAIAction = (label: string) => {
+  const runAIAction = (action: AIQuickAction) => {
     setOpen(false);
-    setAIPanelOpen(true);
-    toast.success(`IA acionada: ${label}`, {
-      description: "O painel da IA foi aberto para processar sua solicitação.",
+    triggerAIPrompt(action.prompt);
+    toast.success(`IA acionada · ${action.label}`, {
+      description: action.tone === "destructive"
+        ? "Será necessário confirmar antes de aplicar mudanças."
+        : "O painel da IA já está processando.",
     });
   };
 
@@ -144,7 +277,7 @@ export function CommandMenu() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-2xl p-0 overflow-hidden">
         <Command
-          className="flex h-[520px] flex-col"
+          className="flex h-[560px] flex-col"
           filter={(value, search) => {
             if (!search) return 1;
             return value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
@@ -153,7 +286,7 @@ export function CommandMenu() {
           <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
             <Search className="h-4 w-4 text-muted-foreground" />
             <Command.Input
-              placeholder="Buscar páginas, tarefas, leads, ferramentas, IA…"
+              placeholder="Buscar páginas, tarefas, leads, ferramentas, fluxos, personas, IA…"
               className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               autoFocus
             />
@@ -161,12 +294,14 @@ export function CommandMenu() {
               esc para fechar
             </Badge>
           </div>
+
           <Command.List className="flex-1 overflow-y-auto p-2">
             <Command.Empty className="py-12 text-center text-sm text-muted-foreground">
               Nada encontrado.
             </Command.Empty>
 
-            <Command.Group heading="Ações rápidas" className="mb-1">
+            {/* ===== Ações de criação ===== */}
+            <Command.Group heading="Criar" className="mb-1">
               <CmdItem
                 onSelect={() => {
                   setOpen(false);
@@ -204,25 +339,56 @@ export function CommandMenu() {
                 hint="l"
               />
               <CmdItem
-                onSelect={() => runAIAction("Gerar roteiro")}
-                icon={<Sparkles className="h-4 w-4" />}
-                label="IA · gerar roteiro"
-                hint="ai"
+                onSelect={() => {
+                  setOpen(false);
+                  openQuickCreate("event");
+                }}
+                icon={<Calendar className="h-4 w-4" />}
+                label="Novo evento"
+                hint="e"
               />
               <CmdItem
-                onSelect={() => runAIAction("Qualificar leads pendentes")}
-                icon={<Wand2 className="h-4 w-4" />}
-                label="IA · qualificar leads"
+                onSelect={() => {
+                  setOpen(false);
+                  openQuickCreate("flow");
+                }}
+                icon={<Workflow className="h-4 w-4" />}
+                label="Novo flow"
               />
               <CmdItem
-                onSelect={() => runAIAction("Resumir reunião")}
-                icon={<Bot className="h-4 w-4" />}
-                label="IA · resumir reunião"
+                onSelect={() => {
+                  setOpen(false);
+                  openQuickCreate("tool");
+                }}
+                icon={<Hammer className="h-4 w-4" />}
+                label="Nova ferramenta"
+              />
+              <CmdItem
+                onSelect={() => {
+                  setOpen(false);
+                  openQuickCreate("revenue");
+                }}
+                icon={<CircleDollarSign className="h-4 w-4" />}
+                label="Nova receita"
               />
             </Command.Group>
 
+            {/* ===== Ações de IA reais ===== */}
+            <Command.Group heading="Ações de IA · execução real">
+              {AI_QUICK_ACTIONS.map((action) => (
+                <CmdItem
+                  key={action.label}
+                  onSelect={() => runAIAction(action)}
+                  icon={<action.icon className="h-4 w-4" />}
+                  label={action.label}
+                  trailing={action.tone === "destructive" ? "confirma" : "IA"}
+                />
+              ))}
+            </Command.Group>
+
+            {/* ===== Personas ===== */}
             <Command.Group heading="Trocar persona ativa">
-              {personas.map((p) => (
+              {personaItems.map((p: any) => (
                 <CmdItem
                   key={p.id}
                   onSelect={() => {
@@ -237,7 +403,7 @@ export function CommandMenu() {
                         background: `linear-gradient(135deg, ${p.accent ?? "#5b8cff"}, #2a3ef5)`,
                       }}
                     >
-                      {p.name[0]}
+                      {p.name?.[0] ?? "?"}
                     </div>
                   }
                   label={p.name}
@@ -246,6 +412,7 @@ export function CommandMenu() {
               ))}
             </Command.Group>
 
+            {/* ===== Páginas ===== */}
             <Command.Group heading="Páginas · Workspace">
               {workspaceLinks.map((l) => (
                 <CmdItem
@@ -271,6 +438,7 @@ export function CommandMenu() {
               </Command.Group>
             )}
 
+            {/* ===== Tarefas ===== */}
             <Command.Group heading="Tarefas">
               {taskItems.slice(0, 6).map((t: any) => (
                 <CmdItem
@@ -283,6 +451,7 @@ export function CommandMenu() {
               ))}
             </Command.Group>
 
+            {/* ===== Documentos ===== */}
             <Command.Group heading="Documentos">
               {documentItems.slice(0, 4).map((d: any) => (
                 <CmdItem
@@ -294,6 +463,20 @@ export function CommandMenu() {
               ))}
             </Command.Group>
 
+            {/* ===== Fluxos ===== */}
+            <Command.Group heading="Fluxos">
+              {flowItems.slice(0, 6).map((f: any) => (
+                <CmdItem
+                  key={f.id}
+                  onSelect={() => go(`/flows/${f.id}`)}
+                  icon={<Workflow className="h-4 w-4" />}
+                  label={f.name}
+                  trailing={f.type}
+                />
+              ))}
+            </Command.Group>
+
+            {/* ===== Ferramentas ===== */}
             <Command.Group heading="Ferramentas">
               {toolItems.slice(0, 6).map((t: any) => (
                 <CmdItem
@@ -309,6 +492,7 @@ export function CommandMenu() {
               ))}
             </Command.Group>
 
+            {/* ===== Leads ===== */}
             <Command.Group heading="Leads recentes">
               {leadItems.slice(0, 4).map((l: any) => (
                 <CmdItem
@@ -321,6 +505,7 @@ export function CommandMenu() {
               ))}
             </Command.Group>
 
+            {/* ===== Conteúdo ===== */}
             <Command.Group heading="Conteúdo">
               {contentItems.slice(0, 4).map((c: any) => (
                 <CmdItem
@@ -333,6 +518,7 @@ export function CommandMenu() {
               ))}
             </Command.Group>
           </Command.List>
+
           <div className="flex items-center justify-between border-t border-border/60 px-4 py-2 text-[10px] text-muted-foreground">
             <span>ZAYON Command Menu</span>
             <span className="flex items-center gap-2">
@@ -341,6 +527,9 @@ export function CommandMenu() {
               </span>
               <span className="flex items-center gap-1">
                 <kbd className="text-foreground">↵</kbd> abrir
+              </span>
+              <span className="flex items-center gap-1">
+                <kbd className="text-foreground">⌘K</kbd> abrir / fechar
               </span>
             </span>
           </div>

@@ -54,6 +54,18 @@ export function useLeads(workspaceId?: string | null, personaId?: string | null)
   });
 }
 
+export function useLaunchCampaigns(workspaceId?: string | null, personaId?: string | null) {
+  return useQuery({
+    queryKey: ["launchCampaigns", workspaceId, personaId],
+    queryFn: () =>
+      qa.getLaunchCampaignsAction({
+        workspaceId: workspaceId ?? undefined,
+        personaId: personaId ?? undefined,
+      }),
+    enabled: !!workspaceId,
+  });
+}
+
 export function useFinance(workspaceId?: string | null, personaId?: string | null) {
   return useQuery({
     queryKey: ["finance", workspaceId, personaId],
@@ -198,6 +210,30 @@ export function useTeam(workspaceId?: string | null) {
   });
 }
 
+export function useFollowerSnapshots(personaId?: string | null) {
+  return useQuery({
+    queryKey: ["followerSnapshots", personaId],
+    queryFn: () => qa.getFollowerSnapshotsAction(personaId!),
+    enabled: !!personaId,
+  });
+}
+
+export function useCreateFollowerSnapshotMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      workspaceId: string;
+      personaId: string;
+      channel: string;
+      followers: number;
+      snapshotDate?: string;
+    }) => callMutate("createFollowerSnapshot", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["followerSnapshots"] });
+    },
+  });
+}
+
 export function useContentHooks(
   workspaceId?: string | null,
   personaId?: string | null,
@@ -303,6 +339,16 @@ export function useClearReadNotificationsMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => callMutate("clearReadNotifications", {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+}
+
+export function useClearAllNotificationsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => callMutate("clearAllNotifications", {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
@@ -530,6 +576,27 @@ export function useUpdateLeadMutation() {
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: any }) =>
       callMutate("updateLead", { id, input }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+    },
+  });
+}
+
+export function useArchiveLeadMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("archiveLead", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+    },
+  });
+}
+
+export function useCreateLeadCommentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { leadId: string; workspaceId: string; content: string }) =>
+      callMutate("createLeadComment", input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
     },
@@ -786,6 +853,140 @@ export function useDeleteMaterialMutation() {
   });
 }
 
+export function useCreateLaunchCampaignMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: any) => callMutate("createLaunchCampaign", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["launchCampaigns"] });
+    },
+  });
+}
+
+export function useUpdateLaunchCampaignMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: any }) =>
+      callMutate("updateLaunchCampaign", { id, input }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["launchCampaigns"] });
+    },
+  });
+}
+
+export function useArchiveLaunchCampaignMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("archiveLaunchCampaign", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["launchCampaigns"] });
+    },
+  });
+}
+
+export function useDeleteLaunchCampaignMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deleteLaunchCampaign", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["launchCampaigns"] });
+    },
+  });
+}
+
+export function useCreateLaunchEventMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: any) => callMutate("createLaunchEvent", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["launchCampaigns"] });
+    },
+  });
+}
+
+export function useUpdateLaunchEventMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: any }) =>
+      callMutate("updateLaunchEvent", { id, input }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["launchCampaigns"] });
+    },
+  });
+}
+
+export function useDeleteLaunchEventMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deleteLaunchEvent", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["launchCampaigns"] });
+    },
+  });
+}
+
+export function useCreateIcpPainMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: any) => callMutate("createIcpPain", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["icpPains"] });
+    },
+  });
+}
+
+export function useUpdateIcpPainMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: any }) =>
+      callMutate("updateIcpPain", { id, input }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["icpPains"] });
+    },
+  });
+}
+
+export function useDeleteIcpPainMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deleteIcpPain", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["icpPains"] });
+    },
+  });
+}
+
+export function useCreateSalesCopyMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: any) => callMutate("createSalesCopy", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["launchCampaigns"] });
+    },
+  });
+}
+
+export function useUpdateSalesCopyMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: any }) =>
+      callMutate("updateSalesCopy", { id, input }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["launchCampaigns"] });
+    },
+  });
+}
+
+export function useDeleteSalesCopyMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deleteSalesCopy", { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["launchCampaigns"] });
+    },
+  });
+}
+
 export function useDeleteCalendarEventMutation() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -1001,4 +1202,3 @@ export function useInviteMemberMutation() {
     },
   });
 }
-

@@ -8,6 +8,7 @@ import {
   index,
 } from "drizzle-orm/pg-core";
 import { roleEnum } from "./enums";
+import { personas } from "./personas";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -92,6 +93,11 @@ export const notifications = pgTable(
     body: text("body"),
     href: text("href"),
     readAt: timestamp("read_at", { withTimezone: true }),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    personaId: uuid("persona_id").references(() => personas.id, { onDelete: "cascade" }),
+    entityType: text("entity_type"),
+    entityId: uuid("entity_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => ({

@@ -7,6 +7,8 @@ import {
   integer,
   numeric,
   index,
+  date,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { workspaces, users } from "./core";
 import { personaStatusEnum } from "./enums";
@@ -81,6 +83,32 @@ export const personaMetricsSnapshots = pgTable(
   (table) => ({
     personaIdx: index("persona_metrics_persona_idx").on(table.personaId),
     capturedIdx: index("persona_metrics_captured_idx").on(table.capturedAt),
+  }),
+);
+
+// ============================================================================
+// Snapshots diários de seguidores por canal — alimenta a curva real de growth
+// no Persona Overview (substitui o cálculo fake totalFollowers * decay).
+// ============================================================================
+export const personaFollowerSnapshots = pgTable(
+  "persona_follower_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }).notNull(),
+    personaId: uuid("persona_id").references(() => personas.id, { onDelete: "cascade" }).notNull(),
+    channel: text("channel").notNull(),
+    snapshotDate: date("snapshot_date").notNull(),
+    followers: integer("followers").default(0).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    personaDayIdx: index("pfs_persona_idx").on(table.personaId, table.snapshotDate),
+    workspaceIdx: index("pfs_workspace_idx").on(table.workspaceId),
+    uniqueDay: uniqueIndex("pfs_unique_day_channel").on(
+      table.personaId,
+      table.channel,
+      table.snapshotDate,
+    ),
   }),
 );
 

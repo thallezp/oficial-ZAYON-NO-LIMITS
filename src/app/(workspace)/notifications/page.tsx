@@ -13,6 +13,7 @@ import {
   Target,
   Trash2,
   Users,
+  Settings,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ import {
   useArchiveNotificationMutation,
   useDeleteNotificationMutation,
   useClearReadNotificationsMutation,
+  useClearAllNotificationsMutation,
 } from "@/hooks/use-queries";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -42,19 +44,37 @@ import { useRealtimeNotifications } from "@/hooks/use-realtime";
 
 const typeIcon = {
   "task.assigned": Activity,
+  "task": Activity,
+  "tarefa": Activity,
   "lead.new": Target,
+  "lead": Target,
   "ai.action": Bot,
+  "ai": Bot,
+  "IA": Bot,
   "finance.overdue": CircleDollarSign,
+  "finance": CircleDollarSign,
+  "financeiro": CircleDollarSign,
   "content.late": FileText,
+  "content": FileText,
+  "conteúdo": FileText,
   "team": Users,
+  "equipe": Users,
+  "document": FileText,
+  "documento": FileText,
+  "documentos": FileText,
+  "system": Settings,
+  "sistema": Settings,
 } as const;
 
 const typeMap: Record<string, string[]> = {
-  Tarefas: ["task.assigned"],
-  Leads: ["lead.new"],
-  IA: ["ai.action"],
-  Financeiro: ["finance.overdue"],
-  Conteúdo: ["content.late"],
+  Tarefas: ["task.assigned", "task", "tarefa"],
+  Leads: ["lead.new", "lead"],
+  IA: ["ai.action", "ai", "IA"],
+  Financeiro: ["finance.overdue", "finance", "financeiro"],
+  Conteúdo: ["content.late", "content", "conteúdo"],
+  Sistema: ["system", "sistema"],
+  Equipe: ["team", "equipe"],
+  Documentos: ["document", "documento", "documentos"],
 };
 
 export default function NotificationsPage() {
@@ -75,9 +95,10 @@ export default function NotificationsPage() {
   const archive = useArchiveNotificationMutation();
   const remove = useDeleteNotificationMutation();
   const clearRead = useClearReadNotificationsMutation();
+  const clearAll = useClearAllNotificationsMutation();
 
   const notifications = (dbNotifications as any[]).filter(
-    (n) => !n.archivedAt && !n.archived_at,
+    (n) => !n.archivedAt && !n.archived_at && !n.deletedAt && !n.deleted_at,
   );
 
   const filtered = notifications.filter((n: any) => {
@@ -93,10 +114,19 @@ export default function NotificationsPage() {
     (n: any) => !(n.readAt ?? n.read_at),
   ).length;
 
+  const handleMarkAsRead = async (id: string) => {
+    try {
+      await markRead.mutateAsync(id);
+      toast.success("Notificação marcada como lida");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao marcar como lida");
+    }
+  };
+
   const handleMarkAllAsRead = async () => {
     try {
       await markAllRead.mutateAsync();
-      toast.success("Notificações marcadas como lidas");
+      toast.success("Todas as notificações marcadas como lidas");
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao marcar");
     }
@@ -105,9 +135,37 @@ export default function NotificationsPage() {
   const handleClearRead = async () => {
     try {
       await clearRead.mutateAsync();
-      toast.success("Notificações lidas removidas");
+      toast.success("Notificações lidas limpas");
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao limpar");
+    }
+  };
+
+  const handleClearAll = async () => {
+    if (!confirm("Deseja realmente limpar todas as notificações?")) return;
+    try {
+      await clearAll.mutateAsync();
+      toast.success("Todas as notificações limpas");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao limpar todas");
+    }
+  };
+
+  const handleArchive = async (id: string) => {
+    try {
+      await archive.mutateAsync(id);
+      toast.success("Notificação arquivada");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao arquivar");
+    }
+  };
+
+  const handleRemove = async (id: string) => {
+    try {
+      await remove.mutateAsync(id);
+      toast.success("Notificação excluída");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao excluir");
     }
   };
 

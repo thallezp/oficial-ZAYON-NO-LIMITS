@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { useMockData } from "@/lib/config";
 import { db } from "@/lib/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import * as s from "@/drizzle/schema";
 import { MOCK_LEADS, MOCK_FINANCE, MOCK_CONTENT, MOCK_PERSONAS, MOCK_ACTIVITY } from "@/data";
 
@@ -35,6 +35,7 @@ export async function GET(
       "email",
       "phone",
       "instagram",
+      "source",
       "campaign",
       "status",
       "score",
@@ -51,10 +52,26 @@ export async function GET(
       const conditions = [];
       if (workspaceId) conditions.push(eq(s.leads.workspaceId, workspaceId));
       if (personaId) conditions.push(eq(s.leads.personaId, personaId));
-      items = await db
+      const leadRows = await db
         .select()
         .from(s.leads)
         .where(conditions.length > 0 ? and(...conditions) : undefined);
+      const sourceIds = Array.from(
+        new Set(leadRows.map((lead: any) => lead.sourceId).filter(Boolean)),
+      );
+      const sourceRows =
+        sourceIds.length > 0
+          ? await db.select().from(s.leadSources).where(inArray(s.leadSources.id, sourceIds as string[]))
+          : [];
+      items = leadRows
+        .filter((lead: any) => !(lead.metadata as any)?.archivedAt)
+        .map((lead: any) => ({
+          ...lead,
+          source:
+            sourceRows.find((source: any) => source.id === lead.sourceId)?.name ??
+            (lead.metadata as any)?.source ??
+            "",
+        }));
     }
 
     rows = items.map((l) => [
@@ -63,6 +80,7 @@ export async function GET(
       l.email,
       l.phone,
       l.instagram,
+      l.source,
       l.campaign,
       l.status,
       l.score,

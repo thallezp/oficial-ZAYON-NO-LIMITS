@@ -93,6 +93,8 @@ const createLead = z
   })
   .passthrough();
 
+const launchCampaignStatus = z.enum(["planning", "active", "completed", "archived"]);
+
 const updateLead = z
   .object({
     id,
@@ -245,6 +247,14 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
   deleteContent: simpleDelete,
   createLead,
   updateLead,
+  archiveLead: simpleDelete,
+  createLeadComment: z
+    .object({
+      leadId: id,
+      workspaceId: id,
+      content: z.string().min(1, "Comentario vazio"),
+    })
+    .passthrough(),
   createFinancial,
   upsertPersona,
   createDocument,
@@ -279,10 +289,71 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
   deleteFlow: simpleDelete,
   deleteTool: simpleDelete,
   deleteMaterial: simpleDelete,
-  deleteCalendarEvent: simpleDelete,
-  createTaskComment: z
-    .object({ taskId: id, body: z.string().min(1, "Comentario vazio") })
+  createLaunchCampaign: z
+    .object({
+      workspaceId: id,
+      personaId: optionalId,
+      name: z.string().min(2, "Nome da campanha e obrigatorio"),
+      description: z.string().optional().nullable(),
+      startsAt: isoish,
+      endsAt: isoish,
+      status: launchCampaignStatus.optional(),
+      goal: z.string().optional().nullable(),
+      metadata: z.record(z.any()).optional().nullable(),
+    })
     .passthrough(),
+  updateLaunchCampaign: z
+    .object({ id, input: z.object({}).passthrough() })
+    .passthrough(),
+  archiveLaunchCampaign: simpleDelete,
+  deleteLaunchCampaign: simpleDelete,
+  createLaunchEvent: z
+    .object({
+      campaignId: id,
+      title: z.string().min(2, "Titulo do evento e obrigatorio"),
+      description: z.string().optional().nullable(),
+      startAt: z.string().min(1, "Data inicial obrigatoria"),
+      endAt: isoish,
+      type: z.string().optional().nullable(),
+      metadata: z.record(z.any()).optional().nullable(),
+    })
+    .passthrough(),
+  updateLaunchEvent: z
+    .object({ id, input: z.object({}).passthrough() })
+    .passthrough(),
+  deleteLaunchEvent: simpleDelete,
+  createIcpPain: z
+    .object({
+      workspaceId: id,
+      personaId: optionalId,
+      category: z.string().min(1, "Categoria obrigatoria"),
+      body: z.string().min(3, "Dor obrigatoria"),
+      intensity: z.string().optional().nullable(),
+      tags: z.array(z.string()).optional().nullable(),
+    })
+    .passthrough(),
+  updateIcpPain: z
+    .object({ id, input: z.object({}).passthrough() })
+    .passthrough(),
+  deleteIcpPain: simpleDelete,
+  createSalesCopy: z
+    .object({
+      workspaceId: id,
+      personaId: optionalId,
+      campaignId: optionalId,
+      type: z.string().min(1, "Tipo obrigatorio"),
+      title: z.string().min(2, "Titulo obrigatorio"),
+      body: z.string().min(3, "Copy obrigatoria"),
+      status: z.string().optional(),
+      metadata: z.record(z.any()).optional().nullable(),
+    })
+    .passthrough(),
+  updateSalesCopy: z
+    .object({ id, input: z.object({}).passthrough() })
+    .passthrough(),
+  deleteSalesCopy: simpleDelete,
+  deleteCalendarEvent: simpleDelete,
+  createTaskComment: z.object({ taskId: id, body: z.string().min(1, "Comentario vazio") }).passthrough(),
   createSubtask: z
     .object({
       parentTaskId: id,
@@ -308,6 +379,15 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
     .passthrough(),
   deleteFolder: simpleDelete,
   inviteMember,
+  createFollowerSnapshot: z
+    .object({
+      workspaceId: id,
+      personaId: id,
+      channel: z.string().min(1),
+      followers: z.coerce.number().min(0),
+      snapshotDate: z.string().optional(),
+    })
+    .passthrough(),
   createHook: z
     .object({
       workspaceId: id,
@@ -327,6 +407,7 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
   archiveNotification: simpleDelete,
   deleteNotification: simpleDelete,
   clearReadNotifications: z.object({}).passthrough(),
+  clearAllNotifications: z.object({}).passthrough(),
   updateMember: z
     .object({
       workspaceId: id,

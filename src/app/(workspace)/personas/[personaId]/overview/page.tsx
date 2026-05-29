@@ -34,6 +34,7 @@ import {
   useLeads,
   useFunnel,
   useTasks,
+  useFollowerSnapshots,
 } from "@/hooks/use-queries";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useQuickCreate } from "@/stores/quick-create-store";
@@ -52,6 +53,7 @@ export default function PersonaOverviewPage() {
   const { data: dbLeads = [] } = useLeads(activeWorkspaceId, persona.id);
   const { data: dbFunnel } = useFunnel(persona.id);
   const { data: dbTasks = [] } = useTasks(activeWorkspaceId, persona.id);
+  const { data: dbSnapshots = [] } = useFollowerSnapshots(persona.id);
 
   // ==========================================================================
   // Calculos reais — TUDO vem de queries do Supabase
@@ -198,16 +200,25 @@ export default function PersonaOverviewPage() {
     };
   });
 
-  // 2. Crescimento de seguidores — placeholder zerado ate ter snapshots reais
-  // (precisa de tabela persona_follower_snapshots — fica como follow-up)
-  const followersSeries = Array.from({ length: 30 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (29 - i));
-    return {
-      label: d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" }),
-      value: 0,
-    };
-  });
+  // 2. Crescimento de seguidores — soma de snapshots por dia, todos os canais
+  const followersSeries = React.useMemo(() => {
+    // agrega snapshots por dia (soma de todos os canais)
+    const byDay = new Map<string, number>();
+    (dbSnapshots as any[]).forEach((s) => {
+      const day = s.snapshotDate ?? s.snapshot_date;
+      if (!day) return;
+      byDay.set(day, (byDay.get(day) ?? 0) + Number(s.followers || 0));
+    });
+    return Array.from({ length: 30 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (29 - i));
+      const isoDay = d.toISOString().slice(0, 10);
+      return {
+        label: d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" }),
+        value: byDay.get(isoDay) ?? 0,
+      };
+    });
+  }, [dbSnapshots]);
 
   // 3. Top 5 conteúdos reais por views
   const postedContent = dbContent.filter((c: any) => c.status === "posted" && c.metrics?.views);

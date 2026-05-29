@@ -600,6 +600,7 @@ function LeadForm({ workspaceId, personaId, submitLabel, onSuccess }: EntityForm
   const [phone, setPhone] = React.useState("");
   const [instagram, setInstagram] = React.useState("");
   const [source, setSource] = React.useState("manual");
+  const [campaign, setCampaign] = React.useState("");
   const [notes, setNotes] = React.useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -614,6 +615,7 @@ function LeadForm({ workspaceId, personaId, submitLabel, onSuccess }: EntityForm
         phone: phone.trim() || undefined,
         instagram: instagram.trim() || undefined,
         source,
+        campaign: campaign.trim() || undefined,
         status: "open",
         score: 50,
         notes: notes.trim() || undefined,
@@ -656,6 +658,9 @@ function LeadForm({ workspaceId, personaId, submitLabel, onSuccess }: EntityForm
           </Select>
         </Field>
       </div>
+      <Field label="Campanha">
+        <Input value={campaign} onChange={(e) => setCampaign(e.target.value)} placeholder="Ex: Lançamento Aurora" />
+      </Field>
       <Field label="Notas">
         <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
       </Field>

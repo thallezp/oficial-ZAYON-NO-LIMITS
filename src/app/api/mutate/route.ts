@@ -3,6 +3,64 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { useMockData } from "@/lib/config";
 import { parseMutationPayload } from "@/lib/validations/mutations";
 
+async function resolveLeadSourceId(
+  supabase: ReturnType<typeof supabaseServer>,
+  workspaceId: string,
+  personaId?: string | null,
+  source?: string | null,
+) {
+  const normalized = source?.trim();
+  if (!normalized) return null;
+
+  const { data: existing, error: lookupError } = await supabase
+    .from("lead_sources")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .ilike("name", normalized)
+    .limit(1);
+
+  if (lookupError) throw lookupError;
+  if (existing && existing.length > 0) return existing[0].id as string;
+
+  const { data: created, error: createError } = await supabase
+    .from("lead_sources")
+    .insert({
+      workspace_id: workspaceId,
+      persona_id: personaId || null,
+      name: normalized,
+      type: "manual",
+      metadata: { createdBy: "mutation-route" },
+    })
+    .select("id")
+    .single();
+
+  if (createError) throw createError;
+  return created.id as string;
+}
+
+async function appendLeadStatusHistory(
+  supabase: ReturnType<typeof supabaseServer>,
+  leadId: string,
+  toStatus: string,
+  changedBy: string,
+  fromStatus?: string | null,
+) {
+  const { error } = await supabase.from("lead_status_history").insert({
+    lead_id: leadId,
+    from_status: fromStatus || null,
+    to_status: toStatus,
+    changed_by: changedBy,
+  });
+  if (error) throw error;
+}
+
+function mergeMetadata(
+  current: Record<string, any> | null | undefined,
+  next: Record<string, any> | null | undefined,
+) {
+  return { ...(current || {}), ...(next || {}) };
+}
+
 /**
  * API Route universal para mutations via Supabase SDK.
  * Não depende de DATABASE_URL (Drizzle) — usa o cliente Supabase diretamente.
@@ -52,6 +110,7 @@ export async function POST(req: Request) {
             assignee_id: payload.assigneeId || null,
             due_at: payload.dueAt || null,
             labels: payload.labels || null,
+            related_entity: payload.relatedEntity || null,
           })
           .select()
           .single();
@@ -71,6 +130,7 @@ export async function POST(req: Request) {
             priority: input.priority,
             due_at: input.dueAt,
             labels: input.labels,
+            related_entity: input.relatedEntity,
             updated_at: new Date().toISOString(),
           })
           .eq("id", id)
@@ -157,21 +217,119 @@ export async function POST(req: Request) {
 
       // ── LEADS ─────────────────────────────────────────────────────────────
       case "createLead": {
+        const sourceId = await resolveLeadSourceId(
+          supabase,
+          payload.workspaceId,
+          payload.personaId,
+          payload.source,
+        );
         const { data, error } = await supabase
           .from("leads")
           .insert({
             workspace_id: payload.workspaceId,
             persona_id: payload.personaId || null,
+            source_id: sourceId,
             name: payload.name || null,
             email: payload.email || null,
             phone: payload.phone || null,
             instagram: payload.instagram || null,
-            source: payload.source || "manual",
             status: payload.status || "open",
             score: payload.score || 50,
+            qualified: payload.qualified || 0,
+            responsible_id: payload.responsibleId || null,
             notes: payload.notes || null,
             campaign: payload.campaign || null,
+            metadata: payload.metadata
+              ? mergeMetadata(payload.metadata, { source: payload.source || null })
+              : payload.source
+                ? { source: payload.source }
+                : null,
           })
+          .select()
+          .single();
+        if (error) throw error;
+        await appendLeadStatusHistory(supabase, data.id, data.status, user.id, null);
+        result = data;
+        break;
+      }
+
+      case "updateLead": {
+        const { id, input } = payload;
+        const { data: currentLead, error: currentLeadError } = await supabase
+          .from("leads")
+          .select("status, metadata, workspace_id, persona_id")
+          .eq("id", id)
+          .single();
+        if (currentLeadError) throw currentLeadError;
+
+        const patch: Record<string, any> = {
+          updated_at: new Date().toISOString(),
+        };
+        if (input.name !== undefined) patch.name = input.name || null;
+        if (input.email !== undefined) patch.email = input.email || null;
+        if (input.phone !== undefined) patch.phone = input.phone || null;
+        if (input.instagram !== undefined) patch.instagram = input.instagram || null;
+        if (input.campaign !== undefined) patch.campaign = input.campaign || null;
+        if (input.status !== undefined) patch.status = input.status;
+        if (input.score !== undefined) patch.score = input.score;
+        if (input.qualified !== undefined) patch.qualified = input.qualified;
+        if (input.responsibleId !== undefined) patch.responsible_id = input.responsibleId || null;
+        if (input.notes !== undefined) patch.notes = input.notes || null;
+        if (input.convertedValue !== undefined) patch.converted_value = input.convertedValue || null;
+        if (input.metadata !== undefined) {
+          patch.metadata = mergeMetadata(currentLead.metadata as any, input.metadata);
+        }
+        if (input.source !== undefined) {
+          patch.source_id = await resolveLeadSourceId(
+            supabase,
+            currentLead.workspace_id as string,
+            (input.personaId || currentLead.persona_id) as string | null,
+            input.source,
+          );
+          patch.metadata = mergeMetadata(currentLead.metadata as any, {
+            ...(patch.metadata || {}),
+            source: input.source || null,
+          });
+        }
+
+        const { data, error } = await supabase
+          .from("leads")
+          .update(patch)
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        if (input.status && input.status !== currentLead.status) {
+          await appendLeadStatusHistory(
+            supabase,
+            id,
+            input.status,
+            user.id,
+            currentLead.status as string | null,
+          );
+        }
+        result = data;
+        break;
+      }
+
+      case "archiveLead": {
+        const { id } = payload;
+        const { data: existingLead, error: existingLeadError } = await supabase
+          .from("leads")
+          .select("metadata")
+          .eq("id", id)
+          .single();
+        if (existingLeadError) throw existingLeadError;
+
+        const { data, error } = await supabase
+          .from("leads")
+          .update({
+            metadata: mergeMetadata(existingLead.metadata as any, {
+              archivedAt: new Date().toISOString(),
+            }),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", id)
           .select()
           .single();
         if (error) throw error;
@@ -179,12 +337,17 @@ export async function POST(req: Request) {
         break;
       }
 
-      case "updateLead": {
-        const { id, input } = payload;
+      case "createLeadComment": {
+        const { leadId, workspaceId, content } = payload;
         const { data, error } = await supabase
-          .from("leads")
-          .update({ ...input, updated_at: new Date().toISOString() })
-          .eq("id", id)
+          .from("comments")
+          .insert({
+            workspace_id: workspaceId,
+            entity_type: "lead",
+            entity_id: leadId,
+            user_id: user.id,
+            content,
+          })
           .select()
           .single();
         if (error) throw error;
@@ -505,6 +668,210 @@ export async function POST(req: Request) {
       case "deleteModelingProfile": {
         const { id } = payload;
         const { error } = await supabase.from("modeling_profiles").delete().eq("id", id);
+        if (error) throw error;
+        result = { id };
+        break;
+      }
+
+      case "createLaunchCampaign": {
+        const { data, error } = await supabase
+          .from("launch_campaigns")
+          .insert({
+            workspace_id: payload.workspaceId,
+            persona_id: payload.personaId || null,
+            name: payload.name,
+            description: payload.description || null,
+            starts_at: payload.startsAt || null,
+            ends_at: payload.endsAt || null,
+            status: payload.status || "planning",
+            goal: payload.goal || null,
+            metadata: payload.metadata || null,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "updateLaunchCampaign": {
+        const { id, input } = payload;
+        const patch: Record<string, any> = {};
+        if (input.name !== undefined) patch.name = input.name;
+        if (input.description !== undefined) patch.description = input.description || null;
+        if (input.startsAt !== undefined) patch.starts_at = input.startsAt || null;
+        if (input.endsAt !== undefined) patch.ends_at = input.endsAt || null;
+        if (input.status !== undefined) patch.status = input.status;
+        if (input.goal !== undefined) patch.goal = input.goal || null;
+        if (input.metadata !== undefined) patch.metadata = input.metadata || null;
+        const { data, error } = await supabase
+          .from("launch_campaigns")
+          .update(patch)
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "archiveLaunchCampaign": {
+        const { id } = payload;
+        const { data, error } = await supabase
+          .from("launch_campaigns")
+          .update({ status: "archived" })
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deleteLaunchCampaign": {
+        const { id } = payload;
+        const { error } = await supabase.from("launch_campaigns").delete().eq("id", id);
+        if (error) throw error;
+        result = { id };
+        break;
+      }
+
+      case "createLaunchEvent": {
+        const { data, error } = await supabase
+          .from("launch_events")
+          .insert({
+            campaign_id: payload.campaignId,
+            title: payload.title,
+            description: payload.description || null,
+            start_at: payload.startAt,
+            end_at: payload.endAt || null,
+            type: payload.type || null,
+            metadata: payload.metadata || null,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "updateLaunchEvent": {
+        const { id, input } = payload;
+        const patch: Record<string, any> = {};
+        if (input.title !== undefined) patch.title = input.title;
+        if (input.description !== undefined) patch.description = input.description || null;
+        if (input.startAt !== undefined) patch.start_at = input.startAt;
+        if (input.endAt !== undefined) patch.end_at = input.endAt || null;
+        if (input.type !== undefined) patch.type = input.type || null;
+        if (input.metadata !== undefined) patch.metadata = input.metadata || null;
+        const { data, error } = await supabase
+          .from("launch_events")
+          .update(patch)
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deleteLaunchEvent": {
+        const { id } = payload;
+        const { error } = await supabase.from("launch_events").delete().eq("id", id);
+        if (error) throw error;
+        result = { id };
+        break;
+      }
+
+      case "createIcpPain": {
+        const { data, error } = await supabase
+          .from("icp_pains")
+          .insert({
+            workspace_id: payload.workspaceId,
+            persona_id: payload.personaId || null,
+            category: payload.category,
+            body: payload.body,
+            tags: payload.tags || null,
+            intensity: payload.intensity || null,
+            created_by: user.id,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "updateIcpPain": {
+        const { id, input } = payload;
+        const patch: Record<string, any> = {};
+        if (input.category !== undefined) patch.category = input.category;
+        if (input.body !== undefined) patch.body = input.body;
+        if (input.tags !== undefined) patch.tags = input.tags || null;
+        if (input.intensity !== undefined) patch.intensity = input.intensity || null;
+        const { data, error } = await supabase
+          .from("icp_pains")
+          .update(patch)
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deleteIcpPain": {
+        const { id } = payload;
+        const { error } = await supabase.from("icp_pains").delete().eq("id", id);
+        if (error) throw error;
+        result = { id };
+        break;
+      }
+
+      case "createSalesCopy": {
+        const { data, error } = await supabase
+          .from("sales_copies")
+          .insert({
+            workspace_id: payload.workspaceId,
+            persona_id: payload.personaId || null,
+            campaign_id: payload.campaignId || null,
+            type: payload.type,
+            title: payload.title,
+            body: payload.body,
+            status: payload.status || "draft",
+            metadata: payload.metadata || null,
+            created_by: user.id,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "updateSalesCopy": {
+        const { id, input } = payload;
+        const patch: Record<string, any> = { updated_at: new Date().toISOString() };
+        if (input.type !== undefined) patch.type = input.type;
+        if (input.title !== undefined) patch.title = input.title;
+        if (input.body !== undefined) patch.body = input.body;
+        if (input.status !== undefined) patch.status = input.status;
+        if (input.campaignId !== undefined) patch.campaign_id = input.campaignId || null;
+        if (input.metadata !== undefined) patch.metadata = input.metadata || null;
+        const { data, error } = await supabase
+          .from("sales_copies")
+          .update(patch)
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deleteSalesCopy": {
+        const { id } = payload;
+        const { error } = await supabase.from("sales_copies").delete().eq("id", id);
         if (error) throw error;
         result = { id };
         break;
@@ -933,6 +1300,28 @@ export async function POST(req: Request) {
         break;
       }
 
+      case "createFollowerSnapshot": {
+        // Upsert: se já existe snapshot do mesmo persona+canal+dia, atualiza
+        const { data, error } = await supabase
+          .from("persona_follower_snapshots")
+          .upsert(
+            {
+              workspace_id: payload.workspaceId,
+              persona_id: payload.personaId,
+              channel: payload.channel,
+              snapshot_date:
+                payload.snapshotDate ?? new Date().toISOString().slice(0, 10),
+              followers: Number(payload.followers) || 0,
+            },
+            { onConflict: "persona_id,channel,snapshot_date" },
+          )
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
       case "createHook": {
         const { data, error } = await supabase
           .from("content_hooks")
@@ -1003,6 +1392,7 @@ export async function POST(req: Request) {
           .from("notifications")
           .update({ read_at: new Date().toISOString() })
           .eq("user_id", user.id)
+          .is("deleted_at", null)
           .is("read_at", null);
         if (error) throw error;
         result = { ok: true };
@@ -1025,22 +1415,36 @@ export async function POST(req: Request) {
 
       case "deleteNotification": {
         const { id } = payload;
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("notifications")
-          .delete()
+          .update({ deleted_at: new Date().toISOString() })
           .eq("id", id)
-          .eq("user_id", user.id);
+          .eq("user_id", user.id)
+          .select()
+          .single();
         if (error) throw error;
-        result = { id };
+        result = data;
         break;
       }
 
       case "clearReadNotifications": {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("notifications")
-          .delete()
+          .update({ deleted_at: new Date().toISOString() })
           .eq("user_id", user.id)
+          .is("deleted_at", null)
           .not("read_at", "is", null);
+        if (error) throw error;
+        result = { ok: true };
+        break;
+      }
+
+      case "clearAllNotifications": {
+        const { data, error } = await supabase
+          .from("notifications")
+          .update({ deleted_at: new Date().toISOString() })
+          .eq("user_id", user.id)
+          .is("deleted_at", null);
         if (error) throw error;
         result = { ok: true };
         break;

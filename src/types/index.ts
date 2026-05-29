@@ -150,6 +150,7 @@ export interface Lead {
   id: ID;
   workspaceId: ID;
   personaId?: ID;
+  sourceId?: ID | null;
   name?: string;
   email?: string;
   phone?: string;
@@ -158,11 +159,50 @@ export interface Lead {
   source?: string;
   status: LeadStatus;
   score?: number;
-  responsible?: User;
-  answers?: { question: string; answer: string }[];
+  qualified?: number;
+  responsibleId?: ID | null;
+  responsible?: User | null;
+  persona?: { id: ID; name: string } | null;
+  answers?: LeadAnswer[];
+  history?: LeadStatusEntry[];
+  comments?: LeadComment[];
+  linkedTasks?: LeadLinkedTask[];
   notes?: string;
   convertedValue?: number;
+  metadata?: Record<string, any>;
+  archivedAt?: string | null;
   createdAt: string;
+  updatedAt?: string;
+}
+
+export interface LeadAnswer {
+  id?: ID;
+  question: string;
+  answer?: string;
+  createdAt?: string;
+}
+
+export interface LeadComment {
+  id: ID;
+  content: string;
+  author?: User | null;
+  createdAt: string;
+}
+
+export interface LeadStatusEntry {
+  id: ID;
+  fromStatus?: LeadStatus | null;
+  toStatus: LeadStatus;
+  changedBy?: User | null;
+  changedAt: string;
+}
+
+export interface LeadLinkedTask {
+  id: ID;
+  title: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  dueAt?: string | null;
 }
 
 export type FinanceType = "revenue" | "expense";
@@ -305,6 +345,75 @@ export interface ICPPain {
   intensity?: "low" | "medium" | "high";
 }
 
+export type LaunchCampaignStatus =
+  | "planning"
+  | "active"
+  | "completed"
+  | "archived";
+
+export type LaunchPhaseKey =
+  | "research"
+  | "warming"
+  | "capture"
+  | "event"
+  | "sale"
+  | "closing"
+  | "post_sale";
+
+export interface LaunchEvent {
+  id: ID;
+  campaignId: ID;
+  title: string;
+  description?: string;
+  startAt: string;
+  endAt?: string | null;
+  type?: string | null;
+  metadata?: Record<string, any> | null;
+}
+
+export interface SalesCopy {
+  id: ID;
+  workspaceId: ID;
+  personaId?: ID;
+  campaignId?: ID | null;
+  type: string;
+  title: string;
+  body: string;
+  status: string;
+  metadata?: Record<string, any> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LaunchCampaign {
+  id: ID;
+  workspaceId: ID;
+  personaId?: ID;
+  name: string;
+  description?: string;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  status: LaunchCampaignStatus;
+  goal?: string | null;
+  metadata?: {
+    funnelId?: ID | null;
+    linkedTaskIds?: ID[];
+    linkedContentIds?: ID[];
+    linkedDocumentIds?: ID[];
+    linkedMaterialIds?: ID[];
+    phaseNotes?: Partial<Record<LaunchPhaseKey, string>>;
+    copyPlan?: string;
+    creativeScripts?: string;
+    emails?: string;
+    whatsapp?: string;
+    salesPages?: string;
+    [key: string]: unknown;
+  } | null;
+  createdAt: string;
+  events?: LaunchEvent[];
+  copies?: SalesCopy[];
+}
+
 export interface PromptChain {
   id: ID;
   workspaceId: ID;
@@ -343,6 +452,11 @@ export interface NotificationItem {
   body?: string;
   href?: string;
   readAt?: string;
+  archivedAt?: string;
+  deletedAt?: string;
+  personaId?: ID;
+  entityType?: string;
+  entityId?: ID;
   createdAt: string;
 }
 

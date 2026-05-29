@@ -2,7 +2,17 @@
 
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bot, ChevronDown, Send, Sparkles, X, Wand2 } from "lucide-react";
+import {
+  AlertCircle,
+  Bot,
+  Check,
+  CheckCircle2,
+  Loader2,
+  Send,
+  Sparkles,
+  Wand2,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useUIStore } from "@/stores/ui-store";
@@ -11,8 +21,8 @@ import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils/cn";
-
 
 const suggestions = [
   "Resumir reunião desta semana",
@@ -29,21 +39,68 @@ const seed: UIMessage[] = [
     parts: [
       {
         type: "text",
-        text: "Olá! Sou a ZAYON AI. Estou pronta para te ajudar a gerenciar este workspace. Quer que eu faça uma varredura nos leads ou crie novas tarefas?",
+        text: "Olá! Sou a ZAYON AI. Estou pronta para executar trabalho real — criar tarefas, documentos, conteúdos, leads, eventos, qualificar leads, montar planos de lançamento e mais. O que vamos fazer agora?",
       },
     ],
   },
 ];
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+const TOOL_LABEL: Record<string, string> = {
+  createTask: "Tarefa criada",
+  createDocument: "Documento criado",
+  createContent: "Conteúdo criado",
+  createLead: "Lead criado",
+  createFinancial: "Lançamento financeiro",
+  createCalendarEvent: "Evento na agenda",
+  createHook: "Hook salvo",
+  generateScript: "Roteiro gerado",
+  generateCaption: "Legenda gerada",
+  generateCopy: "Copy gerada",
+  generateHook: "Hook tático salvo",
+  summarizeDocument: "Documento resumido",
+  analyzeMetrics: "Análise registrada",
+  addActivityInsight: "Insight registrado",
+  suggestTool: "Ferramenta sugerida",
+  improvePrompt: "Prompt melhorado",
+  qualifyLead: "Qualificação de lead",
+  createFunnelNode: "Nó do funil",
+  createLaunchPlan: "Plano de lançamento",
+  insightToTask: "Insight → tarefa",
+};
+
+function getToolParts(message: UIMessage): Array<{ toolName: string; output: any; state?: string }> {
+  if (!message.parts) return [];
+  return message.parts
+    .map((part: any) => {
+      // AI SDK v5 emits parts like { type: 'tool-<name>', state, output, ... }
+      if (typeof part.type === "string" && part.type.startsWith("tool-")) {
+        return {
+          toolName: part.type.replace(/^tool-/, ""),
+          output: part.output ?? part.result ?? null,
+          state: part.state,
+        };
+      }
+      return null;
+    })
+    .filter(Boolean) as any;
+}
+
+// ---------------------------------------------------------------------------
+// AIPanel
+// ---------------------------------------------------------------------------
+
 export function AIPanel() {
   const open = useUIStore((s) => s.aiPanelOpen);
   const setOpen = useUIStore((s) => s.setAIPanelOpen);
+  const pendingAIPrompt = useUIStore((s) => s.pendingAIPrompt);
+  const setPendingAIPrompt = useUIStore((s) => s.setPendingAIPrompt);
   const persona = useActivePersona();
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
-
-  // CopilotKit actions são registradas em <CopilotActionsRegistry/> dentro
-  // do Providers (que só monta o CopilotKit quando NEXT_PUBLIC_ENABLE_COPILOT
-  // está ativo). Isso evita "useCopilotKit must be used within Provider".
+  const queryClient = useQueryClient();
 
   const storageKey = React.useMemo(() => {
     return `zayon.chat.${activeWorkspaceId || "global"}.${persona?.id || "global"}`;
@@ -70,20 +127,26 @@ export function AIPanel() {
       });
     },
     onFinish: () => {
-      toast.success("IA respondeu com sucesso!");
+      // Refresh queries que podem ter sido afetadas
+      queryClient.invalidateQueries({ queryKey: ["aiActions"] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["content"] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["events"] });
     },
   });
 
   const isLoading = status === "submitted" || status === "streaming";
 
-  // Load chat history from localStorage
+  // Carrega histórico do localStorage
   React.useEffect(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem(storageKey);
       if (stored) {
         try {
           setMessages(JSON.parse(stored));
-        } catch (e) {
+        } catch {
           setMessages(seed);
         }
       } else {
@@ -92,16 +155,28 @@ export function AIPanel() {
     }
   }, [storageKey, setMessages]);
 
-  // Persist chat history to localStorage
+  // Persiste histórico
   React.useEffect(() => {
     if (typeof window !== "undefined" && messages.length > 0) {
       localStorage.setItem(storageKey, JSON.stringify(messages));
     }
   }, [messages, storageKey]);
 
-  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+  // Consome pendingAIPrompt assim que o painel está aberto
+  React.useEffect(() => {
+    if (open && pendingAIPrompt && !isLoading) {
+      const text = pendingAIPrompt;
+      setPendingAIPrompt(null);
+      // pequeno delay para garantir que o painel renderizou
+      const t = setTimeout(() => {
+        sendMessage({ text });
+        toast.info("IA processando…", { description: text });
+      }, 150);
+      return () => clearTimeout(t);
+    }
+  }, [open, pendingAIPrompt, isLoading, sendMessage, setPendingAIPrompt]);
 
-  // Auto-scroll to bottom of messages
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -148,37 +223,7 @@ export function AIPanel() {
 
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
             {messages.map((m) => (
-              <div
-                key={m.id}
-                className={cn(
-                  "flex flex-col gap-1",
-                  m.role === "user" ? "items-end" : "items-start",
-                )}
-              >
-                <div
-                  className={cn(
-                    "max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap",
-                    m.role === "user"
-                      ? "bg-primary text-primary-foreground rounded-br-md"
-                      : "border border-border/60 bg-card rounded-bl-md",
-                  )}
-                >
-                  {m.parts
-                    ? m.parts.map((part, idx) => {
-                        if (part.type === "text") {
-                          return <React.Fragment key={idx}>{part.text}</React.Fragment>;
-                        }
-                        return null;
-                      })
-                    : (m as any).content}
-
-                </div>
-                {m.role === "assistant" && (
-                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                    <Sparkles className="h-3 w-3" /> contextual · personalizado
-                  </div>
-                )}
-              </div>
+              <MessageBubble key={m.id} message={m} />
             ))}
             {isLoading && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground p-2">
@@ -233,3 +278,197 @@ export function AIPanel() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// MessageBubble + Tool result cards
+// ---------------------------------------------------------------------------
+
+function MessageBubble({ message }: { message: UIMessage }) {
+  const toolParts = getToolParts(message);
+  const textParts = (message.parts || []).filter((p: any) => p.type === "text");
+  const isUser = message.role === "user";
+
+  return (
+    <div className={cn("flex flex-col gap-1", isUser ? "items-end" : "items-start")}>
+      {textParts.length > 0 && (
+        <div
+          className={cn(
+            "max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap",
+            isUser
+              ? "bg-primary text-primary-foreground rounded-br-md"
+              : "border border-border/60 bg-card rounded-bl-md",
+          )}
+        >
+          {textParts.map((part: any, idx: number) => (
+            <React.Fragment key={idx}>{part.text}</React.Fragment>
+          ))}
+        </div>
+      )}
+
+      {toolParts.map((tp, idx) => (
+        <ToolResultCard key={idx} toolName={tp.toolName} output={tp.output} />
+      ))}
+
+      {!isUser && textParts.length > 0 && (
+        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+          <Sparkles className="h-3 w-3" /> contextual · personalizado
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ToolResultCard({ toolName, output }: { toolName: string; output: any }) {
+  const queryClient = useQueryClient();
+  const [confirmState, setConfirmState] = React.useState<
+    "idle" | "confirming" | "cancelling" | "done" | "cancelled" | "failed"
+  >("idle");
+  const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
+
+  const label = TOOL_LABEL[toolName] || toolName;
+
+  // Toast de sucesso/erro para qualquer tool que retorna direto (sem confirmação)
+  const completedActionIdRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (!output) return;
+    if (output.__completed && output.actionId && completedActionIdRef.current !== output.actionId) {
+      completedActionIdRef.current = output.actionId;
+      const title =
+        output.result?.title ||
+        output.result?.name ||
+        output.result?.taskTitle ||
+        "";
+      toast.success(`${label} ✓`, {
+        description: title ? String(title) : "Ação registrada em ai_actions.",
+      });
+    }
+  }, [output, label]);
+
+  if (!output) return null;
+
+  // ---------- Awaiting confirmation card ----------
+  if (output.__awaitingConfirmation) {
+    const isResolved = confirmState === "done" || confirmState === "cancelled";
+
+    const handleDecision = async (decision: "confirm" | "cancel") => {
+      setConfirmState(decision === "confirm" ? "confirming" : "cancelling");
+      setErrorMsg(null);
+      try {
+        const res = await fetch("/api/ai/confirm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ actionId: output.actionId, decision }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data?.error || "Falha ao confirmar");
+        }
+        if (decision === "confirm") {
+          setConfirmState("done");
+          toast.success(`${label} executado!`);
+          queryClient.invalidateQueries();
+        } else {
+          setConfirmState("cancelled");
+          toast.info("Ação cancelada");
+        }
+      } catch (err: any) {
+        setConfirmState("failed");
+        setErrorMsg(err.message || "Erro");
+        toast.error("Erro ao confirmar ação", { description: err.message });
+      }
+    };
+
+    return (
+      <div className="w-full max-w-[90%] rounded-xl border border-warning/40 bg-warning/5 p-3 text-xs">
+        <div className="flex items-center gap-2 text-warning/90">
+          <AlertCircle className="h-3.5 w-3.5" />
+          <span className="font-semibold uppercase tracking-wide">
+            Confirmação necessária · {label}
+          </span>
+        </div>
+        <p className="mt-1 text-foreground/90 leading-relaxed">{output.summary}</p>
+        {output.args && (
+          <details className="mt-1.5">
+            <summary className="cursor-pointer text-[10px] text-muted-foreground hover:text-foreground">
+              ver detalhes
+            </summary>
+            <pre className="mt-1 overflow-auto rounded bg-background/60 p-2 text-[10px] text-muted-foreground">
+              {JSON.stringify(output.args, null, 2)}
+            </pre>
+          </details>
+        )}
+        {!isResolved && (
+          <div className="mt-2 flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="gradient"
+              onClick={() => handleDecision("confirm")}
+              disabled={confirmState !== "idle"}
+            >
+              {confirmState === "confirming" ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Check className="h-3 w-3" />
+              )}
+              Confirmar
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleDecision("cancel")}
+              disabled={confirmState !== "idle"}
+            >
+              <X className="h-3 w-3" />
+              Cancelar
+            </Button>
+          </div>
+        )}
+        {confirmState === "done" && (
+          <p className="mt-2 flex items-center gap-1 text-[11px] text-success">
+            <CheckCircle2 className="h-3 w-3" /> Executado com sucesso
+          </p>
+        )}
+        {confirmState === "cancelled" && (
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Cancelado — nada foi alterado.
+          </p>
+        )}
+        {confirmState === "failed" && (
+          <p className="mt-2 text-[11px] text-destructive">{errorMsg}</p>
+        )}
+      </div>
+    );
+  }
+
+  // ---------- Completed action card ----------
+  if (output.__completed) {
+    const result = output.result;
+    const title =
+      result?.title || result?.name || result?.taskTitle || (result?.id ? `#${String(result.id).slice(0, 6)}` : "");
+    return (
+      <div className="w-full max-w-[90%] rounded-xl border border-success/30 bg-success/5 p-2.5 text-xs">
+        <div className="flex items-center gap-2 text-success">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          <span className="font-semibold">{label}</span>
+        </div>
+        {title && (
+          <p className="mt-1 truncate text-foreground/90">
+            {String(title)}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // ---------- Fallback (raw payload) ----------
+  return (
+    <div className="w-full max-w-[90%] rounded-xl border border-border/60 bg-card-elevated p-2.5 text-xs">
+      <div className="flex items-center gap-2 text-primary">
+        <Sparkles className="h-3.5 w-3.5" />
+        <span className="font-semibold">{label}</span>
+      </div>
+      <pre className="mt-1 overflow-auto max-h-32 text-[10px] text-muted-foreground">
+        {JSON.stringify(output, null, 2)}
+      </pre>
+    </div>
+  );
+}
