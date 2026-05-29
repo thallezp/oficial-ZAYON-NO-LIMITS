@@ -64,7 +64,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
             gcTime: 10 * 60 * 1000, // 10 min
             refetchOnWindowFocus: false,
             refetchOnReconnect: false,
-            refetchOnMount: false,
             retry: 1,
             retryDelay: 1000,
           },

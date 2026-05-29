@@ -133,7 +133,11 @@ export function AIPanel() {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       queryClient.invalidateQueries({ queryKey: ["content"] });
       queryClient.invalidateQueries({ queryKey: ["leads"] });
-      queryClient.invalidateQueries({ queryKey: ["events"] });
+      queryClient.invalidateQueries({ queryKey: ["calendarEvents"] });
+      queryClient.invalidateQueries({ queryKey: ["finance"] });
+      queryClient.invalidateQueries({ queryKey: ["contentHooks"] });
+      queryClient.invalidateQueries({ queryKey: ["funnel"] });
+      queryClient.invalidateQueries({ queryKey: ["launchCampaigns"] });
     },
   });
 

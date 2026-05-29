@@ -1196,7 +1196,7 @@ export default function DashboardPage() {
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="Receita 30d" value={formatCurrency(realRevenue)} delta={revenueDelta} icon={<CircleDollarSign className="h-4 w-4" />} accent="success" />
+        <StatCard label="Receita 30d" value={formatCurrency(current30DaysRevenue)} delta={revenueDelta} icon={<CircleDollarSign className="h-4 w-4" />} accent="success" />
         <StatCard label="Leads quentes" value={String(realLeads)} delta={leadsDelta} icon={<Target className="h-4 w-4" />} accent="primary" hint={`${realLeads} com score > 80`} />
         <StatCard label="Tarefas no doing" value={String(realDoingTasks)} delta={tasksDelta} icon={<ListChecks className="h-4 w-4" />} accent="info" />
         <StatCard label="Conteúdos publicados" value={String(realPostedContent)} delta={postedDelta} icon={<Flame className="h-4 w-4" />} accent="warning" hint="Consolidado" />

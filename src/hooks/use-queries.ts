@@ -479,8 +479,8 @@ export function useSaveFunnelDataMutation() {
       edges: any[];
       conversionRate?: number;
     }) => callMutate("saveFunnelData", { id: funnelId, nodes, edges, conversionRate }),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["funnel", variables.funnelId] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["funnel"] });
     },
   });
 }
