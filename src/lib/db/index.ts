@@ -18,16 +18,62 @@ import postgres from "postgres";
 let cachedClient: ReturnType<typeof postgres> | null = null;
 let cachedDb: ReturnType<typeof drizzle> | null = null;
 
+/**
+ * Normaliza a DATABASE_URL re-encodando o usuário e a senha.
+ *
+ * Bug que isso resolve: senhas com caracteres especiais não-encodados
+ * (ex: "@Matificante1002" — começa com @) quebram o parser de URL do
+ * postgres-js. A authority `user:@senha@host` é ambígua e o cliente falha
+ * ao conectar → todas as leituras via Drizzle retornavam 500 e a UI ficava
+ * vazia. Aqui isolamos userinfo pelo ÚLTIMO "@" (o que separa do host),
+ * decodificamos (idempotente p/ valor já encodado) e re-encodamos de forma
+ * segura. Funciona com a senha crua OU já encodada na env var.
+ */
+function normalizeConnectionString(raw: string): string {
+  const schemeMatch = raw.match(/^postgres(?:ql)?:\/\//i);
+  if (!schemeMatch) return raw;
+  const scheme = schemeMatch[0];
+  const rest = raw.slice(scheme.length);
+
+  const lastAt = rest.lastIndexOf("@");
+  if (lastAt === -1) return raw; // sem userinfo
+  const userinfo = rest.slice(0, lastAt);
+  const hostAndPath = rest.slice(lastAt + 1);
+
+  const firstColon = userinfo.indexOf(":");
+  if (firstColon === -1) return raw; // sem senha explícita
+  const user = userinfo.slice(0, firstColon);
+  const rawPass = userinfo.slice(firstColon + 1);
+
+  const safeDecode = (v: string) => {
+    try {
+      return decodeURIComponent(v);
+    } catch {
+      return v;
+    }
+  };
+  const encUser = encodeURIComponent(safeDecode(user));
+  const encPass = encodeURIComponent(safeDecode(rawPass));
+
+  return `${scheme}${encUser}:${encPass}@${hostAndPath}`;
+}
+
 function getClient() {
   if (cachedClient) return cachedClient;
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString || !/^postgres(ql)?:\/\//i.test(connectionString)) {
+    console.error(
+      "[db] DATABASE_URL ausente ou sem esquema postgres:// — Drizzle desativado.",
+    );
     return null;
   }
   try {
-    cachedClient = postgres(connectionString, { prepare: false });
+    cachedClient = postgres(normalizeConnectionString(connectionString), {
+      prepare: false,
+    });
     return cachedClient;
-  } catch {
+  } catch (err) {
+    console.error("[db] Falha ao inicializar o cliente postgres:", err);
     return null;
   }
 }
