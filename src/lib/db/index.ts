@@ -58,12 +58,40 @@ function normalizeConnectionString(raw: string): string {
   return `${scheme}${encUser}:${encPass}@${hostAndPath}`;
 }
 
+/**
+ * Limpa o valor cru da env var: alguns ambientes (ex: painel da Vercel) guardam
+ * o valor COM aspas literais ou espaços/quebras de linha em volta. Isso fazia o
+ * regex `^postgres://` falhar e o Drizzle era desativado → todas as leituras
+ * retornavam 500 e a UI ficava vazia.
+ */
+function cleanEnvValue(v: string): string {
+  let s = v.trim();
+  // remove aspas simples/duplas em volta (uma ou mais vezes)
+  while (
+    s.length >= 2 &&
+    ((s.startsWith('"') && s.endsWith('"')) ||
+      (s.startsWith("'") && s.endsWith("'")) ||
+      (s.startsWith("`") && s.endsWith("`")))
+  ) {
+    s = s.slice(1, -1).trim();
+  }
+  return s;
+}
+
 function getClient() {
   if (cachedClient) return cachedClient;
-  const connectionString = process.env.DATABASE_URL;
+  const rawEnv = process.env.DATABASE_URL;
+  const connectionString = rawEnv ? cleanEnvValue(rawEnv) : "";
   if (!connectionString || !/^postgres(ql)?:\/\//i.test(connectionString)) {
+    // Log diagnóstico SEM expor segredo (só metadados do valor).
     console.error(
-      "[db] DATABASE_URL ausente ou sem esquema postgres:// — Drizzle desativado.",
+      "[db] DATABASE_URL inválida/ausente.",
+      JSON.stringify({
+        isSet: rawEnv != null,
+        rawLength: rawEnv?.length ?? 0,
+        cleanedLength: connectionString.length,
+        startsWith: connectionString.slice(0, 13),
+      }),
     );
     return null;
   }
