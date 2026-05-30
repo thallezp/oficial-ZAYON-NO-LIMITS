@@ -75,10 +75,19 @@ function isArchivedMetadata(metadata: unknown) {
 }
 
 async function getPersonaMetrics(id: string) {
-  const channels = await db.select().from(s.personaChannels).where(eq(s.personaChannels.personaId, id));
+  // PERF: estas 5 consultas são independentes — rodam em paralelo (Promise.all)
+  // em vez de 5 round-trips sequenciais ao pooler. Reduz muito a latência do
+  // bootstrap (que chama isto para cada persona).
+  const [channels, txs, allLeads, content, pillarsRows] = await Promise.all([
+    db.select().from(s.personaChannels).where(eq(s.personaChannels.personaId, id)),
+    db.select().from(s.financialTransactions).where(eq(s.financialTransactions.personaId, id)),
+    db.select().from(s.leads).where(eq(s.leads.personaId, id)),
+    db.select().from(s.contentItems).where(eq(s.contentItems.personaId, id)),
+    db.select().from(s.contentPillars).where(eq(s.contentPillars.personaId, id)),
+  ]);
+
   const totalFollowers = channels.reduce((acc: number, c: any) => acc + (c.followers || 0), 0);
 
-  const txs = await db.select().from(s.financialTransactions).where(eq(s.financialTransactions.personaId, id));
   const totalRevenue = txs
     .filter((t: any) => t.type === "revenue" && t.status === "paid")
     .reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
@@ -97,14 +106,12 @@ async function getPersonaMetrics(id: string) {
 
   const revenueDelta = revenuePeriodPrev > 0 ? ((revenuePeriod - revenuePeriodPrev) / revenuePeriodPrev) * 100 : 0;
 
-  const allLeads = await db.select().from(s.leads).where(eq(s.leads.personaId, id));
   const totalLeads = allLeads.length;
 
   const leadsPeriod = allLeads.filter((l: any) => l.createdAt && new Date(l.createdAt) >= thirtyDaysAgo).length;
   const leadsPeriodPrev = allLeads.filter((l: any) => l.createdAt && new Date(l.createdAt) >= sixtyDaysAgo && new Date(l.createdAt) < thirtyDaysAgo).length;
   const leadsDelta = leadsPeriodPrev > 0 ? ((leadsPeriod - leadsPeriodPrev) / leadsPeriodPrev) * 100 : 0;
 
-  const content = await db.select().from(s.contentItems).where(eq(s.contentItems.personaId, id));
   const postedContent = content.filter((c: any) => c.status === "posted");
   const totalPosts = postedContent.length;
 
@@ -123,7 +130,6 @@ async function getPersonaMetrics(id: string) {
   const paidSales = txs.filter((t: any) => t.type === "revenue" && t.status === "paid").length;
   const conversion = totalLeads > 0 ? (paidSales / totalLeads) * 100 : 0;
 
-  const pillarsRows = await db.select().from(s.contentPillars).where(eq(s.contentPillars.personaId, id));
   const pillars = pillarsRows.map((p: any) => p.name);
 
   return {

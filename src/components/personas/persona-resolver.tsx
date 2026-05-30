@@ -9,12 +9,17 @@ import { isMockModeClient } from "@/lib/mock-mode-client";
 
 export function usePersonaFromRoute(): Persona {
   const params = useParams<{ personaId: string }>();
-  const { data: dbPersona } = usePersona(params?.personaId);
-  const { personas } = usePersonaStore();
+  const personas = usePersonaStore((s) => s.personas);
   const storePersona = personas.find((p) => p.id === params?.personaId);
 
-  if (dbPersona || storePersona) {
-    return ((dbPersona as Persona | undefined) ?? storePersona)!;
+  // PERF: o store (carregado pelo PersonaStoreSync via personas.list) já traz a
+  // persona COMPLETA com métricas. Só batemos no servidor (getPersonaById, que
+  // re-roda getPersonaMetrics ≈ 6 queries Drizzle) quando a persona ainda não
+  // está no store — elimina esse custo redundante em TODA navegação de persona.
+  const { data: dbPersona } = usePersona(storePersona ? null : params?.personaId);
+
+  if (storePersona || dbPersona) {
+    return (storePersona ?? (dbPersona as Persona))!;
   }
 
   if (!isMockModeClient) {
