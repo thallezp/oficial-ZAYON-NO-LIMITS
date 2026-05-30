@@ -10,6 +10,7 @@ import { CURRENT_USER, MOCK_WORKSPACES, MOCK_PERSONAS } from "@/data";
 import { isMockModeClient } from "@/lib/mock-mode-client";
 import type { Persona, User, Workspace } from "@/types";
 import { usePersonas } from "@/hooks/use-queries";
+import { usePathname } from "next/navigation";
 
 /**
  * CopilotKit é carregado lazy e só monta quando a flag
@@ -59,11 +60,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            // Cache agressivo + sem refetch automático pra reduzir carga
-            staleTime: 5 * 60 * 1000, // 5 min
-            gcTime: 10 * 60 * 1000, // 10 min
-            refetchOnWindowFocus: false,
-            refetchOnReconnect: false,
+            // App de CRUD operacional: o usuário precisa ver SEMPRE a verdade
+            // do servidor. staleTime 0 = toda montagem/navegação revalida em
+            // background (o gcTime mantém o cache, então mostra dado na hora
+            // e atualiza sem spinner). Combinado com invalidateQueries nas
+            // mutations, garante que toda ação reflita na tela.
+            staleTime: 0,
+            gcTime: 10 * 60 * 1000, // 10 min — mantém cache p/ evitar flash de loading
+            refetchOnMount: true,
+            refetchOnWindowFocus: true,
+            refetchOnReconnect: true,
             retry: 1,
             retryDelay: 1000,
           },
@@ -76,6 +82,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   const bootstrap = useWorkspaceStore((s) => s.bootstrap);
   const setPersonas = usePersonaStore((s) => s.setPersonas);
+  const pathname = usePathname();
 
   React.useEffect(() => {
     if (isMockModeClient) {
@@ -87,7 +94,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
     // CRÍTICO: rotas públicas (login, forgot-password, invite) NÃO devem
     // chamar /api/bootstrap. O middleware já permite acesso sem sessão e
     // tentar bootstrap retorna 401 → redirect → loop infinito.
-    const pathname = window.location.pathname;
     const isPublicPath =
       pathname === "/" ||
       pathname.startsWith("/login") ||
@@ -95,6 +101,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
       pathname.startsWith("/invite");
 
     if (isPublicPath) return;
+
+    // Evita chamadas repetidas na navegação cliente se já houver dados carregados
+    const currentStore = useWorkspaceStore.getState();
+    const hasData = !!currentStore.user && currentStore.workspaces.length > 0;
+    if (hasData) return;
 
     let cancelled = false;
 
@@ -178,7 +189,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [bootstrap, setPersonas]);
+  }, [bootstrap, setPersonas, pathname]);
 
   const enableCopilot =
     process.env.NEXT_PUBLIC_ENABLE_COPILOT === "true" &&

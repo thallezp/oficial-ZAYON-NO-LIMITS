@@ -52,6 +52,12 @@ export function useRealtime<T extends Record<string, any> = Record<string, any>>
 }: Options<T>) {
   const queryClient = useQueryClient();
 
+  // Salvar callback na ref para evitar desconexões constantes do realtime em renderizações secundárias
+  const onPayloadRef = React.useRef(onPayload);
+  React.useEffect(() => {
+    onPayloadRef.current = onPayload;
+  }, [onPayload]);
+
   React.useEffect(() => {
     if (!enabled) return;
     if (typeof window === "undefined" || !process.env.NEXT_PUBLIC_SUPABASE_URL) {
@@ -70,7 +76,7 @@ export function useRealtime<T extends Record<string, any> = Record<string, any>>
           realtimeQueryKeys[table]?.forEach((queryKey) => {
             queryClient.invalidateQueries({ queryKey: [queryKey] });
           });
-          onPayload?.(payload);
+          onPayloadRef.current?.(payload);
         },
       )
       .subscribe();
@@ -78,7 +84,7 @@ export function useRealtime<T extends Record<string, any> = Record<string, any>>
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [enabled, event, filter, onPayload, queryClient, schema, table]);
+  }, [enabled, event, filter, queryClient, schema, table]);
 }
 
 function scopeFilter(workspaceId?: string, personaId?: string) {

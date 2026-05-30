@@ -42,6 +42,7 @@ import { useUIStore } from "@/stores/ui-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useQuickCreate } from "@/stores/quick-create-store";
 import { usePersonaStore } from "@/stores/persona-store";
+import { logoutAction } from "@/server/actions/auth";
 import { initials } from "@/lib/utils/format";
 import { toast } from "sonner";
 import { NotificationsPopover } from "./notifications-popover";
@@ -152,7 +153,20 @@ export function Topbar() {
               Configurações
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">Sair</DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-destructive cursor-pointer"
+              onClick={async () => {
+                await logoutAction();
+                // Limpar Zustand
+                useWorkspaceStore.getState().setUser(null);
+                useWorkspaceStore.getState().setActiveWorkspace("");
+                usePersonaStore.getState().setPersonas([]);
+                usePersonaStore.getState().setActivePersona(null);
+                window.location.replace("/login");
+              }}
+            >
+              Sair
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
