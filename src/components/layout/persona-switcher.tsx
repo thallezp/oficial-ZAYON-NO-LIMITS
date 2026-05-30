@@ -26,7 +26,9 @@ const statusLabel = {
 export function PersonaSwitcher({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { personas, activePersonaId, setActivePersona } = usePersonaStore();
+  const personas = usePersonaStore((s) => s.personas);
+  const activePersonaId = usePersonaStore((s) => s.activePersonaId);
+  const setActivePersona = usePersonaStore((s) => s.setActivePersona);
   const openQuickCreate = useQuickCreate((s) => s.openWith);
   const active =
     personas.find((p) => p.id === activePersonaId) ?? personas[0];

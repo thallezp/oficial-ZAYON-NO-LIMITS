@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowRight, Github, KeyRound, Mail, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,6 @@ import { toast } from "sonner";
 import { loginAction } from "./actions";
 
 function LoginContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,15 +34,18 @@ function LoginContent() {
       const res = await loginAction(formData);
       if (res?.error) {
         toast.error(res.error);
+        setLoading(false);
       } else {
         toast.success("Login efetuado com sucesso!");
         const nextUrl = searchParams.get("next") || "/dashboard";
-        router.push(nextUrl);
-        router.refresh();
+        // Navegação HARD (full reload) em vez de router.push: garante que o
+        // cookie de sessão recém-criado já esteja presente quando o destino
+        // carregar, então o /api/bootstrap popula workspace+persona de primeira
+        // — sem o "topo carregando pra sempre" que exigia F5 manual.
+        window.location.assign(nextUrl);
       }
     } catch (err) {
       toast.error("Ocorreu um erro ao fazer login.");
-    } finally {
       setLoading(false);
     }
   };

@@ -14,7 +14,9 @@ import { useWorkspaceStore } from "@/stores/workspace-store";
 import { cn } from "@/lib/utils/cn";
 
 export function WorkspaceSwitcher({ compact = false }: { compact?: boolean }) {
-  const { workspaces, activeWorkspaceId, setActiveWorkspace } = useWorkspaceStore();
+  const workspaces = useWorkspaceStore((s) => s.workspaces);
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const setActiveWorkspace = useWorkspaceStore((s) => s.setActiveWorkspace);
   const active =
     workspaces.find((w) => w.id === activeWorkspaceId) ?? workspaces[0];
 

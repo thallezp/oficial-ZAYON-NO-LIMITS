@@ -216,12 +216,15 @@ export function CommandMenu() {
   const setActivePersona = usePersonaStore((s) => s.setActivePersona);
   const openQuickCreate = useQuickCreate((s) => s.openWith);
 
-  const { data: dbTasks = [] } = useTasks(activeWorkspaceId);
-  const { data: dbDocuments = [] } = useDocuments(activeWorkspaceId);
-  const { data: dbTools = [] } = useTools(activeWorkspaceId);
-  const { data: dbLeads = [] } = useLeads(activeWorkspaceId);
-  const { data: dbContent = [] } = useContent(activeWorkspaceId, activeId);
-  const { data: dbFlows = [] } = useFlows(activeWorkspaceId);
+  // Só busca dados de pesquisa quando a paleta está aberta — evita ~6 queries
+  // rodando em toda página (custo de carga inicial + refetch em massa).
+  const wsForSearch = open ? activeWorkspaceId : null;
+  const { data: dbTasks = [] } = useTasks(wsForSearch);
+  const { data: dbDocuments = [] } = useDocuments(wsForSearch);
+  const { data: dbTools = [] } = useTools(wsForSearch);
+  const { data: dbLeads = [] } = useLeads(wsForSearch);
+  const { data: dbContent = [] } = useContent(wsForSearch, activeId);
+  const { data: dbFlows = [] } = useFlows(wsForSearch);
 
   const defaultPersonaId =
     activeId ??

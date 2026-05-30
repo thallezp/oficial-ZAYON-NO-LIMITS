@@ -60,15 +60,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            // App de CRUD operacional: o usuário precisa ver SEMPRE a verdade
-            // do servidor. staleTime 0 = toda montagem/navegação revalida em
-            // background (o gcTime mantém o cache, então mostra dado na hora
-            // e atualiza sem spinner). Combinado com invalidateQueries nas
-            // mutations, garante que toda ação reflita na tela.
-            staleTime: 0,
-            gcTime: 10 * 60 * 1000, // 10 min — mantém cache p/ evitar flash de loading
+            // Equilíbrio entre frescor e fluidez ao navegar:
+            // - staleTime 60s: trocar de aba dentro de 1 min usa cache (navegação
+            //   instantânea, sem refetch em massa que travava a UI).
+            // - refetchOnMount: revalida em background só quando os dados ficam
+            //   stale (>60s), sem flash (gcTime mantém o cache visível).
+            // - O reflexo imediato de create/edit/delete continua garantido pelas
+            //   invalidateQueries das mutations (a invalidação ignora o staleTime).
+            staleTime: 60 * 1000,
+            gcTime: 10 * 60 * 1000,
             refetchOnMount: true,
-            refetchOnWindowFocus: true,
+            refetchOnWindowFocus: false,
             refetchOnReconnect: true,
             retry: 1,
             retryDelay: 1000,
