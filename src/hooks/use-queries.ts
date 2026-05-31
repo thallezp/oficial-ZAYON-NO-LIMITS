@@ -1,7 +1,10 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import * as qa from "@/server/actions/queries-actions";
+// Leituras agora vão por fetch paralelo (/api/query) em vez de Server Actions
+// serializadas. Mesmas assinaturas das actions — só o import muda. Ver
+// src/lib/queries-fetch.ts e src/app/api/query/route.ts.
+import * as qa from "@/lib/queries-fetch";
 import { callMutate } from "@/lib/mutate-client";
 
 // Query Hooks --------------------------------------------------------------

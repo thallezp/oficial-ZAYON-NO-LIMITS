@@ -296,61 +296,66 @@ export default function DashboardPage() {
     : 0;
 
   // 5. Chart series: revenueSeries (last 30 days cumulative revenue)
-  const days30 = Array.from({ length: 30 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (29 - i));
-    return {
-      dateStr: d.toISOString().split("T")[0],
-      label: d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" }),
-      value: 0,
-    };
-  });
-
-  finance.forEach((t: any) => {
-    if (t.type === "revenue" && t.status === "paid" && t.occurredAt) {
-      const match = days30.find((d) => d.dateStr === t.occurredAt);
-      if (match) {
-        match.value += Number(t.amount);
+  // Memoizado: as queries do dashboard resolvem em paralelo e cada uma dispara
+  // um re-render. Sem memo, os arrays de gráfico ganhavam nova identidade a
+  // cada render e o ECharts re-inicializava (flicker/jank). Recalcula só quando
+  // os dados-fonte mudam.
+  const revenueSeries = React.useMemo(() => {
+    const days = Array.from({ length: 30 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (29 - i));
+      return {
+        dateStr: d.toISOString().split("T")[0],
+        label: d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" }),
+        value: 0,
+      };
+    });
+    finance.forEach((t: any) => {
+      if (t.type === "revenue" && t.status === "paid" && t.occurredAt) {
+        const match = days.find((d) => d.dateStr === t.occurredAt);
+        if (match) match.value += Number(t.amount);
       }
-    }
-  });
-
-  let cumulative = 0;
-  const revenueSeries = days30.map((d) => {
-    cumulative += d.value;
-    return {
-      label: d.label,
-      value: cumulative,
-    };
-  });
+    });
+    let cumulative = 0;
+    return days.map((d) => {
+      cumulative += d.value;
+      return { label: d.label, value: cumulative };
+    });
+  }, [finance]);
 
   // 6. Chart series: followersSeries
-  const followersSeries = Array.from({ length: 30 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (29 - i));
-    const totalFollowers = personas.reduce((sum: number, p: any) => sum + (p.metrics?.followers ?? 0), 0);
-    const val = Math.round(totalFollowers * (1 - (29 - i) * 0.002));
-    return {
-      label: d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" }),
-      value: val,
-    };
-  });
+  const followersSeries = React.useMemo(() => {
+    const totalFollowers = personas.reduce(
+      (sum: number, p: any) => sum + (p.metrics?.followers ?? 0),
+      0,
+    );
+    return Array.from({ length: 30 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (29 - i));
+      return {
+        label: d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" }),
+        value: Math.round(totalFollowers * (1 - (29 - i) * 0.002)),
+      };
+    });
+  }, [personas]);
 
   // 7. Chart series: channelDistribution
-  const channelCounts = new Map<string, number>();
-  content.forEach((c: any) => {
-    if (c.channel) {
-      channelCounts.set(c.channel, (channelCounts.get(c.channel) ?? 0) + 1);
+  const channelDistribution = React.useMemo(() => {
+    const channelCounts = new Map<string, number>();
+    content.forEach((c: any) => {
+      if (c.channel) {
+        channelCounts.set(c.channel, (channelCounts.get(c.channel) ?? 0) + 1);
+      }
+    });
+    if (channelCounts.size === 0) {
+      channelCounts.set("instagram", 0);
+      channelCounts.set("tiktok", 0);
     }
-  });
-  if (channelCounts.size === 0) {
-    channelCounts.set("instagram", 0);
-    channelCounts.set("tiktok", 0);
-  }
-  const channelDistribution = Array.from(channelCounts.entries()).map(([name, value]) => ({
-    name,
-    value,
-  }));
+    return Array.from(channelCounts.entries()).map(([name, value]) => ({
+      name,
+      value,
+    }));
+  }, [content]);
 
   // 8. Today events (próximas 24h)
   const startOfToday = new Date();
