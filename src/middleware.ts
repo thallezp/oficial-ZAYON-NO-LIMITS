@@ -97,7 +97,12 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && isPublic) {
+  // Usuário logado em rota pública → manda pro dashboard. EXCEÇÃO: /invite,
+  // onde um usuário já logado precisa poder aceitar um convite (entrar em outro
+  // workspace) sem ser expulso pra /dashboard.
+  const redirectAuthedAway =
+    pathname.startsWith("/login") || pathname.startsWith("/forgot-password");
+  if (user && redirectAuthedAway) {
     const url = req.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);

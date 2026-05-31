@@ -5,6 +5,7 @@ import {
   Activity,
   CalendarPlus,
   CircleDollarSign,
+  Copy,
   FileText,
   Folder,
   FolderPlus,
@@ -1494,24 +1495,91 @@ function InviteForm({ workspaceId, submitLabel, onSuccess }: EntityFormProps) {
   const [role, setRole] = React.useState<"owner" | "admin" | "editor" | "viewer" | "financeiro">("editor");
   const [message, setMessage] = React.useState("");
 
+  const [createdLink, setCreatedLink] = React.useState<string | null>(null);
+  const [invitedEmail, setInvitedEmail] = React.useState("");
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !workspaceId) return;
     try {
-      await invite.mutateAsync({
+      const res = await invite.mutateAsync({
         workspaceId,
         email: email.trim(),
         role,
         message: message.trim() || undefined,
       });
-      toast.success(`Convite enviado para ${email}`, {
-        description: `Papel: ${role}`,
-      });
-      onSuccess();
+      const token = (res as any)?.data?.token as string | undefined;
+      if (token && typeof window !== "undefined") {
+        setInvitedEmail(email.trim());
+        setCreatedLink(`${window.location.origin}/invite?token=${token}`);
+        toast.success(`Convite criado para ${email}`, {
+          description: "Copie o link abaixo e envie para a pessoa.",
+        });
+      } else {
+        toast.success(`Convite enviado para ${email}`, {
+          description: `Papel: ${role}`,
+        });
+        onSuccess();
+      }
     } catch (err: any) {
       toast.error(err.message ?? "Erro ao enviar convite");
     }
   };
+
+  const copyLink = async () => {
+    if (!createdLink) return;
+    try {
+      await navigator.clipboard.writeText(createdLink);
+      toast.success("Link copiado!");
+    } catch {
+      toast.error("Não consegui copiar — selecione o link e copie manualmente.");
+    }
+  };
+
+  if (createdLink) {
+    return (
+      <div className="space-y-3">
+        <div className="rounded-lg border border-success/30 bg-success/5 p-3">
+          <p className="text-sm font-medium text-success">
+            Convite criado para {invitedEmail}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Não há envio de email automático. Copie o link e mande para a pessoa
+            (WhatsApp, etc). Ela abre o link, faz login (ou cria conta) e entra no
+            workspace compartilhado.
+          </p>
+        </div>
+        <Field label="Link do convite (expira em 7 dias)">
+          <div className="flex gap-2">
+            <Input
+              readOnly
+              value={createdLink}
+              onFocus={(e) => e.currentTarget.select()}
+            />
+            <Button type="button" variant="outline" onClick={copyLink}>
+              <Copy className="h-4 w-4" /> Copiar
+            </Button>
+          </div>
+        </Field>
+        <div className="flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setCreatedLink(null);
+              setEmail("");
+              setMessage("");
+            }}
+          >
+            Convidar outro
+          </Button>
+          <Button type="button" variant="gradient" onClick={onSuccess}>
+            Concluir
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <form className="space-y-3" onSubmit={handleSubmit}>
