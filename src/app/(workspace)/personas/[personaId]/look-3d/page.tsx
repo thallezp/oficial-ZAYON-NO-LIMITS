@@ -39,7 +39,7 @@ import {
 } from "@/hooks/use-queries";
 import { relativeTime } from "@/lib/utils/format";
 import { toast } from "sonner";
-import { UploadButton } from "@/lib/uploadthing";
+import { ImageUpload } from "@/components/ui/image-upload";
 
 const CHANNEL_OPTIONS = [
   { value: "instagram", label: "Instagram" },
@@ -439,24 +439,11 @@ export default function LookPage() {
                     <ImageIcon className="h-5 w-5" />
                   </div>
                 )}
-                <UploadButton
-                  endpoint="avatar"
-                  content={{ button: "Upar foto", allowedContent: "Imagem até 4MB" }}
-                  appearance={{
-                    button:
-                      "rounded-md bg-primary text-primary-foreground text-xs h-9 px-3 ut-uploading:cursor-not-allowed",
-                    allowedContent: "text-[10px] text-muted-foreground",
-                  }}
-                  onClientUploadComplete={(res) => {
-                    const url = res?.[0]?.url;
-                    if (url) {
-                      setAvatarUrl(url);
-                      toast.success("Foto enviada — clique em Salvar Alterações.");
-                    }
-                  }}
-                  onUploadError={(e: Error) => {
-                    toast.error(`Erro no upload: ${e.message}`);
-                  }}
+                <ImageUpload
+                  folder="personas"
+                  label="Upar foto"
+                  maxMB={4}
+                  onUploaded={(url) => setAvatarUrl(url)}
                 />
               </div>
               <Input
@@ -485,24 +472,11 @@ export default function LookPage() {
                     <ImageIcon className="h-5 w-5" />
                   </div>
                 )}
-                <UploadButton
-                  endpoint="materials"
-                  content={{ button: "Upar capa", allowedContent: "Imagem até 16MB" }}
-                  appearance={{
-                    button:
-                      "rounded-md bg-primary text-primary-foreground text-xs h-9 px-3 ut-uploading:cursor-not-allowed",
-                    allowedContent: "text-[10px] text-muted-foreground",
-                  }}
-                  onClientUploadComplete={(res) => {
-                    const url = res?.[0]?.url;
-                    if (url) {
-                      setCoverUrl(url);
-                      toast.success("Capa enviada — clique em Salvar Alterações.");
-                    }
-                  }}
-                  onUploadError={(e: Error) => {
-                    toast.error(`Erro no upload: ${e.message}`);
-                  }}
+                <ImageUpload
+                  folder="personas"
+                  label="Upar capa"
+                  maxMB={16}
+                  onUploaded={(url) => setCoverUrl(url)}
                 />
               </div>
               <Input

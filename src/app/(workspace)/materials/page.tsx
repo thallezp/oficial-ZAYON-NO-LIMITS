@@ -72,7 +72,7 @@ import {
   useTasks,
   useContent,
 } from "@/hooks/use-queries";
-import { UploadDropzone } from "@/lib/uploadthing";
+import { uploadToStorage } from "@/lib/upload";
 import { useNewEntityShortcut } from "@/hooks/use-page-shortcuts";
 import { toast } from "sonner";
 import { DriveEmbed } from "@/components/materials/drive-embed";
@@ -178,6 +178,7 @@ export default function MaterialsPage() {
   const [selectedProjectId, setSelectedProjectId] = React.useState<string>("all");
 
   const [activeFolderId, setActiveFolderId] = React.useState<string>(ALL_FOLDER_ID);
+  const [materialUploading, setMaterialUploading] = React.useState(false);
   const [editingFolder, setEditingFolder] = React.useState<FolderRow | null>(null);
 
   // Estados de modais
@@ -585,33 +586,62 @@ export default function MaterialsPage() {
                 })}
 
                 {/* Dropzone para upload */}
-                <div className="rounded-xl border-2 border-dashed border-border/60 bg-card/20 p-4 transition hover:border-primary/40 flex flex-col items-center justify-center min-h-[160px]">
-                  <UploadDropzone
-                    endpoint="materials"
-                    onClientUploadComplete={(res) => {
-                      res?.forEach((file) => {
-                        const newMaterialInput = {
-                          workspaceId: activeWorkspaceId,
-                          title: file.name,
-                          fileUrl: file.url,
-                          fileType: getFileTypeFromExtension(file.name),
-                          sizeBytes: file.size,
-                          folderId:
-                            activeFolderId === ALL_FOLDER_ID
-                              ? undefined
-                              : activeFolderId,
-                        };
-
-                        createMaterialMutation.mutate(newMaterialInput as any);
-                      });
-                      toast.success("Arquivos enviados com sucesso!");
+                <label
+                  className={cn(
+                    "rounded-xl border-2 border-dashed border-border/60 bg-card/20 p-4 transition hover:border-primary/40 flex flex-col items-center justify-center min-h-[160px] cursor-pointer text-center",
+                    materialUploading && "opacity-60 pointer-events-none",
+                  )}
+                >
+                  <input
+                    type="file"
+                    multiple
+                    className="hidden"
+                    disabled={materialUploading}
+                    onChange={async (e) => {
+                      const files = Array.from(e.target.files ?? []);
+                      e.currentTarget.value = "";
+                      if (files.length === 0) return;
+                      setMaterialUploading(true);
+                      let ok = 0;
+                      for (const file of files) {
+                        if (file.size > 64 * 1024 * 1024) {
+                          toast.error(`${file.name}: muito grande (máx. 64MB)`);
+                          continue;
+                        }
+                        try {
+                          const url = await uploadToStorage(file, "materials");
+                          await createMaterialMutation.mutateAsync({
+                            workspaceId: activeWorkspaceId,
+                            title: file.name,
+                            fileUrl: url,
+                            fileType: getFileTypeFromExtension(file.name),
+                            sizeBytes: file.size,
+                            folderId:
+                              activeFolderId === ALL_FOLDER_ID
+                                ? undefined
+                                : activeFolderId,
+                          } as any);
+                          ok++;
+                        } catch (err: any) {
+                          toast.error(
+                            `Erro em ${file.name}: ${err?.message ?? "upload falhou"}`,
+                          );
+                        }
+                      }
+                      setMaterialUploading(false);
+                      if (ok > 0) toast.success(`${ok} arquivo(s) enviado(s)!`);
                     }}
-                    onUploadError={(error: Error) => {
-                      toast.error(`Erro no upload: ${error.message}`);
-                    }}
-                    className="ut-label:text-xs ut-label:text-muted-foreground ut-allowed-content:text-[10px] ut-button:bg-primary/20 ut-button:text-primary ut-button:hover:bg-primary/30 ut-button:text-xs ut-button:py-1 ut-button:px-3 ut-button:h-auto border-0 p-0 m-0"
                   />
-                </div>
+                  <Upload className="h-6 w-6 text-muted-foreground mb-2" />
+                  <p className="text-xs font-medium">
+                    {materialUploading
+                      ? "Enviando..."
+                      : "Clique para enviar arquivos"}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Imagens, vídeos, PDFs — até 64MB cada
+                  </p>
+                </label>
               </div>
 
               {filteredItems.length === 0 && (

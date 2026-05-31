@@ -16,7 +16,7 @@ import {
 } from "@/hooks/use-queries";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { initials } from "@/lib/utils/format";
-import { UploadButton } from "@/lib/uploadthing";
+import { ImageUpload } from "@/components/ui/image-upload";
 import { toast } from "sonner";
 
 export default function SettingsPage() {
@@ -155,30 +155,15 @@ export default function SettingsPage() {
                 <div className="space-y-1.5">
                   <Label>Foto de perfil</Label>
                   <div className="flex items-center gap-2">
-                    <UploadButton
-                      endpoint="avatar"
-                      content={{
-                        button: "Upar foto",
-                        allowedContent: "Imagem até 4MB",
-                      }}
-                      appearance={{
-                        button:
-                          "rounded-md bg-primary text-primary-foreground text-xs h-9 px-3 ut-uploading:cursor-not-allowed",
-                        allowedContent: "text-[10px] text-muted-foreground",
-                      }}
-                      onClientUploadComplete={(res) => {
-                        const url = res?.[0]?.url;
-                        if (url) {
-                          setAvatarUrl(url);
-                          toast.success(
-                            "Foto carregada — clique em Salvar alterações.",
-                          );
-                        }
-                      }}
-                      onUploadError={(e: Error) => {
-                        toast.error(`Erro no upload: ${e.message}`);
-                      }}
+                    <ImageUpload
+                      folder="avatars"
+                      label="Upar foto"
+                      maxMB={4}
+                      onUploaded={(url) => setAvatarUrl(url)}
                     />
+                    <span className="text-[10px] text-muted-foreground">
+                      Imagem até 4MB
+                    </span>
                     {avatarUrl && (
                       <Button
                         variant="ghost"
