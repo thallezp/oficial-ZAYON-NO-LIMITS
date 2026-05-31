@@ -225,15 +225,22 @@ export async function acceptInviteAsCurrentUserAction(token: string) {
       })
       .onConflictDoNothing();
 
-    await db
-      .insert(workspaceMembers)
-      .values({
+    // Evita membership duplicada (workspace_members não tem unique em
+    // (workspace_id, user_id), então onConflict não bastaria): checa antes.
+    const alreadyMember = await db.query.workspaceMembers.findFirst({
+      where: and(
+        eq(workspaceMembers.workspaceId, invite.workspaceId),
+        eq(workspaceMembers.userId, user.id),
+      ),
+    });
+    if (!alreadyMember) {
+      await db.insert(workspaceMembers).values({
         workspaceId: invite.workspaceId,
         userId: user.id,
         role: invite.role,
         invitedBy: invite.invitedBy,
-      })
-      .onConflictDoNothing();
+      });
+    }
 
     await db
       .update(invitations)
