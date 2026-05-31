@@ -60,11 +60,15 @@ export function relativeTime(date: Date | string, locale: string = "pt-BR") {
   return "";
 }
 
-export function initials(name: string) {
-  return name
-    .split(" ")
+export function initials(name?: string | null) {
+  if (!name) return "?";
+  const result = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
     .map((n) => n[0])
     .slice(0, 2)
     .join("")
     .toUpperCase();
+  return result || "?";
 }
