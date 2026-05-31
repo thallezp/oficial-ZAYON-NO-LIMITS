@@ -44,8 +44,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MOCK_ICP_PAINS, MOCK_LAUNCH_CAMPAIGNS } from "@/data";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import {
   useArchiveLaunchCampaignMutation,
@@ -134,14 +132,10 @@ export default function LaunchPage() {
   const deleteCopyMutation = useDeleteSalesCopyMutation();
 
   const campaigns =
-    isMockModeClient && dbCampaigns.length === 0
-      ? MOCK_LAUNCH_CAMPAIGNS.filter((campaign) => campaign.personaId === persona.id)
-      : dbCampaigns;
+    dbCampaigns;
 
   const pains =
-    isMockModeClient && dbPains.length === 0
-      ? MOCK_ICP_PAINS.filter((pain) => pain.personaId === persona.id)
-      : dbPains;
+    dbPains;
 
   const [selectedCampaignId, setSelectedCampaignId] = React.useState<string | null>(campaigns[0]?.id ?? null);
   const [campaignDialogOpen, setCampaignDialogOpen] = React.useState(false);

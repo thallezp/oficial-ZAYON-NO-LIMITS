@@ -35,14 +35,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Kbd } from "@/components/ui/kbd";
-import { MOCK_PERSONAS } from "@/data";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 import { PersonaSwitcher } from "./persona-switcher";
 import { useUIStore } from "@/stores/ui-store";
 import { usePersonaStore } from "@/stores/persona-store";
 import { useQuickCreate } from "@/stores/quick-create-store";
 import { cn } from "@/lib/utils/cn";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 
 type NavItem = {
   href: string;
@@ -152,11 +150,7 @@ export function SidebarContent() {
   const personas = usePersonaStore((s) => s.personas);
   const activePersonaId = usePersonaStore((s) => s.activePersonaId);
   const openQuickCreate = useQuickCreate((s) => s.openWith);
-  const defaultPersonaId =
-    activePersonaId ??
-    personas[0]?.id ??
-    (isMockModeClient ? MOCK_PERSONAS[0]?.id : "") ??
-    "";
+  const defaultPersonaId = activePersonaId ?? personas[0]?.id ?? "";
   const personaItems = personaNav(defaultPersonaId);
 
   return (

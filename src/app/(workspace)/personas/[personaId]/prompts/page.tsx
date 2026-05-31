@@ -17,8 +17,6 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { PersonaHero } from "@/components/personas/persona-hero";
 import { usePersonaFromRoute } from "@/components/personas/persona-resolver";
-import { MOCK_PROMPT_CHAINS } from "@/data";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import { relativeTime } from "@/lib/utils/format";
 import {
   usePrompts,
@@ -36,9 +34,7 @@ export default function PromptsPage() {
   const deleteMutation = useDeletePromptChainMutation();
 
   const chains =
-    isMockModeClient && dbPrompts.length === 0
-      ? MOCK_PROMPT_CHAINS.filter((c) => c.personaId === persona.id)
-      : dbPrompts;
+    dbPrompts;
 
   const [activeId, setActiveId] = React.useState<string | null>(null);
   const active = chains.find((c: any) => c.id === activeId) || chains[0];

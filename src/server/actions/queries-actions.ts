@@ -1,6 +1,5 @@
 "use server";
 
-import { useMockData } from "@/lib/config";
 import { queries } from "../queries";
 import {
   assertPersonaAccess,
@@ -15,7 +14,6 @@ interface ScopeFilter {
 }
 
 async function assertScope(filter?: ScopeFilter) {
-  if (useMockData) return;
   if (filter?.personaId) {
     await assertPersonaAccess(filter.personaId);
     return;
@@ -157,10 +155,8 @@ export async function getModelingContentExamplesAction(profileId: string) {
 }
 
 export async function getNotificationsAction(userId: string) {
-  if (!useMockData) {
-    const user = await getCurrentUserOrThrow();
-    if (user.id !== userId) throw new Error("Acesso negado as notificacoes");
-  }
+  const user = await getCurrentUserOrThrow();
+  if (user.id !== userId) throw new Error("Acesso negado as notificacoes");
   return queries.notifications.list(userId);
 }
 

@@ -18,9 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MOCK_AI_ACTIONS } from "@/data";
 import { useAiActions } from "@/hooks/use-queries";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import { relativeTime } from "@/lib/utils/format";
 import { useActivePersona } from "@/stores/persona-store";
 import { useUIStore } from "@/stores/ui-store";
@@ -66,7 +64,7 @@ export default function AIAssistantPage() {
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
   const { data: dbActions = [] } = useAiActions(activeWorkspaceId, persona?.id);
   const aiActions: AIAction[] =
-    isMockModeClient && dbActions.length === 0 ? MOCK_AI_ACTIONS : dbActions;
+    dbActions;
 
   return (
     <div className="space-y-6">

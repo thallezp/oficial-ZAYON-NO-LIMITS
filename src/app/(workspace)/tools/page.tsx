@@ -52,9 +52,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MOCK_TOOLS, TOOL_CATEGORIES } from "@/data/tools";
+import { TOOL_CATEGORIES } from "@/lib/constants/tools";
 import { cn } from "@/lib/utils/cn";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import {
@@ -106,7 +105,7 @@ export default function ToolsPage() {
   const { openWith } = useQuickCreate();
   useNewEntityShortcut("tool");
 
-  const allTools = isMockModeClient && dbTools.length === 0 ? MOCK_TOOLS : dbTools;
+  const allTools = dbTools;
 
   // Sync recent tools from localStorage on mount
   React.useEffect(() => {
@@ -159,20 +158,8 @@ export default function ToolsPage() {
     e.preventDefault();
     e.stopPropagation();
     try {
-      if (isMockModeClient && dbTools.length === 0) {
-        const idx = MOCK_TOOLS.findIndex((t) => t.id === toolId);
-        if (idx !== -1) {
-          MOCK_TOOLS[idx] = {
-            ...MOCK_TOOLS[idx],
-            isFavorite: !MOCK_TOOLS[idx].isFavorite,
-          };
-          setSearch((s) => s);
-          toast.success("Favoritos atualizados!");
-        }
-      } else {
-        await toggleFavoriteMutation.mutateAsync(toolId);
-        toast.success("Favoritos atualizados!");
-      }
+      await toggleFavoriteMutation.mutateAsync(toolId);
+      toast.success("Favoritos atualizados!");
     } catch (err: any) {
       toast.error("Erro ao favoritar ferramenta: " + err.message);
     }
@@ -194,26 +181,13 @@ export default function ToolsPage() {
       const data = await res.json();
       const nextStatus = data.ok ? (data.status || 200).toString() : "Offline";
 
-      if (isMockModeClient && dbTools.length === 0) {
-        // Mock updates locally
-        const idx = MOCK_TOOLS.findIndex((t) => t.id === tool.id);
-        if (idx !== -1) {
-          MOCK_TOOLS[idx] = {
-            ...MOCK_TOOLS[idx],
-            urlCheckedAt: new Date().toISOString(),
-            urlStatus: nextStatus,
-          };
-          setSearch((s) => s); // Trigger re-render
-        }
-      } else {
-        await updateToolMutation.mutateAsync({
-          id: tool.id,
-          input: {
-            urlCheckedAt: new Date().toISOString(),
-            urlStatus: nextStatus,
-          },
-        });
-      }
+      await updateToolMutation.mutateAsync({
+        id: tool.id,
+        input: {
+          urlCheckedAt: new Date().toISOString(),
+          urlStatus: nextStatus,
+        },
+      });
 
       if (data.ok) {
         toast.success(`Conexão OK! Status: ${nextStatus}`);
@@ -249,21 +223,11 @@ export default function ToolsPage() {
     toast.loading(`Removendo ${toDeleteIds.length} duplicatas...`);
 
     try {
-      if (isMockModeClient && dbTools.length === 0) {
-        toDeleteIds.forEach((id) => {
-          const idx = MOCK_TOOLS.findIndex((t) => t.id === id);
-          if (idx !== -1) MOCK_TOOLS.splice(idx, 1);
-        });
-        toast.dismiss();
-        toast.success(`${toDeleteIds.length} duplicatas removidas com sucesso.`);
-        setSearch((s) => s); // Force re-render
-      } else {
-        for (const id of toDeleteIds) {
-          await deleteToolMutation.mutateAsync(id);
-        }
-        toast.dismiss();
-        toast.success(`${toDeleteIds.length} duplicatas removidas do banco de dados.`);
+      for (const id of toDeleteIds) {
+        await deleteToolMutation.mutateAsync(id);
       }
+      toast.dismiss();
+      toast.success(`${toDeleteIds.length} duplicatas removidas do banco de dados.`);
     } catch (err: any) {
       toast.dismiss();
       toast.error("Erro ao remover duplicatas: " + err.message);
@@ -495,25 +459,12 @@ export default function ToolsPage() {
           onClose={() => setEditingTool(null)}
           onSave={async (input) => {
             try {
-              if (isMockModeClient && dbTools.length === 0) {
-                // Mock update
-                const idx = MOCK_TOOLS.findIndex((t) => t.id === editingTool.id);
-                if (idx !== -1) {
-                  MOCK_TOOLS[idx] = {
-                    ...MOCK_TOOLS[idx],
-                    ...input,
-                  };
-                  toast.success("Ferramenta atualizada (Mock Mode)");
-                  setEditingTool(null);
-                }
-              } else {
-                await updateToolMutation.mutateAsync({
-                  id: editingTool.id,
-                  input,
-                });
-                toast.success("Ferramenta atualizada");
-                setEditingTool(null);
-              }
+              await updateToolMutation.mutateAsync({
+                id: editingTool.id,
+                input,
+              });
+              toast.success("Ferramenta atualizada");
+              setEditingTool(null);
             } catch (e: any) {
               toast.error(e?.message ?? "Erro ao salvar");
             }
@@ -1158,45 +1109,22 @@ function ToolImportDialog({
     toast.loading(`Importando ${toImport.length} ferramentas...`);
 
     try {
-      if (isMockModeClient && !workspaceId) {
-        // Mock import locally
-        toImport.forEach((t) => {
-          MOCK_TOOLS.unshift({
-            id: "tl_" + Math.random().toString(36).substr(2, 9),
-            workspaceId: "mock-workspace-id",
-            name: t.name,
-            url: t.url,
-            category: t.category || "Outros",
-            description: t.description || "",
-            iconSlug: t.iconSlug || "globe",
-            brandColor: t.brandColor || "#3b82f6",
-            tags: t.tags || [],
-            isFavorite: false,
-            isPinned: false,
-          });
+      for (const t of toImport) {
+        await create.mutateAsync({
+          workspaceId,
+          name: t.name,
+          url: t.url,
+          category: t.category || "Outros",
+          description: t.description || "",
+          iconSlug: t.iconSlug || "globe",
+          brandColor: t.brandColor || "#3b82f6",
+          tags: t.tags || [],
+          embedMode: "new_tab",
         });
-        toast.dismiss();
-        toast.success("Ferramentas importadas localmente!");
-        onSuccess();
-      } else {
-        // Live DB import
-        for (const t of toImport) {
-          await create.mutateAsync({
-            workspaceId,
-            name: t.name,
-            url: t.url,
-            category: t.category || "Outros",
-            description: t.description || "",
-            iconSlug: t.iconSlug || "globe",
-            brandColor: t.brandColor || "#3b82f6",
-            tags: t.tags || [],
-            embedMode: "new_tab",
-          });
-        }
-        toast.dismiss();
-        toast.success("Ferramentas importadas no banco com sucesso!");
-        onSuccess();
       }
+      toast.dismiss();
+      toast.success("Ferramentas importadas no banco com sucesso!");
+      onSuccess();
     } catch (err: any) {
       toast.dismiss();
       toast.error("Erro na importação: " + err.message);

@@ -15,9 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MOCK_ACTIVITY } from "@/data";
 import { initials, relativeTime } from "@/lib/utils/format";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useActivityLogs } from "@/hooks/use-queries";
 import { toast } from "sonner";
@@ -44,7 +42,7 @@ export default function ActivityLogPage() {
   });
 
   const activityLogs =
-    isMockModeClient && dbActivity.length === 0 ? MOCK_ACTIVITY : dbActivity;
+    dbActivity;
 
   const items = activityLogs.filter(
     (a: any) => filter === "all" || a.actorType === filter,

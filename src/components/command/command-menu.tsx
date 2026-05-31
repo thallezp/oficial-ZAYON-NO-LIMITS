@@ -39,7 +39,6 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import { useUIStore } from "@/stores/ui-store";
 import { usePersonaStore } from "@/stores/persona-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
@@ -52,15 +51,6 @@ import {
   useTasks,
   useTools,
 } from "@/hooks/use-queries";
-import {
-  MOCK_TASKS,
-  MOCK_DOCUMENTS,
-  MOCK_TOOLS,
-  MOCK_LEADS,
-  MOCK_CONTENT,
-  MOCK_FLOWS,
-  MOCK_PERSONAS,
-} from "@/data";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils/cn";
 
@@ -226,22 +216,18 @@ export function CommandMenu() {
   const { data: dbContent = [] } = useContent(wsForSearch, activeId);
   const { data: dbFlows = [] } = useFlows(wsForSearch);
 
-  const defaultPersonaId =
-    activeId ??
-    personas[0]?.id ??
-    (isMockModeClient ? MOCK_PERSONAS[0]?.id : "") ??
-    "";
+  const defaultPersonaId = activeId ?? personas[0]?.id ?? "";
 
-  const taskItems = isMockModeClient && dbTasks.length === 0 ? MOCK_TASKS : dbTasks;
+  const taskItems = dbTasks;
   const documentItems =
-    isMockModeClient && dbDocuments.length === 0 ? MOCK_DOCUMENTS : dbDocuments;
-  const toolItems = isMockModeClient && dbTools.length === 0 ? MOCK_TOOLS : dbTools;
-  const leadItems = isMockModeClient && dbLeads.length === 0 ? MOCK_LEADS : dbLeads;
+    dbDocuments;
+  const toolItems = dbTools;
+  const leadItems = dbLeads;
   const contentItems =
-    isMockModeClient && dbContent.length === 0 ? MOCK_CONTENT : dbContent;
-  const flowItems = isMockModeClient && dbFlows.length === 0 ? MOCK_FLOWS : dbFlows;
+    dbContent;
+  const flowItems = dbFlows;
   const personaItems =
-    isMockModeClient && personas.length === 0 ? MOCK_PERSONAS : personas;
+    personas;
 
   // Cmd+K / Ctrl+K para abrir
   React.useEffect(() => {

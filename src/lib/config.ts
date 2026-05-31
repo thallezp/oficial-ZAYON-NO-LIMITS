@@ -1,13 +1,5 @@
 /**
- * Configuração runtime do ZAYON.
- *
- * `useMockData` é true quando:
- *   - `NEXT_PUBLIC_USE_MOCK_DATA=true`, ou
- *   - não há credenciais de Supabase no ambiente.
- *
- * Isso permite que o app suba em qualquer ambiente — local, Vercel preview,
- * Vercel production — mesmo antes do banco estar conectado. Toda query
- * server-side respeita essa flag (ver `src/server/queries`).
+ * Configuração runtime do ZAYON. O app sempre usa dados reais (Supabase/Drizzle).
  */
 
 export const config = {
@@ -44,11 +36,7 @@ export const hasSupabase = Boolean(
 
 export const hasDatabase = Boolean(config.database.url);
 
-export const useMockData =
-  process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true" || !hasSupabase;
-
 export const features = {
-  mockData: useMockData,
   supabase: hasSupabase,
   database: hasDatabase,
   ai: Boolean(config.ai.openaiKey || config.ai.anthropicKey),

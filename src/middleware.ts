@@ -23,12 +23,10 @@ export async function middleware(req: NextRequest) {
   }
 
   const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
-  const useMock =
-    process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true" ||
-    !process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-  // Modo mock: tudo liberado
-  if (useMock) {
+  // Salvaguarda: sem Supabase configurado, não bloqueia (evita lockout em
+  // misconfig). Em produção a URL está sempre definida.
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
     return NextResponse.next();
   }
 

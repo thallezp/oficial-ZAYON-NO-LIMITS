@@ -36,9 +36,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { MOCK_FLOWS, MOCK_PERSONAS } from "@/data";
 import { relativeTime } from "@/lib/utils/format";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import {
   useFlows,
@@ -171,9 +169,9 @@ export default function FlowsPage() {
   const [templateOpen, setTemplateOpen] = React.useState(false);
   const [creatingTemplate, setCreatingTemplate] = React.useState<string | null>(null);
 
-  const flows = isMockModeClient && dbFlows.length === 0 ? MOCK_FLOWS : dbFlows;
+  const flows = dbFlows;
   const personas =
-    isMockModeClient && dbPersonas.length === 0 ? MOCK_PERSONAS : dbPersonas;
+    dbPersonas;
 
   const handleDelete = async () => {
     if (!confirmDelete) return;

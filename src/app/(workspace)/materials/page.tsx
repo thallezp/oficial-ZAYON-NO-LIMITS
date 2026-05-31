@@ -56,9 +56,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { MOCK_MATERIALS } from "@/data";
 import { cn } from "@/lib/utils/cn";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useQuickCreate } from "@/stores/quick-create-store";
 import {
@@ -187,15 +185,7 @@ export default function MaterialsPage() {
   const [editingMaterial, setEditingMaterial] = React.useState<any | null>(null);
   const [attachingMaterial, setAttachingMaterial] = React.useState<any | null>(null);
 
-  // Suporte a mock local para testabilidade reativa em modo mock
-  const [mockMaterials, setMockMaterials] = React.useState<any[]>(MOCK_MATERIALS);
-
-  const items = React.useMemo(() => {
-    if (isMockModeClient && dbMaterials.length === 0) {
-      return mockMaterials;
-    }
-    return dbMaterials;
-  }, [dbMaterials, mockMaterials]);
+  const items = dbMaterials;
 
   // Quando estamos numa pasta especifica filtra por folder_id
   const folderFilteredItems = React.useMemo(() => {
@@ -244,15 +234,6 @@ export default function MaterialsPage() {
 
   // Handlers para Mutations com suporte a mock
   const handleToggleStar = async (m: any) => {
-    if (isMockModeClient && dbMaterials.length === 0) {
-      setMockMaterials((prev) =>
-        prev.map((item) =>
-          item.id === m.id ? { ...item, isStarred: !item.isStarred } : item
-        )
-      );
-      toast.success(m.isStarred ? "Removido dos favoritos" : "Adicionado aos favoritos");
-      return;
-    }
     try {
       await updateMaterialMutation.mutateAsync({
         id: m.id,
@@ -265,11 +246,6 @@ export default function MaterialsPage() {
   };
 
   const handleDeleteMaterial = async (id: string) => {
-    if (isMockModeClient && dbMaterials.length === 0) {
-      setMockMaterials((prev) => prev.filter((item) => item.id !== id));
-      toast.success("Material excluído");
-      return;
-    }
     try {
       await deleteMaterialMutation.mutateAsync(id);
       toast.success("Material excluído");
@@ -279,14 +255,6 @@ export default function MaterialsPage() {
   };
 
   const handleSaveMetadata = async (id: string, input: any) => {
-    if (isMockModeClient && dbMaterials.length === 0) {
-      setMockMaterials((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, ...input } : item))
-      );
-      toast.success("Material atualizado");
-      setEditingMaterial(null);
-      return;
-    }
     try {
       await updateMaterialMutation.mutateAsync({ id, input });
       toast.success("Material atualizado");
@@ -297,14 +265,6 @@ export default function MaterialsPage() {
   };
 
   const handleAttachEntity = async (id: string, input: any) => {
-    if (isMockModeClient && dbMaterials.length === 0) {
-      setMockMaterials((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, ...input } : item))
-      );
-      toast.success("Material anexado com sucesso");
-      setAttachingMaterial(null);
-      return;
-    }
     try {
       await updateMaterialMutation.mutateAsync({ id, input });
       toast.success("Material anexado com sucesso");
@@ -642,19 +602,7 @@ export default function MaterialsPage() {
                               : activeFolderId,
                         };
 
-                        if (isMockModeClient && dbMaterials.length === 0) {
-                          setMockMaterials((prev) => [
-                            {
-                              id: `m_mock_${Date.now()}_${Math.random()}`,
-                              ...newMaterialInput,
-                              tags: [],
-                              createdAt: new Date().toISOString(),
-                            },
-                            ...prev,
-                          ]);
-                        } else {
-                          createMaterialMutation.mutate(newMaterialInput as any);
-                        }
+                        createMaterialMutation.mutate(newMaterialInput as any);
                       });
                       toast.success("Arquivos enviados com sucesso!");
                     }}

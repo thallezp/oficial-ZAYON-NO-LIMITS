@@ -21,11 +21,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { KanbanBoard, type KanbanColumn } from "@/components/tables/kanban-board";
 import { DataTable } from "@/components/tables/data-table";
 import { TaskDetailDrawer } from "@/components/tables/task-detail-drawer";
-import { MOCK_TASKS } from "@/data";
 import type { Task, TaskStatus } from "@/types";
 import { initials, relativeTime } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import { toast } from "sonner";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useQuickCreate } from "@/stores/quick-create-store";
@@ -76,10 +74,6 @@ export default function TasksPage() {
   const [selectedTask, setSelectedTask] = React.useState<Task | null>(null);
 
   React.useEffect(() => {
-    if (isMockModeClient && dbTasks.length === 0) {
-      setTasks(MOCK_TASKS as Task[]);
-      return;
-    }
     setTasks(dbTasks as Task[]);
   }, [dbTasks]);
 

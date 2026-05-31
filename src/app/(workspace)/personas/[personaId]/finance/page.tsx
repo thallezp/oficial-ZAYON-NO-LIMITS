@@ -33,8 +33,6 @@ import { AreaChart } from "@/components/charts/area-chart";
 import { PieChart } from "@/components/charts/pie-chart";
 import { PersonaHero } from "@/components/personas/persona-hero";
 import { usePersonaFromRoute } from "@/components/personas/persona-resolver";
-import { MOCK_FINANCE, MOCK_PAYROLL, MOCK_BILLS } from "@/data";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import { formatCurrency, formatCompact } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import { useWorkspaceStore } from "@/stores/workspace-store";
@@ -146,17 +144,15 @@ export default function FinancePage() {
   // Data Resolve
   // ---------------------------------------------------------------------------
   const tx = React.useMemo(() => {
-    return isMockModeClient && dbFinance.length === 0
-      ? MOCK_FINANCE.filter((f) => !f.personaId || selectedPersonaId === "all" || f.personaId === selectedPersonaId)
-      : dbFinance;
+    return dbFinance;
   }, [dbFinance, selectedPersonaId]);
 
   const bills = React.useMemo(() => {
-    return isMockModeClient && dbBills.length === 0 ? MOCK_BILLS : dbBills;
+    return dbBills;
   }, [dbBills]);
 
   const payroll = React.useMemo(() => {
-    return isMockModeClient && dbPayroll.length === 0 ? MOCK_PAYROLL : dbPayroll;
+    return dbPayroll;
   }, [dbPayroll]);
 
   // Unique categories list for filters

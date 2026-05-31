@@ -23,8 +23,6 @@ import { ContentTimeline } from "@/components/workspace/content-timeline";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PersonaHero } from "@/components/personas/persona-hero";
 import { usePersonaFromRoute } from "@/components/personas/persona-resolver";
-import { MOCK_CONTENT } from "@/data";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import type { ContentItem, ContentStatus } from "@/types";
 import { cn } from "@/lib/utils/cn";
 import { formatCompact, relativeTime } from "@/lib/utils/format";
@@ -67,9 +65,7 @@ export default function ContentStudioPage() {
   });
 
   const allContent =
-    isMockModeClient && dbContent.length === 0
-      ? MOCK_CONTENT.filter((c) => c.personaId === persona.id)
-      : dbContent;
+    dbContent;
 
   const content = React.useMemo(
     () =>

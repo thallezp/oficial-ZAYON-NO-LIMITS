@@ -1,10 +1,6 @@
-import { useMockData } from "@/lib/config";
 import { supabaseServer } from "@/lib/supabase/server";
 
 export async function getCurrentUserOrThrow() {
-  if (useMockData) {
-    return { id: "mock-user-id", email: "mock@zayon.local" };
-  }
 
   const supabase = supabaseServer();
   const {
@@ -16,7 +12,6 @@ export async function getCurrentUserOrThrow() {
 }
 
 export async function getAllowedWorkspaceIds() {
-  if (useMockData) return [];
 
   const user = await getCurrentUserOrThrow();
   const supabase = supabaseServer();
@@ -30,7 +25,6 @@ export async function getAllowedWorkspaceIds() {
 }
 
 export async function assertWorkspaceMember(workspaceId?: string | null) {
-  if (useMockData) return;
   if (!workspaceId) throw new Error("workspaceId e obrigatorio");
 
   const allowed = await getAllowedWorkspaceIds();
@@ -40,7 +34,6 @@ export async function assertWorkspaceMember(workspaceId?: string | null) {
 }
 
 export async function assertPersonaAccess(personaId?: string | null) {
-  if (useMockData) return;
   if (!personaId) throw new Error("personaId e obrigatorio");
 
   const supabase = supabaseServer();
@@ -55,7 +48,6 @@ export async function assertPersonaAccess(personaId?: string | null) {
 }
 
 export async function assertTaskAccess(taskId?: string | null) {
-  if (useMockData) return;
   if (!taskId) throw new Error("taskId e obrigatorio");
 
   const supabase = supabaseServer();
@@ -77,7 +69,6 @@ export function filterAllowedWorkspaces<T extends { workspaceId?: string | null 
   items: T[],
   workspaceIds: string[],
 ) {
-  if (useMockData) return items;
   if (workspaceIds.length === 0) return [];
   return items.filter((item) => item.workspaceId && workspaceIds.includes(item.workspaceId));
 }
@@ -88,7 +79,6 @@ export async function firstAllowedWorkspaceId() {
 }
 
 export async function assertAnyWorkspaceAccess(workspaceIds: string[]) {
-  if (useMockData) return;
   const allowed = await getAllowedWorkspaceIds();
   const allowedSet = new Set(allowed);
   const hasAccess = workspaceIds.some((id) => allowedSet.has(id));
@@ -96,7 +86,7 @@ export async function assertAnyWorkspaceAccess(workspaceIds: string[]) {
 }
 
 export async function assertWorkspaceIdsAccess(workspaceIds: string[]) {
-  if (useMockData || workspaceIds.length === 0) return;
+  if (workspaceIds.length === 0) return;
   const allowed = await getAllowedWorkspaceIds();
   const allowedSet = new Set(allowed);
   const denied = workspaceIds.filter((id) => !allowedSet.has(id));
@@ -104,7 +94,6 @@ export async function assertWorkspaceIdsAccess(workspaceIds: string[]) {
 }
 
 export async function listAllowedWorkspaceRows() {
-  if (useMockData) return [];
   const ids = await getAllowedWorkspaceIds();
   if (ids.length === 0) return [];
 

@@ -41,7 +41,6 @@ import { PersonaHero } from "@/components/personas/persona-hero";
 import { usePersonaFromRoute } from "@/components/personas/persona-resolver";
 import { EntityFormDialog } from "@/components/forms/entity-form-dialog";
 import { LeadDetailDrawer } from "@/components/tables/lead-detail-drawer";
-import { MOCK_LEADS } from "@/data";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useQuickCreate } from "@/stores/quick-create-store";
 import {
@@ -54,7 +53,6 @@ import {
 } from "@/hooks/use-queries";
 import { useRealtimeLeads } from "@/hooks/use-realtime";
 import { useNewEntityShortcut } from "@/hooks/use-page-shortcuts";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import { cn } from "@/lib/utils/cn";
 import { formatCurrency, initials, relativeTime } from "@/lib/utils/format";
 import type { Lead } from "@/types";
@@ -95,9 +93,7 @@ export default function LeadsPage() {
   });
 
   const allLeads =
-    isMockModeClient && dbLeads.length === 0
-      ? MOCK_LEADS.filter((lead) => lead.personaId === persona.id)
-      : dbLeads;
+    dbLeads;
 
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<string>("all");

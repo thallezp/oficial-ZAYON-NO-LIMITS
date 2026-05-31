@@ -27,8 +27,6 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { MOCK_USERS } from "@/data";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import { initials, relativeTime } from "@/lib/utils/format";
 import type { Task } from "@/types";
 import { cn } from "@/lib/utils/cn";
@@ -39,28 +37,6 @@ const priorityColor: Record<string, string> = {
   medium: "bg-primary",
   low: "bg-muted-foreground",
 };
-
-const sampleSubtasks = [
-  { id: "s1", title: "Definir hook do reel", done: true },
-  { id: "s2", title: "Validar com strategist", done: true },
-  { id: "s3", title: "Capturar B-roll", done: false },
-  { id: "s4", title: "Editar e exportar", done: false },
-];
-
-const sampleComments = [
-  {
-    id: "c1",
-    user: MOCK_USERS[1],
-    body: "Aprovado pela Marina. Pode seguir.",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
-  },
-  {
-    id: "c2",
-    user: MOCK_USERS[0],
-    body: "Lembrar de manter o tom cinematográfico nas transições.",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-  },
-];
 
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import {
@@ -98,9 +74,9 @@ export function TaskDetailDrawer({ task, open, onOpenChange }: Props) {
 
   if (!task) return null;
 
-  const comments = isMockModeClient && dbComments.length === 0 ? sampleComments : dbComments;
-  const subtasks = isMockModeClient && dbSubtasks.length === 0 ? sampleSubtasks : dbSubtasks;
-  const attachments = isMockModeClient ? ["mood-aurora.pdf", "broll-001.mp4"] : [];
+  const comments = dbComments;
+  const subtasks = dbSubtasks;
+  const attachments: string[] = [];
 
   const handleAddComment = async () => {
     if (!comment.trim()) return;

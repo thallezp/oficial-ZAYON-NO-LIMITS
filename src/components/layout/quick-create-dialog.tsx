@@ -70,7 +70,7 @@ import {
   useTeam,
   useLaunchCampaigns,
 } from "@/hooks/use-queries";
-import { TOOL_CATEGORIES } from "@/data/tools";
+import { TOOL_CATEGORIES } from "@/lib/constants/tools";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { getAutoPreview } from "@/lib/utils/tool-utils";
 

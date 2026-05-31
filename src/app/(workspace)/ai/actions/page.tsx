@@ -5,9 +5,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { MOCK_AI_ACTIONS, MOCK_PERSONAS } from "@/data";
 import { useAiActions, usePersonas } from "@/hooks/use-queries";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import { relativeTime } from "@/lib/utils/format";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import type { AIAction, Persona } from "@/types";
@@ -18,9 +16,9 @@ export default function AIActionsPage() {
   const { data: dbPersonas = [] } = usePersonas(activeWorkspaceId);
 
   const actions: AIAction[] =
-    isMockModeClient && dbActions.length === 0 ? MOCK_AI_ACTIONS : dbActions;
+    dbActions;
   const personas: Persona[] =
-    isMockModeClient && dbPersonas.length === 0 ? MOCK_PERSONAS : dbPersonas;
+    dbPersonas;
 
   return (
     <div className="space-y-6">

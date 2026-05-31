@@ -21,8 +21,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { PersonaHero } from "@/components/personas/persona-hero";
 import { usePersonaFromRoute } from "@/components/personas/persona-resolver";
-import { MOCK_MODELING } from "@/data";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import { formatCompact, initials } from "@/lib/utils/format";
 import {
   useModeling,
@@ -89,9 +87,7 @@ export default function ModelingPage() {
   const createContent = useCreateContentMutation();
 
   const allProfiles =
-    isMockModeClient && dbModeling.length === 0
-      ? MOCK_MODELING.filter((m) => m.personaId === persona.id)
-      : dbModeling;
+    dbModeling;
 
   const profiles = allProfiles.filter(
     (p: any) =>

@@ -2,10 +2,8 @@
 
 import { useParams } from "next/navigation";
 import { usePersonaStore } from "@/stores/persona-store";
-import { MOCK_PERSONAS } from "@/data";
 import type { Persona } from "@/types";
 import { usePersona } from "@/hooks/use-queries";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 
 export function usePersonaFromRoute(): Persona {
   const params = useParams<{ personaId: string }>();
@@ -22,17 +20,10 @@ export function usePersonaFromRoute(): Persona {
     return (storePersona ?? (dbPersona as Persona))!;
   }
 
-  if (!isMockModeClient) {
-    return {
-      id: params?.personaId ?? "",
-      workspaceId: "",
-      name: "Persona nao encontrada",
-      status: "archived",
-    } as Persona;
-  }
-
-  return (
-    MOCK_PERSONAS.find((p) => p.id === params?.personaId) ??
-    MOCK_PERSONAS[0]
-  );
+  return {
+    id: params?.personaId ?? "",
+    workspaceId: "",
+    name: "Persona não encontrada",
+    status: "archived",
+  } as Persona;
 }

@@ -26,8 +26,6 @@ import { WeeklyGrid, SlotEditorDialog, PILLARS } from "@/components/content/week
 import { BarChart } from "@/components/charts/bar-chart";
 import { AreaChart } from "@/components/charts/area-chart";
 import { PieChart } from "@/components/charts/pie-chart";
-import { MOCK_CONTENT } from "@/data";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import { formatCompact, relativeTime } from "@/lib/utils/format";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useContent, useCreateContentMutation } from "@/hooks/use-queries";
@@ -61,9 +59,7 @@ export default function InstagramPage() {
   const [isGeneratingPauta, setIsGeneratingPauta] = React.useState(false);
 
   const allContent =
-    isMockModeClient && dbContent.length === 0
-      ? MOCK_CONTENT.filter((c) => c.personaId === persona.id)
-      : dbContent;
+    dbContent;
 
   const items = allContent.filter(
     (c: any) => c.channel === "instagram"

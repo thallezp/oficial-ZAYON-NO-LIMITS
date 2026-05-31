@@ -6,8 +6,6 @@ import { Toaster, toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { usePersonaStore } from "@/stores/persona-store";
-import { CURRENT_USER, MOCK_WORKSPACES, MOCK_PERSONAS } from "@/data";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import type { Persona, User, Workspace } from "@/types";
 import { usePersonas } from "@/hooks/use-queries";
 import { usePathname } from "next/navigation";
@@ -41,12 +39,10 @@ const CopilotProvider = React.lazy(async () => {
 function PersonaStoreSync() {
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
   const setPersonas = usePersonaStore((s) => s.setPersonas);
-  const { data: dbPersonas } = usePersonas(
-    isMockModeClient ? null : activeWorkspaceId,
-  );
+  const { data: dbPersonas } = usePersonas(activeWorkspaceId);
 
   React.useEffect(() => {
-    if (!isMockModeClient && dbPersonas) {
+    if (dbPersonas) {
       setPersonas(dbPersonas);
     }
   }, [dbPersonas, setPersonas]);
@@ -87,12 +83,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   React.useEffect(() => {
-    if (isMockModeClient) {
-      bootstrap({ workspaces: MOCK_WORKSPACES, user: CURRENT_USER });
-      setPersonas(MOCK_PERSONAS);
-      return;
-    }
-
     // CRÍTICO: rotas públicas (login, forgot-password, invite) NÃO devem
     // chamar /api/bootstrap. O middleware já permite acesso sem sessão e
     // tentar bootstrap retorna 401 → redirect → loop infinito.
@@ -168,12 +158,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
         if (cancelled) return;
 
-        // ⚠️ Em modo real, NUNCA misturar com MOCK_WORKSPACES — seus IDs
-        // são strings ("ws_nexus") que não batem com nada no banco e
-        // quebram queries downstream.
         bootstrap({
           workspaces: payload.workspaces ?? [],
-          user: payload.user ?? CURRENT_USER,
+          user: payload.user,
         });
         setPersonas(payload.personas ?? []);
       } catch (error) {
@@ -193,9 +180,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     };
   }, [bootstrap, setPersonas, pathname]);
 
-  const enableCopilot =
-    process.env.NEXT_PUBLIC_ENABLE_COPILOT === "true" &&
-    process.env.NEXT_PUBLIC_USE_MOCK_DATA !== "true";
+  const enableCopilot = process.env.NEXT_PUBLIC_ENABLE_COPILOT === "true";
 
   const content = (
     <TooltipProvider delayDuration={200}>{children}</TooltipProvider>

@@ -40,8 +40,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { RichEditor } from "@/components/editor/rich-editor";
-import { MOCK_DOCUMENTS, MOCK_PERSONAS, MOCK_FOLDERS, MOCK_PROJECTS } from "@/data";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import { initials, relativeTime } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import { toast } from "sonner";
@@ -56,36 +54,6 @@ import {
   useUpdateDocumentMetaMutation,
   useToggleDocumentStarMutation,
 } from "@/hooks/use-queries";
-
-const SAMPLE_HTML = `
-<h1>Posicionamento · Aurora Voss</h1>
-<p><em>Documento vivo · atualizado conforme a persona evolui.</em></p>
-<h2>Big idea</h2>
-<p>Construa uma vida exuberante sem pedir permissão. Cada peça da Aurora respira autoridade emocional, não performance.</p>
-<h2>Tom de voz</h2>
-<ul>
-  <li>Afetiva · íntima · cinematográfica</li>
-  <li>Frases curtas. Silêncio entre elas.</li>
-  <li>Nunca usa "polêmica", "fofa", "gente"</li>
-</ul>
-<h2>Pilares de conteúdo</h2>
-<ol>
-  <li>Autoridade silenciosa</li>
-  <li>Ritual estético</li>
-  <li>Narrativa pessoal</li>
-  <li>Oferta sem performance</li>
-</ol>
-<h2>Checklist editorial</h2>
-<ul data-type="taskList">
-  <li data-checked="true"><label><input type="checkbox" checked><span></span></label><div>Definir guideline de captação</div></li>
-  <li data-checked="true"><label><input type="checkbox" checked><span></span></label><div>Validar 3 hooks ancestrais</div></li>
-  <li data-checked="false"><label><input type="checkbox"><span></span></label><div>Mapear gatilhos por canal</div></li>
-  <li data-checked="false"><label><input type="checkbox"><span></span></label><div>Calibrar IA contextual</div></li>
-</ul>
-<blockquote>O silêncio é parte da entrega. Não preencha tudo só porque pode.</blockquote>
-<h3>Referências cinematográficas</h3>
-<p>Filmes 35mm · tons quentes · enquadramentos generosos · ritmo lento.</p>
-`;
 
 const EMOJIS = ["📄", "📕", "🚀", "🎭", "🧭", "🔥", "📝", "💡", "🧠", "💼", "🎨", "📈", "📅", "💻"];
 
@@ -103,18 +71,14 @@ function CollaborativeDocumentContent({ docId }: { docId: string }) {
   const updateMeta = useUpdateDocumentMetaMutation();
   const toggleStar = useToggleDocumentStarMutation();
 
-  const doc =
-    dbDoc ||
-    (isMockModeClient
-      ? MOCK_DOCUMENTS.find((d) => d.id === docId) || MOCK_DOCUMENTS[0]
-      : null);
-  
+  const doc = dbDoc || null;
+
   const personas =
-    isMockModeClient && dbPersonas.length === 0 ? MOCK_PERSONAS : dbPersonas;
+    dbPersonas;
   const folders =
-    isMockModeClient && dbFolders.length === 0 ? MOCK_FOLDERS : dbFolders;
+    dbFolders;
   const projects =
-    isMockModeClient && dbProjects.length === 0 ? MOCK_PROJECTS : dbProjects;
+    dbProjects;
 
   // Title Editing state
   const [isEditingTitle, setIsEditingTitle] = React.useState(false);
@@ -584,13 +548,7 @@ function CollaborativeDocumentContent({ docId }: { docId: string }) {
           );
         })}
         <RichEditor
-          initialContent={
-            typeof doc.content === "string"
-              ? doc.content
-              : isMockModeClient
-                ? SAMPLE_HTML
-                : ""
-          }
+          initialContent={typeof doc.content === "string" ? doc.content : ""}
           onChange={onChange}
         />
       </div>

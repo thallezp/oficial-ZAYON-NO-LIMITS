@@ -7,9 +7,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MOCK_PERSONAS } from "@/data";
 import { initials, formatCompact, formatCurrency } from "@/lib/utils/format";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { usePersonas } from "@/hooks/use-queries";
 import { useQuickCreate } from "@/stores/quick-create-store";
@@ -29,7 +27,7 @@ export default function PersonasIndexPage() {
   useNewEntityShortcut("persona");
 
   const personas =
-    isMockModeClient && dbPersonas.length === 0 ? MOCK_PERSONAS : dbPersonas;
+    dbPersonas;
 
   return (
     <div className="space-y-6">

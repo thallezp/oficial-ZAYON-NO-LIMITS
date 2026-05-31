@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { financialTransactions, activityLogs } from "@/drizzle/schema";
-import { useMockData } from "@/lib/config";
 
 export async function POST(req: Request) {
   try {
@@ -31,13 +30,6 @@ export async function POST(req: Request) {
       );
     }
 
-    if (useMockData) {
-      return NextResponse.json({
-        ok: true,
-        message: "Faturamento registrado com sucesso (modo mock)",
-        transaction: body,
-      });
-    }
 
     // Insere transação financeira
     const [newTx] = await db

@@ -12,9 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useTeam } from "@/hooks/use-queries";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import { useWorkspaceStore } from "@/stores/workspace-store";
-import { MOCK_USERS } from "@/data";
 import { initials } from "@/lib/utils/format";
 import { toast } from "sonner";
 import type { User } from "@/types";
@@ -34,7 +32,7 @@ export default function WorkspaceSettingsPage() {
   );
   const { data: dbTeam = [] } = useTeam(activeWorkspaceId);
   const team: User[] =
-    isMockModeClient && dbTeam.length === 0 ? MOCK_USERS : dbTeam;
+    dbTeam;
 
   return (
     <div className="space-y-6">

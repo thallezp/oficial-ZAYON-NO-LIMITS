@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
-import { useMockData } from "@/lib/config";
 import { db } from "@/lib/db";
 import { eq, and, inArray } from "drizzle-orm";
 import * as s from "@/drizzle/schema";
-import { MOCK_LEADS, MOCK_FINANCE, MOCK_CONTENT, MOCK_PERSONAS, MOCK_ACTIVITY } from "@/data";
 
 export const dynamic = "force-dynamic";
 
@@ -44,11 +42,7 @@ export async function GET(
     ];
 
     let items: any[] = [];
-    if (useMockData) {
-      items = personaId
-        ? MOCK_LEADS.filter((l) => l.personaId === personaId)
-        : MOCK_LEADS;
-    } else {
+    {
       const conditions = [];
       if (workspaceId) conditions.push(eq(s.leads.workspaceId, workspaceId));
       if (personaId) conditions.push(eq(s.leads.personaId, personaId));
@@ -100,11 +94,7 @@ export async function GET(
     ];
 
     let items: any[] = [];
-    if (useMockData) {
-      items = personaId
-        ? MOCK_FINANCE.filter((f) => f.personaId === personaId)
-        : MOCK_FINANCE;
-    } else {
+    {
       const conditions = [];
       if (workspaceId)
         conditions.push(eq(s.financialTransactions.workspaceId, workspaceId));
@@ -140,11 +130,7 @@ export async function GET(
     ];
 
     let items: any[] = [];
-    if (useMockData) {
-      items = personaId
-        ? MOCK_CONTENT.filter((c) => c.personaId === personaId)
-        : MOCK_CONTENT;
-    } else {
+    {
       const conditions = [];
       if (workspaceId)
         conditions.push(eq(s.contentItems.workspaceId, workspaceId));
@@ -181,20 +167,7 @@ export async function GET(
     ];
 
     let items: any[] = [];
-    if (useMockData) {
-      items = MOCK_PERSONAS.map((p) => ({
-        id: `met_${p.id}`,
-        personaId: p.id,
-        capturedAt: new Date().toISOString(),
-        revenue: p.metrics?.revenue || 0,
-        followers: p.metrics?.followers || 0,
-        views: p.metrics?.views || 0,
-        engagement: p.metrics?.engagement || 0,
-        leads: p.metrics?.leads || 0,
-        posts: p.metrics?.posts || 0,
-      }));
-      if (personaId) items = items.filter((i) => i.personaId === personaId);
-    } else {
+    {
       const conditions = [];
       if (workspaceId)
         conditions.push(eq(s.personaMetricsSnapshots.workspaceId, workspaceId));
@@ -228,9 +201,7 @@ export async function GET(
     ];
 
     let items: any[] = [];
-    if (useMockData) {
-      items = MOCK_ACTIVITY;
-    } else {
+    {
       const conditions = [];
       if (workspaceId) conditions.push(eq(s.activityLogs.workspaceId, workspaceId));
       items = await db

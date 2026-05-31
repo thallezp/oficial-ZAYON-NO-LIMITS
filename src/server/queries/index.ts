@@ -1,36 +1,7 @@
 /**
- * Camada de queries — server-side data access.
- *
- * Comportamento:
- *   - `useMockData = true` (default sem Supabase) → devolve mocks de `@/data`
- *   - `useMockData = false` → usa Drizzle/Supabase real
+ * Camada de queries — server-side data access (Drizzle/Supabase, dados reais).
  */
 
-import {
-  MOCK_TASKS,
-  MOCK_CONTENT,
-  MOCK_LEADS,
-  MOCK_FINANCE,
-  MOCK_PERSONAS,
-  MOCK_DOCUMENTS,
-  MOCK_MATERIALS,
-  MOCK_TOOLS,
-  MOCK_FLOWS,
-  MOCK_ICP_PAINS,
-  MOCK_PROMPT_CHAINS,
-  MOCK_MODELING,
-  MOCK_PROJECTS,
-  MOCK_FOLDERS,
-  MOCK_USERS,
-  MOCK_PAYROLL,
-  MOCK_BILLS,
-  MOCK_NOTIFICATIONS,
-  MOCK_ACTIVITY,
-  MOCK_AI_ACTIONS,
-  MOCK_FUNNEL_AURORA,
-  MOCK_LAUNCH_CAMPAIGNS,
-} from "@/data";
-import { useMockData } from "@/lib/config";
 import { db } from "@/lib/db";
 import { supabaseServer } from "@/lib/supabase/server";
 import { eq, and, sql, inArray, desc, isNull } from "drizzle-orm";
@@ -39,14 +10,6 @@ import * as s from "@/drizzle/schema";
 interface ScopeFilter {
   workspaceId?: string;
   personaId?: string;
-}
-
-function matchScope<T extends ScopeFilter>(items: T[], filter?: ScopeFilter) {
-  return items.filter(
-    (i) =>
-      (!filter?.workspaceId || i.workspaceId === filter.workspaceId) &&
-      (!filter?.personaId || i.personaId === filter.personaId),
-  );
 }
 
 function mapProject(row: any, taskCount?: { total: number; done: number }) {
@@ -162,7 +125,6 @@ async function getPersonaMetrics(id: string) {
 export const queries = {
   tasks: {
     list: async (filter?: ScopeFilter) => {
-      if (useMockData) return matchScope(MOCK_TASKS, filter);
       const conditions = [];
       if (filter?.workspaceId) conditions.push(eq(s.tasks.workspaceId, filter.workspaceId));
       if (filter?.personaId) conditions.push(eq(s.tasks.personaId, filter.personaId));
@@ -171,7 +133,6 @@ export const queries = {
   },
   projects: {
     list: async (filter?: ScopeFilter) => {
-      if (useMockData) return matchScope(MOCK_PROJECTS, filter);
       const supabase = supabaseServer();
       let query = supabase
         .from("projects")
@@ -206,7 +167,6 @@ export const queries = {
   },
   content: {
     list: async (filter?: ScopeFilter) => {
-      if (useMockData) return matchScope(MOCK_CONTENT, filter);
       const conditions = [];
       if (filter?.workspaceId) conditions.push(eq(s.contentItems.workspaceId, filter.workspaceId));
       if (filter?.personaId) conditions.push(eq(s.contentItems.personaId, filter.personaId));
@@ -249,7 +209,6 @@ export const queries = {
   },
   leads: {
     list: async (filter?: ScopeFilter) => {
-      if (useMockData) return matchScope(MOCK_LEADS, filter);
       const conditions = [];
       if (filter?.workspaceId) conditions.push(eq(s.leads.workspaceId, filter.workspaceId));
       if (filter?.personaId) conditions.push(eq(s.leads.personaId, filter.personaId));
@@ -395,18 +354,15 @@ export const queries = {
   },
   finance: {
     list: async (filter?: ScopeFilter) => {
-      if (useMockData) return matchScope(MOCK_FINANCE, filter);
       const conditions = [];
       if (filter?.workspaceId) conditions.push(eq(s.financialTransactions.workspaceId, filter.workspaceId));
       if (filter?.personaId) conditions.push(eq(s.financialTransactions.personaId, filter.personaId));
       return db.select().from(s.financialTransactions).where(conditions.length > 0 ? and(...conditions) : undefined);
     },
     payrollList: async (workspaceId: string) => {
-      if (useMockData) return MOCK_PAYROLL;
       return db.select().from(s.payrollMembers).where(eq(s.payrollMembers.workspaceId, workspaceId));
     },
     billsList: async (filter?: ScopeFilter) => {
-      if (useMockData) return matchScope(MOCK_BILLS, filter);
       const conditions = [];
       if (filter?.workspaceId) conditions.push(eq(s.bills.workspaceId, filter.workspaceId));
       if (filter?.personaId) conditions.push(eq(s.bills.personaId, filter.personaId));
@@ -415,10 +371,6 @@ export const queries = {
   },
   personas: {
     list: async (workspaceId?: string) => {
-      if (useMockData)
-        return MOCK_PERSONAS.filter(
-          (p) => !workspaceId || p.workspaceId === workspaceId,
-        );
       let rows;
       if (!workspaceId) {
         rows = await db.select().from(s.personas);
@@ -436,7 +388,6 @@ export const queries = {
       );
     },
     byId: async (id: string) => {
-      if (useMockData) return MOCK_PERSONAS.find((p) => p.id === id);
       const rows = await db.select().from(s.personas).where(eq(s.personas.id, id));
       if (!rows[0]) return null;
       const details = await getPersonaMetrics(id);
@@ -448,21 +399,18 @@ export const queries = {
   },
   documents: {
     list: async (filter?: ScopeFilter) => {
-      if (useMockData) return matchScope(MOCK_DOCUMENTS, filter);
       const conditions = [];
       if (filter?.workspaceId) conditions.push(eq(s.documents.workspaceId, filter.workspaceId));
       if (filter?.personaId) conditions.push(eq(s.documents.personaId, filter.personaId));
       return db.select().from(s.documents).where(conditions.length > 0 ? and(...conditions) : undefined);
     },
     byId: async (id: string) => {
-      if (useMockData) return MOCK_DOCUMENTS.find((d) => d.id === id) || null;
       const rows = await db.select().from(s.documents).where(eq(s.documents.id, id));
       return rows[0] || null;
     },
   },
   materials: {
     list: async (filter?: ScopeFilter) => {
-      if (useMockData) return matchScope(MOCK_MATERIALS, filter);
       const conditions = [];
       if (filter?.workspaceId) conditions.push(eq(s.materials.workspaceId, filter.workspaceId));
       if (filter?.personaId) conditions.push(eq(s.materials.personaId, filter.personaId));
@@ -471,7 +419,6 @@ export const queries = {
   },
   folders: {
     list: async (filter?: ScopeFilter) => {
-      if (useMockData) return matchScope(MOCK_FOLDERS, filter);
       const conditions = [];
       if (filter?.workspaceId) conditions.push(eq(s.folders.workspaceId, filter.workspaceId));
       if (filter?.personaId) conditions.push(eq(s.folders.personaId, filter.personaId));
@@ -480,7 +427,6 @@ export const queries = {
   },
   contentHooks: {
     list: async (filter?: ScopeFilter) => {
-      if (useMockData) return [] as any[];
       const conditions = [];
       if (filter?.workspaceId) conditions.push(eq(s.contentHooks.workspaceId, filter.workspaceId));
       if (filter?.personaId) conditions.push(eq(s.contentHooks.personaId, filter.personaId));
@@ -492,7 +438,6 @@ export const queries = {
   },
   followerSnapshots: {
     list: async (personaId: string) => {
-      if (useMockData) return [] as any[];
       return db
         .select()
         .from(s.personaFollowerSnapshots)
@@ -502,10 +447,6 @@ export const queries = {
   },
   tools: {
     list: async (workspaceId?: string) => {
-      if (useMockData)
-        return MOCK_TOOLS.filter(
-          (t) => !workspaceId || t.workspaceId === workspaceId,
-        );
       
       const selectFields = {
         tool: s.tools,
@@ -557,15 +498,10 @@ export const queries = {
   },
   flows: {
     list: async (workspaceId?: string) => {
-      if (useMockData)
-        return MOCK_FLOWS.filter(
-          (f) => !workspaceId || f.workspaceId === workspaceId,
-        );
       if (!workspaceId) return db.select().from(s.flows);
       return db.select().from(s.flows).where(eq(s.flows.workspaceId, workspaceId));
     },
     byId: async (id: string) => {
-      if (useMockData) return MOCK_FLOWS.find((f) => f.id === id) || null;
       const rows = await db.select().from(s.flows).where(eq(s.flows.id, id));
       if (!rows[0]) return null;
       const nodes = await db.select().from(s.flowNodes).where(eq(s.flowNodes.flowId, id));
@@ -592,7 +528,6 @@ export const queries = {
   },
   funnels: {
     byPersonaId: async (personaId: string) => {
-      if (useMockData) return MOCK_FUNNEL_AURORA;
       const rows = await db.select().from(s.salesFunnels).where(eq(s.salesFunnels.personaId, personaId));
       if (!rows[0]) return null;
       const id = rows[0].id;
@@ -622,25 +557,21 @@ export const queries = {
   },
   icpPains: {
     list: async (personaId: string) => {
-      if (useMockData) return MOCK_ICP_PAINS.filter((p) => p.personaId === personaId);
       return db.select().from(s.icpPains).where(eq(s.icpPains.personaId, personaId));
     },
   },
   prompts: {
     list: async (personaId: string) => {
-      if (useMockData) return MOCK_PROMPT_CHAINS.filter((p) => p.personaId === personaId);
       return db.select().from(s.promptChains).where(eq(s.promptChains.personaId, personaId));
     },
   },
   modeling: {
     list: async (personaId: string) => {
-      if (useMockData) return MOCK_MODELING.filter((m) => m.personaId === personaId);
       return db.select().from(s.modelingProfiles).where(eq(s.modelingProfiles.personaId, personaId));
     },
   },
   modelingExamples: {
     list: async (profileId: string) => {
-      if (useMockData) return [];
       return db
         .select()
         .from(s.modelingContentExamples)
@@ -650,7 +581,6 @@ export const queries = {
   },
   team: {
     list: async (workspaceId?: string) => {
-      if (useMockData) return MOCK_USERS;
       if (!workspaceId) return db.select().from(s.users);
       const rows = await db
         .select({
@@ -670,7 +600,6 @@ export const queries = {
   },
   invitations: {
     list: async (workspaceId?: string) => {
-      if (useMockData) return [];
       if (!workspaceId) return [];
       const rows = await db
         .select({
@@ -704,7 +633,6 @@ export const queries = {
   },
   notifications: {
     list: async (userId: string) => {
-      if (useMockData) return MOCK_NOTIFICATIONS;
       return db
         .select()
         .from(s.notifications)
@@ -719,7 +647,6 @@ export const queries = {
   },
   activity: {
     list: async (workspaceId: string) => {
-      if (useMockData) return MOCK_ACTIVITY;
       const rows = await db
         .select({
           id: s.activityLogs.id,
@@ -749,7 +676,6 @@ export const queries = {
   },
   aiActions: {
     list: async (workspaceId: string, personaId?: string) => {
-      if (useMockData) return MOCK_AI_ACTIONS;
       const conditions = [eq(s.aiActions.workspaceId, workspaceId)];
       if (personaId) conditions.push(eq(s.aiActions.personaId, personaId));
       return db
@@ -761,7 +687,6 @@ export const queries = {
   },
   calendar: {
     list: async (filter?: ScopeFilter) => {
-      if (useMockData) return [];
       const conditions = [];
       if (filter?.workspaceId) conditions.push(eq(s.calendarEvents.workspaceId, filter.workspaceId));
       if (filter?.personaId) conditions.push(eq(s.calendarEvents.personaId, filter.personaId));
@@ -774,7 +699,6 @@ export const queries = {
   },
   launch: {
     campaigns: async (filter?: ScopeFilter) => {
-      if (useMockData) return matchScope(MOCK_LAUNCH_CAMPAIGNS, filter);
 
       const conditions = [];
       if (filter?.workspaceId) conditions.push(eq(s.launchCampaigns.workspaceId, filter.workspaceId));
@@ -811,7 +735,6 @@ export const queries = {
   },
   taskExtensions: {
     comments: async (taskId: string) => {
-      if (useMockData) return [];
       const rows = await db
         .select({
           id: s.taskComments.id,
@@ -831,7 +754,6 @@ export const queries = {
       return rows;
     },
     subtasks: async (taskId: string) => {
-      if (useMockData) return [];
       return db
         .select()
         .from(s.tasks)

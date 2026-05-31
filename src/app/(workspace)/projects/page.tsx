@@ -8,9 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
-import { MOCK_PROJECTS, MOCK_PERSONAS } from "@/data";
 import { initials } from "@/lib/utils/format";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useQuickCreate } from "@/stores/quick-create-store";
 import { useProjects, usePersonas } from "@/hooks/use-queries";
@@ -25,9 +23,9 @@ export default function ProjectsPage() {
   const { data: dbProjects = [] } = useProjects(activeWorkspaceId);
   const { data: dbPersonas = [] } = usePersonas(activeWorkspaceId);
 
-  const projects = isMockModeClient && dbProjects.length === 0 ? MOCK_PROJECTS : dbProjects;
+  const projects = dbProjects;
   const personas =
-    isMockModeClient && dbPersonas.length === 0 ? MOCK_PERSONAS : dbPersonas;
+    dbPersonas;
 
   const handleCreateProject = () => {
     openWith("project");

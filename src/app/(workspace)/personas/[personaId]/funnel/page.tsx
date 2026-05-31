@@ -11,8 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PersonaHero } from "@/components/personas/persona-hero";
 import { usePersonaFromRoute } from "@/components/personas/persona-resolver";
-import { MOCK_FUNNEL_AURORA } from "@/data";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import { formatPercent, formatCompact, formatCurrency } from "@/lib/utils/format";
 import {
   useFunnel,
@@ -57,7 +55,7 @@ export default function FunnelPage() {
     keyof typeof TEMPLATES | "empty"
   >("organic");
 
-  const funnel = dbFunnel || (isMockModeClient ? MOCK_FUNNEL_AURORA : null);
+  const funnel = dbFunnel || null;
 
   const handleSave = async (nodes: any[], edges: any[]) => {
     if (!funnel?.id) {

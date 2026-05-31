@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
-import { useMockData } from "@/lib/config";
 import { parseMutationPayload } from "@/lib/validations/mutations";
 
 async function resolveLeadSourceId(
@@ -75,10 +74,6 @@ export async function POST(req: Request) {
     const action = body.action as string;
     let payload = body.payload;
 
-    // Modo mock: retorna sucesso sem tocar no banco
-    if (useMockData) {
-      return NextResponse.json({ ok: true, data: payload, mock: true });
-    }
 
     const supabase = supabaseServer();
     const {

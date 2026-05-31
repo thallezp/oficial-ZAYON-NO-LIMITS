@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { leads, leadAnswers, activityLogs } from "@/drizzle/schema";
 import { leadSchema } from "@/lib/validations";
-import { useMockData } from "@/lib/config";
 
 export async function POST(req: Request) {
   try {
@@ -54,13 +53,6 @@ export async function POST(req: Request) {
       );
     }
 
-    if (useMockData) {
-      return NextResponse.json({
-        ok: true,
-        message: "Lead recebido com sucesso (modo mock)",
-        lead: validated.data,
-      });
-    }
 
     // Salva no banco de dados real
     const [newLead] = await db

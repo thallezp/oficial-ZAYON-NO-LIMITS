@@ -9,8 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MOCK_FLOWS } from "@/data";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import type { Edge, Node } from "reactflow";
 import {
   useFlow,
@@ -59,11 +57,7 @@ export default function FlowDetailPage() {
     );
   }
 
-  const flow =
-    dbFlow ||
-    (isMockModeClient
-      ? MOCK_FLOWS.find((f) => f.id === flowId) || MOCK_FLOWS[0]
-      : null);
+  const flow = dbFlow || null;
 
   if (!flow) {
     return (

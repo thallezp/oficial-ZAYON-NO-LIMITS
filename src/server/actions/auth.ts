@@ -41,13 +41,6 @@ export async function acceptInviteAction(formData: FormData) {
     return { error: "Todos os campos são obrigatórios" };
   }
 
-  const useMock =
-    process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true" ||
-    !process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (useMock) {
-    return { success: true, message: "Convite aceito (modo demonstração)" };
-  }
-
   try {
     const { db } = await import("@/lib/db");
     const { invitations, workspaceMembers, users } = await import(
@@ -137,12 +130,6 @@ export async function createInviteAction(formData: FormData) {
     return { error: "Email e Workspace são obrigatórios" };
   }
 
-  const useMock =
-    process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true" ||
-    !process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (useMock) {
-    return { success: true, token: "mock-token-xyz" };
-  }
 
   try {
     const { db } = await import("@/lib/db");

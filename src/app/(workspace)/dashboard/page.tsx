@@ -53,20 +53,6 @@ import {
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useQuickCreate } from "@/stores/quick-create-store";
 import { cn } from "@/lib/utils/cn";
-import {
-  MOCK_PERSONAS,
-  MOCK_TASKS,
-  MOCK_PROJECTS,
-  MOCK_TOOLS,
-  MOCK_AI_ACTIONS,
-  MOCK_NOTIFICATIONS,
-  MOCK_ACTIVITY,
-  MOCK_DOCUMENTS,
-  MOCK_LEADS,
-  MOCK_CONTENT,
-  MOCK_BILLS,
-} from "@/data";
-import { isMockModeClient } from "@/lib/mock-mode-client";
 import { initials, relativeTime, formatCurrency, formatCompact } from "@/lib/utils/format";
 import {
   DndContext,
@@ -173,7 +159,7 @@ export default function DashboardPage() {
 
   const { data: dbPersonas = [] } = usePersonas(activeWorkspaceId);
   const personas =
-    isMockModeClient && dbPersonas.length === 0 ? MOCK_PERSONAS : dbPersonas;
+    dbPersonas;
   const defaultPersonaId = personas[0]?.id ?? "";
 
   const { data: tasks = [] } = useTasks(activeWorkspaceId);
@@ -188,22 +174,20 @@ export default function DashboardPage() {
   const { data: calendarEvents = [] } = useCalendarEvents(activeWorkspaceId);
   const { data: bills = [] } = useBills(activeWorkspaceId);
 
-  const taskItems = isMockModeClient && tasks.length === 0 ? MOCK_TASKS : tasks;
+  const taskItems = tasks;
   const projectItems =
-    isMockModeClient && projects.length === 0 ? MOCK_PROJECTS : projects;
-  const toolItems = isMockModeClient && tools.length === 0 ? MOCK_TOOLS : tools;
+    projects;
+  const toolItems = tools;
   const aiActionItems =
-    isMockModeClient && aiActions.length === 0 ? MOCK_AI_ACTIONS : aiActions;
+    aiActions;
   const notificationItems =
-    isMockModeClient && notifications.length === 0
-      ? MOCK_NOTIFICATIONS
-      : notifications;
+    notifications;
   const activityItems =
-    isMockModeClient && activity.length === 0 ? MOCK_ACTIVITY : activity;
-  const leadItems = isMockModeClient && leads.length === 0 ? MOCK_LEADS : leads;
+    activity;
+  const leadItems = leads;
   const contentItems =
-    isMockModeClient && content.length === 0 ? MOCK_CONTENT : content;
-  const billItems = isMockModeClient && bills.length === 0 ? MOCK_BILLS : bills;
+    content;
+  const billItems = bills;
 
   const todayTasks = taskItems.filter(
     (t: any) => t.status !== "done" && t.priority !== "low",
@@ -211,7 +195,7 @@ export default function DashboardPage() {
 
   const { data: dbDocuments = [] } = useDocuments(activeWorkspaceId);
   const documents =
-    isMockModeClient && dbDocuments.length === 0 ? MOCK_DOCUMENTS : dbDocuments;
+    dbDocuments;
 
   // Real calculations for Dashboard metrics and charts
   
