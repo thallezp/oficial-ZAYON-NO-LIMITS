@@ -1311,6 +1311,7 @@ export async function POST(req: Request) {
             description: payload.description || null,
             url: payload.url || "https://",
             category_id: categoryId,
+            subcategory: payload.subcategory || null,
             icon_slug: payload.iconSlug || null,
             tags: payload.tags || [],
             metadata: metadata,
@@ -1336,6 +1337,8 @@ export async function POST(req: Request) {
         if (input.isFavorite !== undefined) patch.is_favorite = input.isFavorite;
         if (input.isPinned !== undefined) patch.is_pinned = input.isPinned;
         if (input.tags !== undefined) patch.tags = input.tags;
+        if (input.subcategory !== undefined)
+          patch.subcategory = input.subcategory || null;
         if (input.personaId !== undefined) patch.persona_id = input.personaId || null;
 
         // Fetch existing metadata to merge

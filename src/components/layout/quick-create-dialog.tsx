@@ -71,7 +71,7 @@ import {
   useTeam,
   useLaunchCampaigns,
 } from "@/hooks/use-queries";
-import { TOOL_CATEGORIES } from "@/lib/constants/tools";
+import { TOOL_CATEGORIES, TOOL_SUBCATEGORIES } from "@/lib/constants/tools";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { getAutoPreview } from "@/lib/utils/tool-utils";
 
@@ -957,6 +957,7 @@ function ToolForm({ workspaceId, personaId, submitLabel, onSuccess }: EntityForm
   const [name, setName] = React.useState("");
   const [url, setUrl] = React.useState("");
   const [category, setCategory] = React.useState("IA");
+  const [subcategory, setSubcategory] = React.useState("");
   const [description, setDescription] = React.useState("");
   
   // Custom fields
@@ -992,6 +993,7 @@ function ToolForm({ workspaceId, personaId, submitLabel, onSuccess }: EntityForm
         name: name.trim(),
         url: url.trim() || "https://",
         category,
+        subcategory: subcategory.trim() || undefined,
         description: description.trim() || undefined,
         iconSlug: iconSlug.trim() || undefined,
         brandColor,
@@ -1069,6 +1071,20 @@ function ToolForm({ workspaceId, personaId, submitLabel, onSuccess }: EntityForm
               ))}
             </SelectContent>
           </Select>
+        </Field>
+
+        <Field label="Subcategoria">
+          <Input
+            list="qc-tool-subcats"
+            value={subcategory}
+            onChange={(e) => setSubcategory(e.target.value)}
+            placeholder="Ex: IA de Vídeo (opcional)"
+          />
+          <datalist id="qc-tool-subcats">
+            {(TOOL_SUBCATEGORIES[category] ?? []).map((s) => (
+              <option key={s} value={s} />
+            ))}
+          </datalist>
         </Field>
         
         <Field label="Modo de abertura">

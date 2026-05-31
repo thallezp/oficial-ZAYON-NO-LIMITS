@@ -52,7 +52,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TOOL_CATEGORIES } from "@/lib/constants/tools";
+import { TOOL_CATEGORIES, TOOL_SUBCATEGORIES } from "@/lib/constants/tools";
 import { cn } from "@/lib/utils/cn";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { useWorkspaceStore } from "@/stores/workspace-store";
@@ -87,6 +87,7 @@ const PREDEFINED_IMPORTS = [
 export default function ToolsPage() {
   const [search, setSearch] = React.useState("");
   const [category, setCategory] = React.useState<string>("Todas");
+  const [subcategory, setSubcategory] = React.useState<string | null>(null);
   const [editingTool, setEditingTool] = React.useState<any | null>(null);
   const [confirmDeleteTool, setConfirmDeleteTool] = React.useState<any | null>(null);
   
@@ -234,10 +235,26 @@ export default function ToolsPage() {
     }
   };
 
-  // Filter tools based on search and category
+  // Subcategorias (sub-abas) por categoria: sugeridas + as efetivamente usadas.
+  const subcategoriesByCategory = React.useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const [cat, subs] of Object.entries(TOOL_SUBCATEGORIES)) {
+      map[cat] = [...subs];
+    }
+    (allTools as any[]).forEach((t) => {
+      if (t.category && t.subcategory) {
+        const arr = (map[t.category] ??= []);
+        if (!arr.includes(t.subcategory)) arr.push(t.subcategory);
+      }
+    });
+    return map;
+  }, [allTools]);
+
+  // Filter tools based on search, category and subcategory
   const tools = allTools.filter(
     (t: any) =>
       (category === "Todas" || t.category === category) &&
+      (!subcategory || t.subcategory === subcategory) &&
       (!search ||
         t.name.toLowerCase().includes(search.toLowerCase()) ||
         t.description?.toLowerCase().includes(search.toLowerCase()) ||
@@ -279,25 +296,63 @@ export default function ToolsPage() {
           <p className="px-2 text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-2 font-semibold">
             Categorias
           </p>
-          {["Todas", ...TOOL_CATEGORIES].map((c) => (
-            <button
-              key={c}
-              onClick={() => setCategory(c)}
-              className={cn(
-                "w-full text-left rounded-lg px-2.5 py-1.5 text-sm flex items-center justify-between transition",
-                category === c
-                  ? "bg-card border border-border/60 text-foreground"
-                  : "text-muted-foreground hover:bg-card/60",
-              )}
-            >
-              <span>{c}</span>
-              <span className="text-[10px] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded-full">
-                {c === "Todas"
-                  ? allTools.length
-                  : allTools.filter((t: any) => t.category === c).length}
-              </span>
-            </button>
-          ))}
+          {["Todas", ...TOOL_CATEGORIES].map((c) => {
+            const isActive = category === c;
+            const subs = c === "Todas" ? [] : subcategoriesByCategory[c] ?? [];
+            return (
+              <div key={c}>
+                <button
+                  onClick={() => {
+                    setCategory(c);
+                    setSubcategory(null);
+                  }}
+                  className={cn(
+                    "w-full text-left rounded-lg px-2.5 py-1.5 text-sm flex items-center justify-between transition",
+                    isActive && !subcategory
+                      ? "bg-card border border-border/60 text-foreground"
+                      : isActive
+                        ? "text-foreground"
+                        : "text-muted-foreground hover:bg-card/60",
+                  )}
+                >
+                  <span>{c}</span>
+                  <span className="text-[10px] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded-full">
+                    {c === "Todas"
+                      ? allTools.length
+                      : allTools.filter((t: any) => t.category === c).length}
+                  </span>
+                </button>
+                {isActive && subs.length > 0 && (
+                  <div className="ml-2 my-1 space-y-0.5 border-l border-border/60 pl-2">
+                    {subs.map((sub) => {
+                      const cnt = allTools.filter(
+                        (t: any) => t.category === c && t.subcategory === sub,
+                      ).length;
+                      return (
+                        <button
+                          key={sub}
+                          onClick={() =>
+                            setSubcategory(subcategory === sub ? null : sub)
+                          }
+                          className={cn(
+                            "w-full text-left rounded-md px-2 py-1 text-xs flex items-center justify-between transition",
+                            subcategory === sub
+                              ? "bg-card border border-border/60 text-foreground"
+                              : "text-muted-foreground hover:bg-card/60",
+                          )}
+                        >
+                          <span className="truncate">{sub}</span>
+                          <span className="text-[9px] text-muted-foreground ml-1">
+                            {cnt}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </aside>
 
         {/* Dashboard Content */}
@@ -398,7 +453,11 @@ export default function ToolsPage() {
           {/* Listagem Geral */}
           <section className="space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {category === "Todas" ? "Todas as ferramentas" : category}
+              {subcategory
+                ? `${category} · ${subcategory}`
+                : category === "Todas"
+                  ? "Todas as ferramentas"
+                  : category}
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {tools.map((t: any) => (
@@ -693,6 +752,7 @@ function ToolEditDialog({
   const [description, setDescription] = React.useState(tool.description ?? "");
   const [url, setUrl] = React.useState(tool.url ?? "");
   const [category, setCategory] = React.useState(tool.category ?? "Outros");
+  const [subcategory, setSubcategory] = React.useState(tool.subcategory ?? "");
   const [tags, setTags] = React.useState(((tool.tags ?? []) as string[]).join(", "));
   const [isPinned, setIsPinned] = React.useState(!!tool.isPinned);
   const [isFavorite, setIsFavorite] = React.useState(!!tool.isFavorite);
@@ -752,6 +812,7 @@ function ToolEditDialog({
       description: description.trim() || null,
       url: url.trim(),
       category,
+      subcategory: subcategory.trim() || null,
       tags: tags
         .split(",")
         .map((t) => t.trim())
@@ -873,6 +934,21 @@ function ToolEditDialog({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs">Subcategoria (sub-aba)</Label>
+            <Input
+              list="tool-subcats-edit"
+              value={subcategory}
+              onChange={(e) => setSubcategory(e.target.value)}
+              placeholder="Ex: IA de Vídeo, IA de Voz… (opcional)"
+            />
+            <datalist id="tool-subcats-edit">
+              {(TOOL_SUBCATEGORIES[category] ?? []).map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
           </div>
 
           {/* Linked Entities Grid */}

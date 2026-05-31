@@ -32,6 +32,7 @@ export const tools = pgTable(
     logoUrl: text("logo_url"),
     iconSlug: text("icon_slug"),
     categoryId: uuid("category_id").references(() => toolCategories.id),
+    subcategory: text("subcategory"),
     tags: jsonb("tags"),
     metadata: jsonb("metadata"),
     isFavorite: boolean("is_favorite").default(false),
