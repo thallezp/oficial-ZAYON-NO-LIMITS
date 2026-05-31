@@ -129,6 +129,7 @@ export async function GET() {
       .select(
         `id, workspace_id, name, codename, status, niche, big_idea, bio_short,
          objective, voice_tone, archetype, personality, visual_style, dress_style,
+         avatar_url, cover_url,
          forbidden_words, preferred_words, guidelines, reference_links`
       )
       .in("workspace_id", workspaceIds)
@@ -169,6 +170,8 @@ export async function GET() {
       id: persona.id,
       workspaceId: persona.workspace_id,
       name: persona.name,
+      avatarUrl: (persona as any).avatar_url ?? undefined,
+      coverUrl: (persona as any).cover_url ?? undefined,
       codename: persona.codename ?? undefined,
       status: persona.status,
       niche: persona.niche ?? undefined,

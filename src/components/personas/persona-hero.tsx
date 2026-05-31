@@ -28,12 +28,23 @@ export function PersonaHero({ persona, subtitle, pageBadge }: PersonaHeroProps) 
       <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex items-start gap-4">
           <div
-            className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-xl font-bold text-white shadow-glow-strong"
+            className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-xl font-bold text-white shadow-glow-strong"
             style={{
-              background: `linear-gradient(135deg, ${persona.accent ?? "#5b8cff"}, #2a3ef5)`,
+              background: persona.avatarUrl
+                ? undefined
+                : `linear-gradient(135deg, ${persona.accent ?? "#5b8cff"}, #2a3ef5)`,
             }}
           >
-            {initials(persona.name)}
+            {persona.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={persona.avatarUrl}
+                alt={persona.name}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              initials(persona.name)
+            )}
             <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-success ring-2 ring-card" />
           </div>
           <div className="space-y-1.5 min-w-0">

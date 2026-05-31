@@ -587,7 +587,7 @@ export default function DashboardPage() {
                 <Link key={p.id} href={`/personas/${p.id}/overview`} className="group relative overflow-hidden rounded-xl border border-border/60 bg-card-elevated p-4 transition hover:border-primary/40">
                   <div className="absolute inset-0 opacity-0 transition group-hover:opacity-100" style={{ background: `radial-gradient(at top right, ${p.accent || '#3b82f6'}30, transparent 60%)` }} />
                   <div className="relative flex items-start gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl text-sm font-bold text-white shadow-glow" style={{ background: `linear-gradient(135deg, ${p.accent || '#3b82f6'}, #2a3ef5)` }}>{initials(p.name)}</div>
+                    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl text-sm font-bold text-white shadow-glow" style={{ background: p.avatarUrl ? undefined : `linear-gradient(135deg, ${p.accent || '#3b82f6'}, #2a3ef5)` }}>{p.avatarUrl ? (<img src={p.avatarUrl} alt={p.name} className="h-full w-full object-cover" />) : initials(p.name)}</div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2"><p className="font-semibold truncate">{p.name}</p><Badge size="sm" variant={p.status === "active" ? "success" : p.status === "building" ? "warning" : "outline"}>{p.status}</Badge></div>
                       <p className="text-[11px] text-muted-foreground truncate">{p.niche}</p>

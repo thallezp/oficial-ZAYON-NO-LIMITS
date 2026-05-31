@@ -62,12 +62,23 @@ export function PersonaSwitcher({ compact = false }: { compact?: boolean }) {
           )}
         >
           <div
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-semibold uppercase text-white shadow-glow"
+            className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg text-[10px] font-semibold uppercase text-white shadow-glow"
             style={{
-              background: `linear-gradient(135deg, ${active.accent ?? "#5b8cff"}, #2a3ef5)`,
+              background: active.avatarUrl
+                ? undefined
+                : `linear-gradient(135deg, ${active.accent ?? "#5b8cff"}, #2a3ef5)`,
             }}
           >
-            {initials(active.name)}
+            {active.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={active.avatarUrl}
+                alt={active.name}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              initials(active.name)
+            )}
           </div>
           {!compact && (
             <div className="flex-1 min-w-0">
@@ -95,12 +106,23 @@ export function PersonaSwitcher({ compact = false }: { compact?: boolean }) {
               className="gap-3 py-2.5"
             >
               <div
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-semibold text-white"
+                className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg text-xs font-semibold text-white"
                 style={{
-                  background: `linear-gradient(135deg, ${p.accent ?? "#5b8cff"}, #2a3ef5)`,
+                  background: p.avatarUrl
+                    ? undefined
+                    : `linear-gradient(135deg, ${p.accent ?? "#5b8cff"}, #2a3ef5)`,
                 }}
               >
-                {initials(p.name)}
+                {p.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={p.avatarUrl}
+                    alt={p.name}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  initials(p.name)
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
