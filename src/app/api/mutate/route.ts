@@ -1455,6 +1455,44 @@ export async function POST(req: Request) {
         break;
       }
 
+      // ── PERFIL (nome + metadados do proprio usuario) ──────────────────────
+      case "updateProfile": {
+        const { data: existingUser } = await supabase
+          .from("users")
+          .select("metadata")
+          .eq("id", user.id)
+          .single();
+
+        const mergedMeta: Record<string, any> = {
+          ...((existingUser?.metadata as any) || {}),
+        };
+        if (payload.jobTitle !== undefined)
+          mergedMeta.jobTitle = payload.jobTitle || null;
+        if (payload.timezone !== undefined)
+          mergedMeta.timezone = payload.timezone || null;
+
+        const patch: Record<string, any> = { metadata: mergedMeta };
+        if (payload.fullName !== undefined) patch.full_name = payload.fullName;
+
+        const { data, error } = await supabase
+          .from("users")
+          .update(patch)
+          .eq("id", user.id)
+          .select()
+          .single();
+        if (error) throw error;
+
+        // Mantem o user_metadata do Auth em sincronia (full_name e usado em
+        // varios pontos via auth.getUser()).
+        if (payload.fullName !== undefined) {
+          await supabase.auth.updateUser({
+            data: { full_name: payload.fullName },
+          });
+        }
+        result = data;
+        break;
+      }
+
       // ── SANITIZE ──────────────────────────────────────────────────────────
       case "sanitizeDatabaseEncoding": {
         // No-op via Supabase SDK — encoding is handled by the DB

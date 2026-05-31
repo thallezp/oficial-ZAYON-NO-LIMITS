@@ -52,6 +52,13 @@ export function useRealtime<T extends Record<string, any> = Record<string, any>>
 }: Options<T>) {
   const queryClient = useQueryClient();
 
+  // ID único por instância do hook. Evita que dois componentes inscritos na
+  // MESMA tabela+filtro (ex: o sino global de Notificações no topbar + a página
+  // de Notificações) reusem o mesmo nome de canal. Quando reusavam, o 2º .on()
+  // rodava depois do .subscribe() do 1º → crash:
+  // "cannot add postgres_changes callbacks ... after subscribe()".
+  const instanceId = React.useId();
+
   // Salvar callback na ref para evitar desconexões constantes do realtime em renderizações secundárias
   const onPayloadRef = React.useRef(onPayload);
   React.useEffect(() => {
@@ -65,7 +72,7 @@ export function useRealtime<T extends Record<string, any> = Record<string, any>>
     }
 
     const supabase = supabaseBrowser();
-    const channelName = `zayon-rt-${table}-${filter ?? "all"}`;
+    const channelName = `zayon-rt-${table}-${filter ?? "all"}-${instanceId}`;
     const channel: RealtimeChannel = supabase
       .channel(channelName)
       .on(
@@ -84,7 +91,7 @@ export function useRealtime<T extends Record<string, any> = Record<string, any>>
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [enabled, event, filter, queryClient, schema, table]);
+  }, [enabled, event, filter, queryClient, schema, table, instanceId]);
 }
 
 function scopeFilter(workspaceId?: string, personaId?: string) {

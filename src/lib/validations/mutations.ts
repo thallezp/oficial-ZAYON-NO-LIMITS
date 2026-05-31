@@ -304,6 +304,13 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
   toggleToolFavorite: z.object({ toolId: id }).passthrough(),
   createProject,
   updateUserMetadata: z.record(z.any()),
+  updateProfile: z
+    .object({
+      fullName: z.string().min(1).optional(),
+      jobTitle: z.string().optional().nullable(),
+      timezone: z.string().optional().nullable(),
+    })
+    .passthrough(),
   deleteTask: simpleDelete,
   deleteProject: simpleDelete,
   deleteLead: simpleDelete,

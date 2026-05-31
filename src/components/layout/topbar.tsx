@@ -122,7 +122,9 @@ export function Topbar() {
                 </AvatarFallback>
               </Avatar>
               <span className="hidden md:inline text-xs font-medium">
-                {user?.fullName ? user.fullName.split(" ")[0] : "Usuário"}
+                {user?.fullName
+                  ? user.fullName.split(" ")[0]
+                  : user?.email?.split("@")[0] ?? "Usuário"}
               </span>
             </button>
           </DropdownMenuTrigger>
@@ -134,7 +136,9 @@ export function Topbar() {
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{user?.fullName}</p>
+                <p className="text-sm font-medium truncate">
+                  {user?.fullName || user?.email?.split("@")[0] || "Usuário"}
+                </p>
                 <p className="text-xs text-muted-foreground truncate">
                   {user?.email}
                 </p>
@@ -144,11 +148,17 @@ export function Topbar() {
               </div>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onClick={() => router.push("/settings")}
+            >
               <UserIcon className="h-4 w-4" />
               Perfil
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onClick={() => router.push("/settings")}
+            >
               <Settings className="h-4 w-4" />
               Configurações
             </DropdownMenuItem>

@@ -802,6 +802,16 @@ export function useUpdateUserMetadataMutation() {
   });
 }
 
+export function useUpdateProfileMutation() {
+  return useMutation({
+    mutationFn: (input: {
+      fullName?: string;
+      jobTitle?: string | null;
+      timezone?: string | null;
+    }) => callMutate("updateProfile", input),
+  });
+}
+
 export function useSanitizeDatabaseEncodingMutation() {
   return useMutation({
     mutationFn: () => callMutate("sanitizeDatabaseEncoding"),

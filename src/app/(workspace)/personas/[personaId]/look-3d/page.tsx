@@ -39,6 +39,7 @@ import {
 } from "@/hooks/use-queries";
 import { relativeTime } from "@/lib/utils/format";
 import { toast } from "sonner";
+import { UploadButton } from "@/lib/uploadthing";
 
 const CHANNEL_OPTIONS = [
   { value: "instagram", label: "Instagram" },
@@ -420,13 +421,97 @@ export default function LookPage() {
               <Label htmlFor="field-niche">Nicho</Label>
               <Input id="field-niche" value={niche} onChange={(e) => setNiche(e.target.value)} />
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="field-avatar">Avatar Image URL</Label>
-              <Input id="field-avatar" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} />
+            <div className="space-y-1 sm:col-span-2">
+              <Label>Foto / Avatar da persona</Label>
+              <div className="flex flex-wrap items-center gap-3">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="avatar"
+                    className="h-14 w-14 rounded-lg object-cover border border-border/60"
+                    onError={(e) =>
+                      ((e.currentTarget as HTMLImageElement).style.display =
+                        "none")
+                    }
+                  />
+                ) : (
+                  <div className="h-14 w-14 rounded-lg border border-dashed border-border/60 flex items-center justify-center text-muted-foreground">
+                    <ImageIcon className="h-5 w-5" />
+                  </div>
+                )}
+                <UploadButton
+                  endpoint="avatar"
+                  content={{ button: "Upar foto", allowedContent: "Imagem até 4MB" }}
+                  appearance={{
+                    button:
+                      "rounded-md bg-primary text-primary-foreground text-xs h-9 px-3 ut-uploading:cursor-not-allowed",
+                    allowedContent: "text-[10px] text-muted-foreground",
+                  }}
+                  onClientUploadComplete={(res) => {
+                    const url = res?.[0]?.url;
+                    if (url) {
+                      setAvatarUrl(url);
+                      toast.success("Foto enviada — clique em Salvar Alterações.");
+                    }
+                  }}
+                  onUploadError={(e: Error) => {
+                    toast.error(`Erro no upload: ${e.message}`);
+                  }}
+                />
+              </div>
+              <Input
+                id="field-avatar"
+                value={avatarUrl}
+                onChange={(e) => setAvatarUrl(e.target.value)}
+                placeholder="ou cole uma URL da imagem"
+                className="mt-1"
+              />
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="field-cover">Cover Image URL</Label>
-              <Input id="field-cover" value={coverUrl} onChange={(e) => setCoverUrl(e.target.value)} />
+            <div className="space-y-1 sm:col-span-2">
+              <Label>Capa (cover)</Label>
+              <div className="flex flex-wrap items-center gap-3">
+                {coverUrl ? (
+                  <img
+                    src={coverUrl}
+                    alt="cover"
+                    className="h-14 w-24 rounded-lg object-cover border border-border/60"
+                    onError={(e) =>
+                      ((e.currentTarget as HTMLImageElement).style.display =
+                        "none")
+                    }
+                  />
+                ) : (
+                  <div className="h-14 w-24 rounded-lg border border-dashed border-border/60 flex items-center justify-center text-muted-foreground">
+                    <ImageIcon className="h-5 w-5" />
+                  </div>
+                )}
+                <UploadButton
+                  endpoint="materials"
+                  content={{ button: "Upar capa", allowedContent: "Imagem até 16MB" }}
+                  appearance={{
+                    button:
+                      "rounded-md bg-primary text-primary-foreground text-xs h-9 px-3 ut-uploading:cursor-not-allowed",
+                    allowedContent: "text-[10px] text-muted-foreground",
+                  }}
+                  onClientUploadComplete={(res) => {
+                    const url = res?.[0]?.url;
+                    if (url) {
+                      setCoverUrl(url);
+                      toast.success("Capa enviada — clique em Salvar Alterações.");
+                    }
+                  }}
+                  onUploadError={(e: Error) => {
+                    toast.error(`Erro no upload: ${e.message}`);
+                  }}
+                />
+              </div>
+              <Input
+                id="field-cover"
+                value={coverUrl}
+                onChange={(e) => setCoverUrl(e.target.value)}
+                placeholder="ou cole uma URL da imagem"
+                className="mt-1"
+              />
             </div>
             <div className="sm:col-span-2 space-y-1">
               <Label htmlFor="field-bigIdea">Big idea</Label>

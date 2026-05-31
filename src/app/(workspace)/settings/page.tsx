@@ -1,6 +1,7 @@
 "use client";
 
-import { Building2, Cog, Key, Shield, Sparkles, User, Database } from "lucide-react";
+import * as React from "react";
+import { Building2, Key, Shield, Sparkles, User, Database } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,12 +10,75 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { useSanitizeDatabaseEncodingMutation } from "@/hooks/use-queries";
+import {
+  useSanitizeDatabaseEncodingMutation,
+  useUpdateProfileMutation,
+} from "@/hooks/use-queries";
+import { useWorkspaceStore } from "@/stores/workspace-store";
 import { toast } from "sonner";
 
 export default function SettingsPage() {
   const sanitizeMutation = useSanitizeDatabaseEncodingMutation();
   const isSanitizing = sanitizeMutation.isPending;
+
+  const user = useWorkspaceStore((s) => s.user);
+  const setUser = useWorkspaceStore((s) => s.setUser);
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const workspaces = useWorkspaceStore((s) => s.workspaces);
+  const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
+  const updateProfile = useUpdateProfileMutation();
+
+  const [fullName, setFullName] = React.useState("");
+  const [jobTitle, setJobTitle] = React.useState("");
+  const [timezone, setTimezone] = React.useState("");
+
+  React.useEffect(() => {
+    if (user) {
+      setFullName(user.fullName ?? "");
+      setJobTitle(((user.metadata as any)?.jobTitle as string) ?? "");
+      setTimezone(((user.metadata as any)?.timezone as string) ?? "");
+    }
+  }, [user]);
+
+  const dirty =
+    !!user &&
+    (fullName !== (user.fullName ?? "") ||
+      jobTitle !== (((user.metadata as any)?.jobTitle as string) ?? "") ||
+      timezone !== (((user.metadata as any)?.timezone as string) ?? ""));
+
+  const resetProfile = () => {
+    setFullName(user?.fullName ?? "");
+    setJobTitle(((user?.metadata as any)?.jobTitle as string) ?? "");
+    setTimezone(((user?.metadata as any)?.timezone as string) ?? "");
+  };
+
+  const handleSaveProfile = async () => {
+    if (!fullName.trim()) {
+      toast.error("O nome não pode ficar vazio.");
+      return;
+    }
+    try {
+      await updateProfile.mutateAsync({
+        fullName: fullName.trim(),
+        jobTitle: jobTitle.trim() || null,
+        timezone: timezone.trim() || null,
+      });
+      if (user) {
+        setUser({
+          ...user,
+          fullName: fullName.trim(),
+          metadata: {
+            ...(user.metadata || {}),
+            jobTitle: jobTitle.trim() || null,
+            timezone: timezone.trim() || null,
+          },
+        });
+      }
+      toast.success("Perfil atualizado!");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao salvar perfil.");
+    }
+  };
 
   const handleSanitize = async () => {
     try {
@@ -22,7 +86,7 @@ export default function SettingsPage() {
       if (res?.ok) {
         toast.success("Encoding do banco de dados higienizado com sucesso!");
       } else {
-        toast.error("Erro ou rodando em modo MOCK. Nenhuma alteração feita.");
+        toast.error("Erro ao higienizar. Nenhuma alteração feita.");
       }
     } catch (err: any) {
       toast.error(err?.message || "Erro ao higienizar banco de dados.");
@@ -63,23 +127,58 @@ export default function SettingsPage() {
             <CardContent className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Nome completo</Label>
-                <Input defaultValue="Alex Vega" />
+                <Input
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Seu nome"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Email</Label>
-                <Input defaultValue="alex@zayon.team" type="email" />
+                <Input
+                  value={user?.email ?? ""}
+                  type="email"
+                  disabled
+                  title="O email é gerenciado pela autenticação e não pode ser alterado aqui."
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Função</Label>
-                <Input defaultValue="Founder · Strategist" />
+                <Input
+                  value={jobTitle}
+                  onChange={(e) => setJobTitle(e.target.value)}
+                  placeholder="Ex: Founder · Strategist"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Fuso horário</Label>
-                <Input defaultValue="America/Sao_Paulo" />
+                <Input
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                  placeholder="America/Sao_Paulo"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Papel no workspace</Label>
+                <div>
+                  <Badge variant="primary">{user?.role ?? "—"}</Badge>
+                </div>
               </div>
               <div className="sm:col-span-2 flex justify-end gap-2">
-                <Button variant="outline">Cancelar</Button>
-                <Button variant="gradient">Salvar alterações</Button>
+                <Button
+                  variant="outline"
+                  onClick={resetProfile}
+                  disabled={!dirty || updateProfile.isPending}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="gradient"
+                  onClick={handleSaveProfile}
+                  disabled={!dirty || updateProfile.isPending}
+                >
+                  {updateProfile.isPending ? "Salvando..." : "Salvar alterações"}
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -88,16 +187,18 @@ export default function SettingsPage() {
         <TabsContent value="workspace">
           <Card>
             <CardHeader>
-              <CardTitle>Workspace · ZAYON HQ</CardTitle>
+              <CardTitle>
+                Workspace · {activeWorkspace?.name ?? "—"}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
                 <Label>Nome do workspace</Label>
-                <Input defaultValue="ZAYON HQ" />
+                <Input value={activeWorkspace?.name ?? ""} disabled />
               </div>
               <div className="space-y-1.5">
                 <Label>Slug</Label>
-                <Input defaultValue="zayon" />
+                <Input value={activeWorkspace?.slug ?? ""} disabled />
               </div>
               <div className="flex items-center justify-between rounded-lg border border-border/60 bg-card-elevated px-4 py-3">
                 <div>
@@ -135,8 +236,8 @@ export default function SettingsPage() {
                     Corrige caracteres corrompidos com acentuação inválida (UTF-8) em Ferramentas, Personas e Projetos no banco de dados.
                   </p>
                 </div>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={handleSanitize}
                   disabled={isSanitizing}
@@ -156,9 +257,9 @@ export default function SettingsPage() {
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between rounded-lg border border-border/60 bg-card-elevated px-4 py-3">
                 <div>
-                  <p className="text-sm font-medium">Autenticação em 2 fatores</p>
+                  <p className="text-sm font-medium">Row Level Security</p>
                   <p className="text-xs text-muted-foreground">
-                    Obrigatório para owner e admin.
+                    Políticas RLS aplicadas a todas as tabelas operacionais.
                   </p>
                 </div>
                 <Badge variant="success" size="sm">
@@ -167,13 +268,13 @@ export default function SettingsPage() {
               </div>
               <div className="flex items-center justify-between rounded-lg border border-border/60 bg-card-elevated px-4 py-3">
                 <div>
-                  <p className="text-sm font-medium">Row Level Security</p>
+                  <p className="text-sm font-medium">Sessão</p>
                   <p className="text-xs text-muted-foreground">
-                    Políticas RLS aplicadas a todas as tabelas operacionais.
+                    Autenticação via Supabase. Saia pelo menu do usuário no topo.
                   </p>
                 </div>
                 <Badge variant="success" size="sm">
-                  Ativo
+                  Conectado
                 </Badge>
               </div>
             </CardContent>
@@ -186,22 +287,22 @@ export default function SettingsPage() {
               <CardTitle>IA Operacional</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>Modelo padrão</Label>
-                <Input defaultValue="claude-opus-4-7" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Modelo de rascunho</Label>
-                <Input defaultValue="claude-haiku-4-5-20251001" />
-              </div>
+              <p className="text-sm text-muted-foreground">
+                A IA contextual está disponível pelo botão{" "}
+                <span className="text-foreground font-medium">ZAYON AI</span> no
+                topo e pelo Command Menu (⌘K). Ela executa ações reais no sistema
+                (tarefas, conteúdo, leads, funis) com confirmação quando necessário.
+              </p>
               <div className="flex items-center justify-between rounded-lg border border-border/60 bg-card-elevated px-4 py-3">
                 <div>
-                  <p className="text-sm font-medium">Permitir ações reais no sistema</p>
+                  <p className="text-sm font-medium">Ações reais no sistema</p>
                   <p className="text-xs text-muted-foreground">
                     IA pode criar tarefas, qualificar leads, montar funis.
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Badge variant="success" size="sm">
+                  Ativo
+                </Badge>
               </div>
             </CardContent>
           </Card>
@@ -214,14 +315,10 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="grid sm:grid-cols-2 gap-3">
               {[
-                { name: "Supabase", desc: "Banco + Auth + Storage", status: "connected" },
-                { name: "Vercel", desc: "Hospedagem", status: "connected" },
-                { name: "Resend", desc: "Email transacional", status: "connected" },
-                { name: "Liveblocks", desc: "Colaboração ao vivo", status: "connected" },
-                { name: "Google Sheets", desc: "Entrada de leads", status: "connected" },
-                { name: "Hotmart", desc: "Receita Aurora", status: "connected" },
-                { name: "Stripe", desc: "Pagamentos", status: "connected" },
-                { name: "UploadThing", desc: "Uploads", status: "pending" },
+                { name: "Supabase", desc: "Banco + Auth + Storage" },
+                { name: "Vercel", desc: "Hospedagem" },
+                { name: "UploadThing", desc: "Upload de arquivos e fotos" },
+                { name: "Resend", desc: "Email transacional" },
               ].map((i) => (
                 <div
                   key={i.name}
@@ -231,11 +328,8 @@ export default function SettingsPage() {
                     <p className="text-sm font-medium">{i.name}</p>
                     <p className="text-[11px] text-muted-foreground">{i.desc}</p>
                   </div>
-                  <Badge
-                    size="sm"
-                    variant={i.status === "connected" ? "success" : "warning"}
-                  >
-                    {i.status === "connected" ? "conectado" : "pendente"}
+                  <Badge size="sm" variant="success">
+                    conectado
                   </Badge>
                 </div>
               ))}
