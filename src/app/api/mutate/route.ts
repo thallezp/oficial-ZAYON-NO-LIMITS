@@ -1473,6 +1473,8 @@ export async function POST(req: Request) {
 
         const patch: Record<string, any> = { metadata: mergedMeta };
         if (payload.fullName !== undefined) patch.full_name = payload.fullName;
+        if (payload.avatarUrl !== undefined)
+          patch.avatar_url = payload.avatarUrl || null;
 
         const { data, error } = await supabase
           .from("users")
@@ -1482,12 +1484,14 @@ export async function POST(req: Request) {
           .single();
         if (error) throw error;
 
-        // Mantem o user_metadata do Auth em sincronia (full_name e usado em
-        // varios pontos via auth.getUser()).
-        if (payload.fullName !== undefined) {
-          await supabase.auth.updateUser({
-            data: { full_name: payload.fullName },
-          });
+        // Mantem o user_metadata do Auth em sincronia (full_name/avatar_url sao
+        // usados em varios pontos via auth.getUser()).
+        const authData: Record<string, any> = {};
+        if (payload.fullName !== undefined) authData.full_name = payload.fullName;
+        if (payload.avatarUrl !== undefined)
+          authData.avatar_url = payload.avatarUrl || null;
+        if (Object.keys(authData).length > 0) {
+          await supabase.auth.updateUser({ data: authData });
         }
         result = data;
         break;

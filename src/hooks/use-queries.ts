@@ -808,6 +808,7 @@ export function useUpdateProfileMutation() {
       fullName?: string;
       jobTitle?: string | null;
       timezone?: string | null;
+      avatarUrl?: string | null;
     }) => callMutate("updateProfile", input),
   });
 }

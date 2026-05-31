@@ -15,6 +15,8 @@ import {
   useUpdateProfileMutation,
 } from "@/hooks/use-queries";
 import { useWorkspaceStore } from "@/stores/workspace-store";
+import { initials } from "@/lib/utils/format";
+import { UploadButton } from "@/lib/uploadthing";
 import { toast } from "sonner";
 
 export default function SettingsPage() {
@@ -31,12 +33,14 @@ export default function SettingsPage() {
   const [fullName, setFullName] = React.useState("");
   const [jobTitle, setJobTitle] = React.useState("");
   const [timezone, setTimezone] = React.useState("");
+  const [avatarUrl, setAvatarUrl] = React.useState("");
 
   React.useEffect(() => {
     if (user) {
       setFullName(user.fullName ?? "");
       setJobTitle(((user.metadata as any)?.jobTitle as string) ?? "");
       setTimezone(((user.metadata as any)?.timezone as string) ?? "");
+      setAvatarUrl(user.avatarUrl ?? "");
     }
   }, [user]);
 
@@ -44,12 +48,14 @@ export default function SettingsPage() {
     !!user &&
     (fullName !== (user.fullName ?? "") ||
       jobTitle !== (((user.metadata as any)?.jobTitle as string) ?? "") ||
-      timezone !== (((user.metadata as any)?.timezone as string) ?? ""));
+      timezone !== (((user.metadata as any)?.timezone as string) ?? "") ||
+      avatarUrl !== (user.avatarUrl ?? ""));
 
   const resetProfile = () => {
     setFullName(user?.fullName ?? "");
     setJobTitle(((user?.metadata as any)?.jobTitle as string) ?? "");
     setTimezone(((user?.metadata as any)?.timezone as string) ?? "");
+    setAvatarUrl(user?.avatarUrl ?? "");
   };
 
   const handleSaveProfile = async () => {
@@ -62,11 +68,13 @@ export default function SettingsPage() {
         fullName: fullName.trim(),
         jobTitle: jobTitle.trim() || null,
         timezone: timezone.trim() || null,
+        avatarUrl: avatarUrl || null,
       });
       if (user) {
         setUser({
           ...user,
           fullName: fullName.trim(),
+          avatarUrl: avatarUrl || undefined,
           metadata: {
             ...(user.metadata || {}),
             jobTitle: jobTitle.trim() || null,
@@ -125,6 +133,64 @@ export default function SettingsPage() {
               <CardTitle>Perfil</CardTitle>
             </CardHeader>
             <CardContent className="grid sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2 flex items-center gap-4">
+                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border border-border/60 bg-card-elevated flex items-center justify-center">
+                  {avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={avatarUrl}
+                      alt="Foto de perfil"
+                      className="h-full w-full object-cover"
+                      onError={(e) =>
+                        ((e.currentTarget as HTMLImageElement).style.display =
+                          "none")
+                      }
+                    />
+                  ) : (
+                    <span className="text-lg font-semibold text-muted-foreground">
+                      {initials(fullName || user?.email || "U")}
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Foto de perfil</Label>
+                  <div className="flex items-center gap-2">
+                    <UploadButton
+                      endpoint="avatar"
+                      content={{
+                        button: "Upar foto",
+                        allowedContent: "Imagem até 4MB",
+                      }}
+                      appearance={{
+                        button:
+                          "rounded-md bg-primary text-primary-foreground text-xs h-9 px-3 ut-uploading:cursor-not-allowed",
+                        allowedContent: "text-[10px] text-muted-foreground",
+                      }}
+                      onClientUploadComplete={(res) => {
+                        const url = res?.[0]?.url;
+                        if (url) {
+                          setAvatarUrl(url);
+                          toast.success(
+                            "Foto carregada — clique em Salvar alterações.",
+                          );
+                        }
+                      }}
+                      onUploadError={(e: Error) => {
+                        toast.error(`Erro no upload: ${e.message}`);
+                      }}
+                    />
+                    {avatarUrl && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setAvatarUrl("")}
+                      >
+                        Remover
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
               <div className="space-y-1.5">
                 <Label>Nome completo</Label>
                 <Input

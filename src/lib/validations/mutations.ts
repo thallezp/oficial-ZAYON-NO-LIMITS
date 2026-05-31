@@ -309,6 +309,7 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
       fullName: z.string().min(1).optional(),
       jobTitle: z.string().optional().nullable(),
       timezone: z.string().optional().nullable(),
+      avatarUrl: z.string().optional().nullable(),
     })
     .passthrough(),
   deleteTask: simpleDelete,
