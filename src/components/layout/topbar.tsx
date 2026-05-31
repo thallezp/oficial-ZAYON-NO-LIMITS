@@ -131,6 +131,7 @@ export function Topbar() {
           <DropdownMenuContent align="end" className="w-64">
             <div className="p-2 flex items-center gap-3">
               <Avatar size="md">
+                <AvatarImage src={user?.avatarUrl} />
                 <AvatarFallback>
                   {initials(user?.fullName ?? "AV")}
                 </AvatarFallback>
