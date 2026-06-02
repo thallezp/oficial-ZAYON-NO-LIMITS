@@ -92,6 +92,7 @@ const typeIcon = {
   print: Monitor,
   reference: Link2,
   referência: Link2,
+  link: Globe,
   other: FileText,
 } as const;
 
@@ -110,6 +111,7 @@ const typeLabel: Record<string, string> = {
   print: "Print",
   reference: "Referência",
   referência: "Referência",
+  link: "Link",
   other: "Outro",
 };
 
@@ -123,6 +125,7 @@ const FILE_TYPES = [
   { id: "doc", label: "Documentos" },
   { id: "print", label: "Prints" },
   { id: "reference", label: "Referências" },
+  { id: "link", label: "Links" },
 ];
 
 function formatBytes(b?: number) {
@@ -142,6 +145,152 @@ function getFileTypeFromExtension(fileName: string): string {
   if (["xls", "xlsx", "csv", "ods"].includes(ext)) return "spreadsheet";
   if (["doc", "docx", "txt", "md", "odt"].includes(ext)) return "doc";
   return "other";
+}
+
+function AddLinkDialog({
+  open,
+  onClose,
+  workspaceId,
+  folderId,
+  personas,
+  createMaterial,
+}: {
+  open: boolean;
+  onClose: () => void;
+  workspaceId?: string | null;
+  folderId?: string;
+  personas: any[];
+  createMaterial: {
+    mutateAsync: (input: any) => Promise<any>;
+    isPending: boolean;
+  };
+}) {
+  const [url, setUrl] = React.useState("");
+  const [title, setTitle] = React.useState("");
+  const [personaId, setPersonaId] = React.useState("none");
+  const [tags, setTags] = React.useState("");
+
+  React.useEffect(() => {
+    if (!open) {
+      setUrl("");
+      setTitle("");
+      setPersonaId("none");
+      setTags("");
+    }
+  }, [open]);
+
+  const hostFromUrl = (raw: string) => {
+    try {
+      const u = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+      return u.hostname.replace(/^www\./, "");
+    } catch {
+      return "";
+    }
+  };
+
+  const handleSave = async () => {
+    const raw = url.trim();
+    if (!raw) {
+      toast.error("Cole o link (URL).");
+      return;
+    }
+    const normalized = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    const finalTitle = title.trim() || hostFromUrl(normalized) || "Link";
+    try {
+      await createMaterial.mutateAsync({
+        workspaceId,
+        title: finalTitle,
+        fileType: "link",
+        fileUrl: normalized,
+        personaId: personaId !== "none" ? personaId : undefined,
+        folderId,
+        tags: tags
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+      });
+      toast.success("Link adicionado!", { description: finalTitle });
+      onClose();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao adicionar link");
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Globe className="h-4 w-4" /> Adicionar link externo
+          </DialogTitle>
+          <DialogDescription>
+            YouTube, aulas (Hubla, Kiwify…), artigos — qualquer URL. Fica salva
+            aqui e abre em nova aba ao clicar.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Link (URL)</Label>
+            <Input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onBlur={() => {
+                if (!title && url) setTitle(hostFromUrl(url));
+              }}
+              placeholder="https://youtube.com/...  ·  hubla.com/...  ·  kiwify..."
+              autoFocus
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Título</Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Ex: Aula 3 — Como fazer call de vendas"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Persona (opcional)</Label>
+              <Select value={personaId} onValueChange={setPersonaId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Nenhuma" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhuma</SelectItem>
+                  {personas.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Tags (vírgula)</Label>
+              <Input
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                placeholder="vendas, call"
+              />
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            variant="gradient"
+            onClick={handleSave}
+            disabled={createMaterial.isPending || !url.trim()}
+          >
+            {createMaterial.isPending ? "Salvando..." : "Adicionar Link"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 const ALL_FOLDER_ID = "__all__";
@@ -179,6 +328,7 @@ export default function MaterialsPage() {
 
   const [activeFolderId, setActiveFolderId] = React.useState<string>(ALL_FOLDER_ID);
   const [materialUploading, setMaterialUploading] = React.useState(false);
+  const [addLinkOpen, setAddLinkOpen] = React.useState(false);
   const [editingFolder, setEditingFolder] = React.useState<FolderRow | null>(null);
 
   // Estados de modais
@@ -292,6 +442,13 @@ export default function MaterialsPage() {
               <Upload className="h-3.5 w-3.5" /> Enviar Arquivo
             </Button>
             <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAddLinkOpen(true)}
+            >
+              <LinkIcon className="h-3.5 w-3.5" /> Adicionar Link
+            </Button>
+            <Button
               variant="gradient"
               size="sm"
               onClick={() => openQuickCreate("folder")}
@@ -300,6 +457,15 @@ export default function MaterialsPage() {
             </Button>
           </>
         }
+      />
+
+      <AddLinkDialog
+        open={addLinkOpen}
+        onClose={() => setAddLinkOpen(false)}
+        workspaceId={activeWorkspaceId}
+        folderId={activeFolderId === ALL_FOLDER_ID ? undefined : activeFolderId}
+        personas={dbPersonas as any[]}
+        createMaterial={createMaterialMutation}
       />
 
       <div className="grid grid-cols-12 gap-6">
@@ -461,7 +627,13 @@ export default function MaterialsPage() {
                       key={m.id}
                       variant="elevated"
                       className="group cursor-pointer hover:border-primary/40 hover:shadow-glow/5 transition flex flex-col justify-between"
-                      onClick={() => setPreviewMaterial(m)}
+                      onClick={() => {
+                        if (m.fileType === "link" && m.fileUrl) {
+                          window.open(m.fileUrl, "_blank");
+                        } else {
+                          setPreviewMaterial(m);
+                        }
+                      }}
                     >
                       <CardContent className="p-3 space-y-2 flex-1 flex flex-col justify-between">
                         {/* Container de Preview com botões superiores */}
