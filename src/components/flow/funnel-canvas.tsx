@@ -138,36 +138,44 @@ function FunnelNodeView({ data, selected }: NodeProps<ProductData>) {
       }`}
       style={{ borderColor: `${accent}55` }}
     >
-      {enableConnections && (
-        <>
-          <Handle
-            type="target"
-            position={Position.Left}
-            style={{
-              left: -5,
-              width: 10,
-              height: 10,
-              background: accent,
-              border: "2px solid var(--background)",
-              borderRadius: "50%",
-            }}
-            className="hover:scale-125 transition-transform opacity-60 hover:opacity-100"
-          />
-          <Handle
-            type="source"
-            position={Position.Right}
-            style={{
-              right: -5,
-              width: 10,
-              height: 10,
-              background: accent,
-              border: "2px solid var(--background)",
-              borderRadius: "50%",
-            }}
-            className="hover:scale-125 transition-transform opacity-60 hover:opacity-100"
-          />
-        </>
-      )}
+      {/* Handles sempre no DOM: setas já criadas continuam renderizando mesmo
+          com o modo "Ligar Cards" inativo — só ficam invisíveis/não clicáveis */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        isConnectable={enableConnections}
+        style={{
+          left: -5,
+          width: 10,
+          height: 10,
+          background: accent,
+          border: "2px solid var(--background)",
+          borderRadius: "50%",
+        }}
+        className={
+          enableConnections
+            ? "hover:scale-125 transition-transform opacity-60 hover:opacity-100"
+            : "opacity-0 pointer-events-none"
+        }
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        isConnectable={enableConnections}
+        style={{
+          right: -5,
+          width: 10,
+          height: 10,
+          background: accent,
+          border: "2px solid var(--background)",
+          borderRadius: "50%",
+        }}
+        className={
+          enableConnections
+            ? "hover:scale-125 transition-transform opacity-60 hover:opacity-100"
+            : "opacity-0 pointer-events-none"
+        }
+      />
       <div
         className="flex items-center justify-between rounded-t-xl px-3 py-2 border-b border-border/60"
         style={{ background: `${accent}18` }}
@@ -447,6 +455,7 @@ function FunnelInner({ funnel, accent = "#5b8cff", onSave, workspaceId, personaI
 
   const onConnect = React.useCallback(
     (c: Connection) => {
+      if (c.source === c.target) return; // não liga um card nele mesmo
       setEdges((eds) =>
         addEdge(
           {

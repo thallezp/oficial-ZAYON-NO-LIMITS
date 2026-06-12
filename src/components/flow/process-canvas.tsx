@@ -163,22 +163,32 @@ function StepNode({ data, selected }: NodeProps<NodeData>) {
         data.status === "doing" && "ring-1 ring-primary/60",
       )}
     >
-      {enableConnections && (
-        <>
-          <Handle
-            type="target"
-            position={Position.Left}
-            className="w-2.5 h-2.5 bg-primary border-2 border-background rounded-full hover:scale-125 transition-transform opacity-60 hover:opacity-100"
-            style={{ left: -5 }}
-          />
-          <Handle
-            type="source"
-            position={Position.Right}
-            className="w-2.5 h-2.5 bg-primary border-2 border-background rounded-full hover:scale-125 transition-transform opacity-60 hover:opacity-100"
-            style={{ right: -5 }}
-          />
-        </>
-      )}
+      {/* Handles sempre no DOM: setas existentes continuam renderizando mesmo
+          com o modo "Ligar Cards" inativo — só ficam invisíveis/não clicáveis */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        isConnectable={enableConnections}
+        className={cn(
+          "w-2.5 h-2.5 bg-primary border-2 border-background rounded-full",
+          enableConnections
+            ? "hover:scale-125 transition-transform opacity-60 hover:opacity-100"
+            : "opacity-0 pointer-events-none",
+        )}
+        style={{ left: -5 }}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        isConnectable={enableConnections}
+        className={cn(
+          "w-2.5 h-2.5 bg-primary border-2 border-background rounded-full",
+          enableConnections
+            ? "hover:scale-125 transition-transform opacity-60 hover:opacity-100"
+            : "opacity-0 pointer-events-none",
+        )}
+        style={{ right: -5 }}
+      />
       <div className="flex items-center justify-between rounded-t-xl px-3 py-2 border-b border-border/60">
         <div className="flex h-7 w-7 items-center justify-center rounded-md bg-background/40">
           <Icon className="h-3.5 w-3.5" />
@@ -333,6 +343,7 @@ function ProcessInner({
 
   const onConnect = React.useCallback(
     (c: Connection) => {
+      if (c.source === c.target) return; // não liga um card nele mesmo
       setEdges((eds) =>
         addEdge(
           {
