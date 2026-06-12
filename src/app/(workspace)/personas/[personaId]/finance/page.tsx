@@ -264,10 +264,31 @@ export default function FinancePage() {
     return sum;
   }, [filteredBills, filteredTx]);
 
-  // Deltas mock calculations for StatCards
-  const revenueDelta = 12.4;
-  const expensesDelta = -3.2;
-  const profitDelta = 18.1;
+  // Deltas reais: mês atual vs mês anterior (transações pagas)
+  const { revenueDelta, expensesDelta, profitDelta } = React.useMemo(() => {
+    const sumMonth = (type: string, monthOffset: number) => {
+      const ref = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+      return tx
+        .filter((t: any) => {
+          if (t.type !== type || t.status !== "paid" || !t.occurredAt) return false;
+          const d = new Date(t.occurredAt);
+          return d.getMonth() === ref.getMonth() && d.getFullYear() === ref.getFullYear();
+        })
+        .reduce((sum: number, t: any) => sum + Number(t.amount), 0);
+    };
+    const pct = (current: number, previous: number) =>
+      previous > 0 ? Number((((current - previous) / previous) * 100).toFixed(1)) : 0;
+
+    const revNow = sumMonth("revenue", 0);
+    const revPrev = sumMonth("revenue", -1);
+    const expNow = sumMonth("expense", 0);
+    const expPrev = sumMonth("expense", -1);
+    return {
+      revenueDelta: pct(revNow, revPrev),
+      expensesDelta: pct(expNow, expPrev),
+      profitDelta: pct(revNow - expNow, revPrev - expPrev),
+    };
+  }, [tx]);
 
   // Chart Data
   const trend = React.useMemo(() => {

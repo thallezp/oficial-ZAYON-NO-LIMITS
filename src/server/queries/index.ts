@@ -528,7 +528,11 @@ export const queries = {
   },
   funnels: {
     byPersonaId: async (personaId: string) => {
-      const rows = await db.select().from(s.salesFunnels).where(eq(s.salesFunnels.personaId, personaId));
+      const rows = await db
+        .select()
+        .from(s.salesFunnels)
+        .where(eq(s.salesFunnels.personaId, personaId))
+        .orderBy(desc(s.salesFunnels.createdAt));
       if (!rows[0]) return null;
       const id = rows[0].id;
       const nodes = await db.select().from(s.funnelNodes).where(eq(s.funnelNodes.funnelId, id));
@@ -538,7 +542,9 @@ export const queries = {
         conversionRate: Number(rows[0].conversionRate),
         nodes: nodes.map((n: any) => ({
           id: n.id,
-          type: n.nodeType,
+          // node_type no banco é enum restrito; o tipo real (product, upsell...)
+          // fica preservado em data.nodeType
+          type: (n.data as any)?.nodeType ?? n.nodeType,
           title: n.title,
           description: n.description,
           position: n.position as { x: number; y: number },

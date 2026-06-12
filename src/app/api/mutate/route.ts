@@ -60,6 +60,102 @@ function mergeMetadata(
   return { ...(current || {}), ...(next || {}) };
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isUuid = (v: unknown): v is string =>
+  typeof v === "string" && UUID_RE.test(v);
+
+// Valores aceitos pelo enum flow_node_type no banco (flow_nodes/funnel_nodes)
+const FLOW_NODE_TYPE_VALUES = new Set([
+  "content",
+  "direct",
+  "whatsapp",
+  "landing",
+  "checkout",
+  "email",
+  "community",
+  "call",
+  "webinar",
+  "live",
+  "remarketing",
+  "custom",
+]);
+
+/**
+ * Normaliza nodes/edges vindos do React Flow para persistência:
+ * - ids não-UUID (ex: "n_123", "t-1", "reactflow__edge-...") viram UUIDs reais,
+ *   com remap correspondente em source/target das edges
+ * - node_type fora do enum vira "custom", preservando o tipo real em data.nodeType
+ * - edges órfãs (source/target sem node correspondente) são descartadas
+ */
+function sanitizeGraphForPersistence(
+  parentKey: "flow_id" | "funnel_id",
+  parentId: string,
+  nodes: any[] | undefined,
+  edges: any[] | undefined,
+  opts?: { includeMetrics?: boolean },
+) {
+  const idMap = new Map<string, string>();
+  const safeNodes = (nodes ?? []).map((n: any) => {
+    const newId = isUuid(n.id) ? n.id : crypto.randomUUID();
+    if (n.id !== undefined && n.id !== null) idMap.set(String(n.id), newId);
+    const rawType = n.data?.nodeType || n.type || "custom";
+    const row: Record<string, any> = {
+      id: newId,
+      [parentKey]: parentId,
+      node_type: FLOW_NODE_TYPE_VALUES.has(rawType) ? rawType : "custom",
+      title: n.data?.title || n.title || "",
+      description: n.data?.description || n.description || "",
+      position: n.position ?? null,
+      data: { ...(n.data ?? {}), nodeType: rawType },
+    };
+    if (opts?.includeMetrics) {
+      row.metrics = n.metrics ?? n.data?.metrics ?? null;
+    }
+    return row;
+  });
+  const safeEdges = (edges ?? []).flatMap((e: any) => {
+    const source =
+      idMap.get(String(e.source)) ?? (isUuid(e.source) ? e.source : null);
+    const target =
+      idMap.get(String(e.target)) ?? (isUuid(e.target) ? e.target : null);
+    if (!source || !target) return [];
+    return [
+      {
+        id: isUuid(e.id) ? e.id : crypto.randomUUID(),
+        [parentKey]: parentId,
+        source,
+        target,
+        label: typeof e.label === "string" ? e.label : null,
+        data: e.data ?? null,
+      },
+    ];
+  });
+  return { safeNodes, safeEdges };
+}
+
+/**
+ * Delete que falha alto: lança erro quando nenhuma linha foi afetada
+ * (registro inexistente ou bloqueado por RLS), em vez de fingir sucesso.
+ */
+async function deleteOrThrow(
+  supabase: ReturnType<typeof supabaseServer>,
+  table: string,
+  id: string,
+) {
+  const { data, error } = await supabase
+    .from(table)
+    .delete()
+    .eq("id", id)
+    .select("id");
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error(
+      "Nada foi excluído — registro não encontrado ou sem permissão.",
+    );
+  }
+}
+
 /**
  * API Route universal para mutations via Supabase SDK.
  * Não depende de DATABASE_URL (Drizzle) — usa o cliente Supabase diretamente.
@@ -240,11 +336,7 @@ export async function POST(req: Request) {
       }
       case "deleteContent": {
         const { id } = payload;
-        const { error } = await supabase
-          .from("content_items")
-          .delete()
-          .eq("id", id);
-        if (error) throw error;
+        await deleteOrThrow(supabase, "content_items", id);
         result = { id };
         break;
       }
@@ -881,30 +973,31 @@ export async function POST(req: Request) {
           .single();
         if (flowError) throw flowError;
         // Save template nodes and edges if provided
-        if (payload.nodes?.length > 0) {
-          await supabase.from("flow_nodes").insert(
-            payload.nodes.map((n: any) => ({
-              id: n.id,
-              flow_id: flowData.id,
-              node_type: n.type || "step",
-              title: n.data?.title || n.title || "",
-              description: n.data?.description || n.description || "",
-              position: n.position,
-              data: n.data || null,
-            }))
+        const { safeNodes: flowNodes, safeEdges: flowEdges } =
+          sanitizeGraphForPersistence(
+            "flow_id",
+            flowData.id,
+            payload.nodes,
+            (payload.edges ?? []).map((e: any) => ({
+              ...e,
+              data: e.data ?? {
+                style: e.style,
+                animated: e.animated,
+                type: e.type,
+              },
+            })),
           );
+        if (flowNodes.length > 0) {
+          const { error } = await supabase
+            .from("flow_nodes")
+            .insert(flowNodes);
+          if (error) throw error;
         }
-        if (payload.edges?.length > 0) {
-          await supabase.from("flow_edges").insert(
-            payload.edges.map((e: any) => ({
-              id: e.id,
-              flow_id: flowData.id,
-              source: e.source,
-              target: e.target,
-              label: e.label || null,
-              data: { style: e.style, animated: e.animated, type: e.type },
-            }))
-          );
+        if (flowEdges.length > 0) {
+          const { error } = await supabase
+            .from("flow_edges")
+            .insert(flowEdges);
+          if (error) throw error;
         }
         result = flowData;
         break;
@@ -912,75 +1005,88 @@ export async function POST(req: Request) {
 
       case "saveFlowData": {
         const { id, nodes, edges } = payload;
-        await supabase.from("flow_nodes").delete().eq("flow_id", id);
-        await supabase.from("flow_edges").delete().eq("flow_id", id);
-        if (nodes?.length > 0) {
-          await supabase.from("flow_nodes").insert(
-            nodes.map((n: any) => ({
-              id: n.id,
-              flow_id: id,
-              node_type: n.type || "custom",
-              title: n.data?.title || n.title || "",
-              description: n.data?.description || n.description || "",
-              position: n.position,
-              data: n.data || null,
-            }))
-          );
+        const { safeNodes, safeEdges } = sanitizeGraphForPersistence(
+          "flow_id",
+          id,
+          nodes,
+          edges,
+        );
+        {
+          const { error } = await supabase
+            .from("flow_nodes")
+            .delete()
+            .eq("flow_id", id);
+          if (error) throw error;
         }
-        if (edges?.length > 0) {
-          await supabase.from("flow_edges").insert(
-            edges.map((e: any) => ({
-              id: e.id,
-              flow_id: id,
-              source: e.source,
-              target: e.target,
-              label: e.label || null,
-              data: e.data || null,
-            }))
-          );
+        {
+          const { error } = await supabase
+            .from("flow_edges")
+            .delete()
+            .eq("flow_id", id);
+          if (error) throw error;
         }
-        result = { ok: true };
+        if (safeNodes.length > 0) {
+          const { error } = await supabase.from("flow_nodes").insert(safeNodes);
+          if (error) throw error;
+        }
+        if (safeEdges.length > 0) {
+          const { error } = await supabase.from("flow_edges").insert(safeEdges);
+          if (error) throw error;
+        }
+        result = { ok: true, nodes: safeNodes.length, edges: safeEdges.length };
         break;
       }
 
       // ── FUNNELS ───────────────────────────────────────────────────────────
       case "saveFunnelData": {
         const { id, nodes, edges, conversionRate } = payload;
-        await supabase.from("funnel_nodes").delete().eq("funnel_id", id);
-        await supabase.from("funnel_edges").delete().eq("funnel_id", id);
-        if (nodes?.length > 0) {
-          await supabase.from("funnel_nodes").insert(
-            nodes.map((n: any) => ({
-              id: n.id,
-              funnel_id: id,
-              node_type: n.type || "custom",
-              title: n.data?.title || n.title || "",
-              description: n.data?.description || n.description || "",
-              position: n.position,
-              data: n.data || null,
-              metrics: n.metrics || n.data?.metrics || null,
-            }))
-          );
+        const { safeNodes, safeEdges } = sanitizeGraphForPersistence(
+          "funnel_id",
+          id,
+          nodes,
+          edges,
+          { includeMetrics: true },
+        );
+        {
+          const { error } = await supabase
+            .from("funnel_nodes")
+            .delete()
+            .eq("funnel_id", id);
+          if (error) throw error;
         }
-        if (edges?.length > 0) {
-          await supabase.from("funnel_edges").insert(
-            edges.map((e: any) => ({
-              id: e.id,
-              funnel_id: id,
-              source: e.source,
-              target: e.target,
-              label: e.label || null,
-              data: e.data || null,
-            }))
-          );
+        {
+          const { error } = await supabase
+            .from("funnel_edges")
+            .delete()
+            .eq("funnel_id", id);
+          if (error) throw error;
         }
-        if (conversionRate !== undefined) {
-          await supabase
+        if (safeNodes.length > 0) {
+          const { error } = await supabase
+            .from("funnel_nodes")
+            .insert(safeNodes);
+          if (error) throw error;
+        }
+        if (safeEdges.length > 0) {
+          const { error } = await supabase
+            .from("funnel_edges")
+            .insert(safeEdges);
+          if (error) throw error;
+        }
+        {
+          const patch: Record<string, any> = {
+            updated_at: new Date().toISOString(),
+          };
+          if (conversionRate !== undefined) {
+            patch.conversion_rate = String(conversionRate);
+          }
+          const { error } = await supabase
             .from("sales_funnels")
-            .update({ conversion_rate: String(conversionRate) })
+            .update(patch)
             .eq("id", id);
+          if (error) throw error;
         }
-        result = { ok: true };
+        result = { ok: true, nodes: safeNodes.length, edges: safeEdges.length };
         break;
       }
 
@@ -1003,8 +1109,7 @@ export async function POST(req: Request) {
 
       case "deleteFunnel": {
         const { id } = payload;
-        const { error } = await supabase.from("sales_funnels").delete().eq("id", id);
-        if (error) throw error;
+        await deleteOrThrow(supabase, "sales_funnels", id);
         result = { id };
         break;
       }
@@ -1509,73 +1614,55 @@ export async function POST(req: Request) {
 
       // ── DELETIONS ─────────────────────────────────────────────────────────
       case "deleteTask": {
-        const { id } = payload;
-        const { error } = await supabase.from("tasks").delete().eq("id", id);
-        if (error) throw error;
+        await deleteOrThrow(supabase, "tasks", payload.id);
         result = { ok: true };
         break;
       }
 
       case "deleteProject": {
-        const { id } = payload;
-        const { error } = await supabase.from("projects").delete().eq("id", id);
-        if (error) throw error;
+        await deleteOrThrow(supabase, "projects", payload.id);
         result = { ok: true };
         break;
       }
 
       case "deleteLead": {
-        const { id } = payload;
-        const { error } = await supabase.from("leads").delete().eq("id", id);
-        if (error) throw error;
+        await deleteOrThrow(supabase, "leads", payload.id);
         result = { ok: true };
         break;
       }
 
       case "deleteFinancial": {
-        const { id } = payload;
-        const { error } = await supabase.from("financial_transactions").delete().eq("id", id);
-        if (error) throw error;
+        await deleteOrThrow(supabase, "financial_transactions", payload.id);
         result = { ok: true };
         break;
       }
 
       case "deletePersona": {
-        const { id } = payload;
-        const { error } = await supabase.from("personas").delete().eq("id", id);
-        if (error) throw error;
+        await deleteOrThrow(supabase, "personas", payload.id);
         result = { ok: true };
         break;
       }
 
       case "deleteDocument": {
-        const { id } = payload;
-        const { error } = await supabase.from("documents").delete().eq("id", id);
-        if (error) throw error;
+        await deleteOrThrow(supabase, "documents", payload.id);
         result = { ok: true };
         break;
       }
 
       case "deleteFlow": {
-        const { id } = payload;
-        const { error } = await supabase.from("flows").delete().eq("id", id);
-        if (error) throw error;
+        await deleteOrThrow(supabase, "flows", payload.id);
         result = { ok: true };
         break;
       }
 
       case "deleteTool": {
-        const { id } = payload;
-        const { error } = await supabase.from("tools").delete().eq("id", id);
-        if (error) throw error;
+        await deleteOrThrow(supabase, "tools", payload.id);
         result = { ok: true };
         break;
       }
 
       case "deleteMaterial": {
-        const { id } = payload;
-        const { error } = await supabase.from("materials").delete().eq("id", id);
-        if (error) throw error;
+        await deleteOrThrow(supabase, "materials", payload.id);
         result = { ok: true };
         break;
       }
@@ -1605,9 +1692,7 @@ export async function POST(req: Request) {
       }
 
       case "deleteCalendarEvent": {
-        const { id } = payload;
-        const { error } = await supabase.from("calendar_events").delete().eq("id", id);
-        if (error) throw error;
+        await deleteOrThrow(supabase, "calendar_events", payload.id);
         result = { ok: true };
         break;
       }

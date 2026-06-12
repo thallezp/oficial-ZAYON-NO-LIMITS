@@ -413,6 +413,8 @@ function FunnelInner({ funnel, accent = "#5b8cff", onSave, workspaceId, personaI
         addEdge(
           {
             ...c,
+            // id UUID real — as colunas funnel_edges.id/source/target são uuid no banco
+            id: crypto.randomUUID(),
             type: "smoothstep",
             animated: true,
             style: { stroke: accent, strokeWidth: 1.5 },
@@ -482,7 +484,7 @@ function FunnelInner({ funnel, accent = "#5b8cff", onSave, workspaceId, personaI
 
   const handleDuplicateNode = () => {
     if (!selectedNode) return;
-    const newId = `n_${Date.now()}`;
+    const newId = crypto.randomUUID();
     const copy: Node = {
       ...selectedNode,
       id: newId,
@@ -498,7 +500,7 @@ function FunnelInner({ funnel, accent = "#5b8cff", onSave, workspaceId, personaI
   };
 
   const handleAddNode = (type: NodeTypeKey) => {
-    const id = `n_${Date.now()}`;
+    const id = crypto.randomUUID();
     const meta = NODE_TYPES[type];
     const existing = nodes.length;
     const col = existing % 4;
@@ -522,8 +524,12 @@ function FunnelInner({ funnel, accent = "#5b8cff", onSave, workspaceId, personaI
 
   const applyTemplate = (templateKey: keyof typeof FUNNEL_TEMPLATES) => {
     const tmpl = FUNNEL_TEMPLATES[templateKey];
+    // ids dos templates ("t-1", "e-2"...) viram UUIDs reais para persistir no banco
+    const idMap = new Map<string, string>(
+      tmpl.nodes.map((n) => [n.id, crypto.randomUUID()]),
+    );
     const newNodes: Node[] = tmpl.nodes.map((n) => ({
-      id: n.id,
+      id: idMap.get(n.id)!,
       type: "funnel",
       position: n.position,
       data: {
@@ -535,10 +541,10 @@ function FunnelInner({ funnel, accent = "#5b8cff", onSave, workspaceId, personaI
         status: "draft",
       } as ProductData,
     }));
-    const newEdges: Edge[] = tmpl.edges.map((e, idx) => ({
-      id: `e_${Date.now()}_${idx}`,
-      source: e.source,
-      target: e.target,
+    const newEdges: Edge[] = tmpl.edges.map((e) => ({
+      id: crypto.randomUUID(),
+      source: idMap.get(e.source) ?? e.source,
+      target: idMap.get(e.target) ?? e.target,
       type: "smoothstep",
       animated: true,
       style: { stroke: accent, strokeWidth: 1.5 },

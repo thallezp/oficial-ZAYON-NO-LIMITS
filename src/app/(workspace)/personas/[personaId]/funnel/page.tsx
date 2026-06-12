@@ -62,10 +62,15 @@ export default function FunnelPage() {
       toast.error("ID do funil não disponível");
       return;
     }
-    // Calculate global conversion rate: first node traffic vs final node revenue or traffic
-    const firstNodeTraffic = nodes[0]?.metrics?.traffic || 1;
-    const finalNodeSales = nodes[nodes.length - 1]?.metrics?.traffic * (nodes[nodes.length - 1]?.metrics?.conversion / 100) || 0;
-    const computedConversion = Number(((finalNodeSales / firstNodeTraffic) * 100).toFixed(2)) || 2.5;
+    // Conversão global: tráfego do primeiro card vs vendas estimadas do último.
+    // No canvas as métricas vivem em node.data.metrics.
+    const metricsOf = (n: any) => n?.data?.metrics ?? n?.metrics ?? {};
+    const firstNodeTraffic = Number(metricsOf(nodes[0]).traffic) || 1;
+    const last = metricsOf(nodes[nodes.length - 1]);
+    const finalNodeSales =
+      (Number(last.traffic) || 0) * ((Number(last.conversion) || 0) / 100);
+    const computedConversion =
+      Number(((finalNodeSales / firstNodeTraffic) * 100).toFixed(2)) || 0;
 
     try {
       await saveMutation.mutateAsync({

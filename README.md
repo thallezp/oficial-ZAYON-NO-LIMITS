@@ -19,7 +19,7 @@ cp .env.example .env.local
 pnpm dev
 ```
 
-Por padrão `NEXT_PUBLIC_USE_MOCK_DATA=true` — o sistema sobe inteiro com dados mockados, sem precisar de Supabase.
+O sistema usa exclusivamente dados reais do Supabase — preencha as variáveis do `.env.local` antes de subir.
 
 ## Arquitetura de dados
 
@@ -35,5 +35,4 @@ Ver `src/drizzle/schema/` para o modelo completo.
   - `personas/[personaId]/*` — operação por persona
 - `src/components` — primitives, layout, módulos
 - `src/stores` — estado global Zustand
-- `src/data` — mocks
 - `src/drizzle/schema` — modelo
