@@ -15,6 +15,8 @@ import ReactFlow, {
   type Edge,
   type Node,
   type NodeProps,
+  Handle,
+  Position,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import {
@@ -24,6 +26,7 @@ import {
   Copy,
   FileText,
   GitBranch,
+  Link2,
   ListChecks,
   MessageSquare,
   PackageCheck,
@@ -139,7 +142,10 @@ export interface FlowDocumentRef {
   title: string;
 }
 
+const ConnectionsContext = React.createContext(true);
+
 function StepNode({ data, selected }: NodeProps<NodeData>) {
+  const enableConnections = React.useContext(ConnectionsContext);
   const Icon = ICONS[data.kind] ?? Workflow;
   const colorClass = KIND_COLORS[data.kind] ?? KIND_COLORS.action;
   const checklistDone = data.checklist?.filter((c) => c.done).length ?? 0;
@@ -150,13 +156,29 @@ function StepNode({ data, selected }: NodeProps<NodeData>) {
   return (
     <div
       className={cn(
-        "rounded-xl border bg-card-elevated shadow-soft w-[220px] transition",
+        "relative rounded-xl border bg-card-elevated shadow-soft w-[220px] transition",
         "bg-gradient-to-br",
         colorClass,
         selected && "ring-2 ring-primary shadow-glow",
         data.status === "doing" && "ring-1 ring-primary/60",
       )}
     >
+      {enableConnections && (
+        <>
+          <Handle
+            type="target"
+            position={Position.Left}
+            className="w-2.5 h-2.5 bg-primary border-2 border-background rounded-full hover:scale-125 transition-transform opacity-60 hover:opacity-100"
+            style={{ left: -5 }}
+          />
+          <Handle
+            type="source"
+            position={Position.Right}
+            className="w-2.5 h-2.5 bg-primary border-2 border-background rounded-full hover:scale-125 transition-transform opacity-60 hover:opacity-100"
+            style={{ right: -5 }}
+          />
+        </>
+      )}
       <div className="flex items-center justify-between rounded-t-xl px-3 py-2 border-b border-border/60">
         <div className="flex h-7 w-7 items-center justify-center rounded-md bg-background/40">
           <Icon className="h-3.5 w-3.5" />
@@ -245,6 +267,7 @@ function ProcessInner({
   const [isExecuting, setIsExecuting] = React.useState(false);
   const [isConverting, setIsConverting] = React.useState(false);
   const [creatingTaskFor, setCreatingTaskFor] = React.useState<string | null>(null);
+  const [enableConnections, setEnableConnections] = React.useState(true);
 
   const handleToggleExecuting = React.useCallback(() => {
     setIsExecuting((prev) => {
@@ -474,156 +497,172 @@ function ProcessInner({
   ];
 
   return (
-    <div className="relative flex gap-3">
-      <div className="flex-1 h-[640px] rounded-xl border border-border/60 bg-card/40 overflow-hidden relative">
-        {/* toolbar superior */}
-        <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 flex-wrap">
-          <div className="relative">
+    <ConnectionsContext.Provider value={enableConnections}>
+      <div className="relative flex gap-3">
+        <div className="flex-1 h-[640px] rounded-xl border border-border/60 bg-card/40 overflow-hidden relative">
+          {/* toolbar superior */}
+          <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 flex-wrap">
+            <div className="relative">
+              <button
+                onClick={() => setMenuOpen((o) => !o)}
+                className="flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-[11px] font-medium text-primary hover:bg-primary/20 transition"
+              >
+                + Adicionar nó
+              </button>
+              {menuOpen && (
+                <div className="absolute top-full mt-1 left-0 grid grid-cols-2 gap-1 bg-card border border-border/60 rounded-lg p-1.5 shadow-glow z-20 min-w-[280px]">
+                  {NODE_KINDS.map((k) => {
+                    const Icon = ICONS[k];
+                    return (
+                      <button
+                        key={k}
+                        onClick={() => handleAddStep(k)}
+                        className="flex items-center gap-2 rounded-md px-2 py-1.5 text-[11px] text-left hover:bg-card-elevated transition"
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        {KIND_LABELS[k]}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            {selectedNodeId && (
+              <>
+                <button
+                  onClick={() => handleDuplicateNode(selectedNodeId)}
+                  className="flex items-center gap-1 rounded-lg border border-border/60 bg-card/80 px-2.5 py-1.5 text-[11px] font-medium hover:border-primary/40 hover:bg-card transition"
+                >
+                  <Copy className="h-3 w-3" /> Duplicar
+                </button>
+                <button
+                  onClick={() => handleDeleteNode(selectedNodeId)}
+                  className="flex items-center gap-1 rounded-lg border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-[11px] font-medium text-destructive hover:bg-destructive/20 transition"
+                >
+                  <Trash2 className="h-3 w-3" /> Excluir
+                </button>
+              </>
+            )}
             <button
-              onClick={() => setMenuOpen((o) => !o)}
-              className="flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-[11px] font-medium text-primary hover:bg-primary/20 transition"
+              onClick={handleToggleExecuting}
+              className={cn(
+                "flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition",
+                isExecuting
+                  ? "border-warning/40 bg-warning/10 text-warning hover:bg-warning/20"
+                  : "border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20",
+              )}
+              title={isExecuting ? "Parar execução do fluxo" : "Executar fluxo (passa todos os pendentes para 'fazendo')"}
             >
-              + Adicionar nó
+              {isExecuting ? (
+                <>
+                  <Square className="h-3 w-3" /> Pausar
+                </>
+              ) : (
+                <>
+                  <Play className="h-3 w-3" /> Executar
+                </>
+              )}
             </button>
-            {menuOpen && (
-              <div className="absolute top-full mt-1 left-0 grid grid-cols-2 gap-1 bg-card border border-border/60 rounded-lg p-1.5 shadow-glow z-20 min-w-[280px]">
-                {NODE_KINDS.map((k) => {
-                  const Icon = ICONS[k];
-                  return (
-                    <button
-                      key={k}
-                      onClick={() => handleAddStep(k)}
-                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-[11px] text-left hover:bg-card-elevated transition"
-                    >
-                      <Icon className="h-3.5 w-3.5" />
-                      {KIND_LABELS[k]}
-                    </button>
-                  );
-                })}
-              </div>
+            <button
+              onClick={() => setEnableConnections((prev) => !prev)}
+              className={cn(
+                "flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition",
+                enableConnections
+                  ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
+                  : "border-border/60 bg-card/80 hover:border-primary/40 hover:bg-card text-muted-foreground"
+              )}
+            >
+              <Link2 className="h-3 w-3" /> Ligar Cards: {enableConnections ? "Ativo" : "Inativo"}
+            </button>
+            {onConvertToProject && (
+              <button
+                onClick={handleConvertToProject}
+                disabled={isConverting}
+                className="flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-2.5 py-1.5 text-[11px] font-medium text-primary hover:bg-primary/20 transition disabled:opacity-60"
+                title="Cria um projeto com uma tarefa por nó"
+              >
+                <Rocket className="h-3 w-3" />
+                {isConverting ? "Convertendo..." : "Virar projeto"}
+              </button>
             )}
           </div>
-          {selectedNodeId && (
-            <>
+
+          {/* save */}
+          {onSave && (
+            <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
+              {isDirty && (
+                <span className="text-[11px] text-warning animate-pulse">
+                  Alterações não salvas
+                </span>
+              )}
               <button
-                onClick={() => handleDuplicateNode(selectedNodeId)}
-                className="flex items-center gap-1 rounded-lg border border-border/60 bg-card/80 px-2.5 py-1.5 text-[11px] font-medium hover:border-primary/40 hover:bg-card transition"
+                onClick={handleSave}
+                disabled={isSaving || !isDirty}
+                className="flex items-center gap-1.5 rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground px-3.5 py-2 text-xs font-semibold shadow-md disabled:opacity-50 transition"
               >
-                <Copy className="h-3 w-3" /> Duplicar
+                <Save className="h-3.5 w-3.5" />
+                {isSaving ? "Salvando..." : "Salvar Alterações"}
               </button>
-              <button
-                onClick={() => handleDeleteNode(selectedNodeId)}
-                className="flex items-center gap-1 rounded-lg border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-[11px] font-medium text-destructive hover:bg-destructive/20 transition"
-              >
-                <Trash2 className="h-3 w-3" /> Excluir
-              </button>
-            </>
+            </div>
           )}
-          <button
-            onClick={handleToggleExecuting}
-            className={cn(
-              "flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition",
-              isExecuting
-                ? "border-warning/40 bg-warning/10 text-warning hover:bg-warning/20"
-                : "border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20",
-            )}
-            title={isExecuting ? "Parar execução do fluxo" : "Executar fluxo (passa todos os pendentes para 'fazendo')"}
+
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onNodeClick={handleNodeClick}
+            onPaneClick={handlePaneClick}
+            nodeTypes={nodeTypes}
+            fitView
+            fitViewOptions={{ padding: 0.2 }}
+            proOptions={{ hideAttribution: true }}
+            defaultEdgeOptions={{ animated: true }}
+            deleteKeyCode={null}
+            zoomOnScroll={true}
+            zoomActivationKeyCode="Control"
+            preventScrolling={false}
           >
-            {isExecuting ? (
-              <>
-                <Square className="h-3 w-3" /> Pausar
-              </>
-            ) : (
-              <>
-                <Play className="h-3 w-3" /> Executar
-              </>
-            )}
-          </button>
-          {onConvertToProject && (
-            <button
-              onClick={handleConvertToProject}
-              disabled={isConverting}
-              className="flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-2.5 py-1.5 text-[11px] font-medium text-primary hover:bg-primary/20 transition disabled:opacity-60"
-              title="Cria um projeto com uma tarefa por nó"
-            >
-              <Rocket className="h-3 w-3" />
-              {isConverting ? "Convertendo..." : "Virar projeto"}
-            </button>
-          )}
+            <Background
+              variant={BackgroundVariant.Dots}
+              gap={20}
+              size={1}
+              color="rgba(255,255,255,0.06)"
+            />
+            <Controls
+              className="!bg-card !border-border/60 !text-foreground"
+              showInteractive={false}
+            />
+            <MiniMap
+              className="!bg-card !border !border-border/60 !rounded-lg"
+              nodeColor="rgba(91,140,255,0.6)"
+              maskColor="rgba(10,13,26,0.7)"
+            />
+          </ReactFlow>
         </div>
 
-        {/* save */}
-        {onSave && (
-          <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
-            {isDirty && (
-              <span className="text-[11px] text-warning animate-pulse">
-                Alterações não salvas
-              </span>
-            )}
-            <button
-              onClick={handleSave}
-              disabled={isSaving || !isDirty}
-              className="flex items-center gap-1.5 rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground px-3.5 py-2 text-xs font-semibold shadow-md disabled:opacity-50 transition"
-            >
-              <Save className="h-3.5 w-3.5" />
-              {isSaving ? "Salvando..." : "Salvar Alterações"}
-            </button>
-          </div>
+        {/* drawer lateral de edicao */}
+        {selectedNode && (
+          <NodeEditorDrawer
+            node={selectedNode}
+            kinds={NODE_KINDS}
+            documents={documents}
+            onClose={() => setSelectedNodeId(null)}
+            onChange={(patch) => handleUpdateNode(selectedNode.id, patch)}
+            onDelete={() => handleDeleteNode(selectedNode.id)}
+            onDuplicate={() => handleDuplicateNode(selectedNode.id)}
+            onCreateTask={
+              onCreateTaskFromNode
+                ? () => handleCreateTaskFromNode(selectedNode.id)
+                : undefined
+            }
+            creatingTask={creatingTaskFor === selectedNode.id}
+            currentUserName={currentUserName}
+          />
         )}
-
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onNodeClick={handleNodeClick}
-          onPaneClick={handlePaneClick}
-          nodeTypes={nodeTypes}
-          fitView
-          fitViewOptions={{ padding: 0.2 }}
-          proOptions={{ hideAttribution: true }}
-          defaultEdgeOptions={{ animated: true }}
-          deleteKeyCode={null}
-        >
-          <Background
-            variant={BackgroundVariant.Dots}
-            gap={20}
-            size={1}
-            color="rgba(255,255,255,0.06)"
-          />
-          <Controls
-            className="!bg-card !border-border/60 !text-foreground"
-            showInteractive={false}
-          />
-          <MiniMap
-            className="!bg-card !border !border-border/60 !rounded-lg"
-            nodeColor="rgba(91,140,255,0.6)"
-            maskColor="rgba(10,13,26,0.7)"
-          />
-        </ReactFlow>
       </div>
-
-      {/* drawer lateral de edicao */}
-      {selectedNode && (
-        <NodeEditorDrawer
-          node={selectedNode}
-          kinds={NODE_KINDS}
-          documents={documents}
-          onClose={() => setSelectedNodeId(null)}
-          onChange={(patch) => handleUpdateNode(selectedNode.id, patch)}
-          onDelete={() => handleDeleteNode(selectedNode.id)}
-          onDuplicate={() => handleDuplicateNode(selectedNode.id)}
-          onCreateTask={
-            onCreateTaskFromNode
-              ? () => handleCreateTaskFromNode(selectedNode.id)
-              : undefined
-          }
-          creatingTask={creatingTaskFor === selectedNode.id}
-          currentUserName={currentUserName}
-        />
-      )}
-    </div>
+    </ConnectionsContext.Provider>
   );
 }
 

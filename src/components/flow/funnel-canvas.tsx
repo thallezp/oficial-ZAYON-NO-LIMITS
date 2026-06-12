@@ -16,6 +16,8 @@ import ReactFlow, {
   type Edge,
   type Node,
   type NodeProps,
+  Handle,
+  Position,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import {
@@ -121,18 +123,51 @@ interface ProductData {
   };
 }
 
+const ConnectionsContext = React.createContext(true);
+
 function FunnelNodeView({ data, selected }: NodeProps<ProductData>) {
+  const enableConnections = React.useContext(ConnectionsContext);
   const meta = NODE_TYPES[data.nodeType] ?? NODE_TYPES.custom;
   const Icon = meta.icon;
   const accent = data.accent ?? meta.color;
 
   return (
     <div
-      className={`rounded-xl border bg-card-elevated shadow-soft hover:shadow-glow transition w-[220px] ${
+      className={`relative rounded-xl border bg-card-elevated shadow-soft hover:shadow-glow transition w-[220px] ${
         selected ? "ring-2 ring-primary" : ""
       }`}
       style={{ borderColor: `${accent}55` }}
     >
+      {enableConnections && (
+        <>
+          <Handle
+            type="target"
+            position={Position.Left}
+            style={{
+              left: -5,
+              width: 10,
+              height: 10,
+              background: accent,
+              border: "2px solid var(--background)",
+              borderRadius: "50%",
+            }}
+            className="hover:scale-125 transition-transform opacity-60 hover:opacity-100"
+          />
+          <Handle
+            type="source"
+            position={Position.Right}
+            style={{
+              right: -5,
+              width: 10,
+              height: 10,
+              background: accent,
+              border: "2px solid var(--background)",
+              borderRadius: "50%",
+            }}
+            className="hover:scale-125 transition-transform opacity-60 hover:opacity-100"
+          />
+        </>
+      )}
       <div
         className="flex items-center justify-between rounded-t-xl px-3 py-2 border-b border-border/60"
         style={{ background: `${accent}18` }}
@@ -378,6 +413,7 @@ function FunnelInner({ funnel, accent = "#5b8cff", onSave, workspaceId, personaI
   const [isDirty, setIsDirty] = React.useState(false);
   const [selectedNode, setSelectedNode] = React.useState<Node | null>(null);
   const [showTemplates, setShowTemplates] = React.useState(false);
+  const [enableConnections, setEnableConnections] = React.useState(true);
 
   React.useEffect(() => {
     setNodes(initialNodes);
@@ -680,67 +716,81 @@ function FunnelInner({ funnel, accent = "#5b8cff", onSave, workspaceId, personaI
   };
 
   return (
-    <div className="relative h-[720px] rounded-xl border border-border/60 bg-card/40 overflow-hidden flex">
-      <div className="flex-1 relative">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onNodeClick={onNodeClick}
-          onPaneClick={() => setSelectedNode(null)}
-          nodeTypes={nodeTypes}
-          fitView
-          fitViewOptions={{ padding: 0.2 }}
-          proOptions={{ hideAttribution: true }}
-          defaultEdgeOptions={{ animated: true }}
-          deleteKeyCode={null}
-        >
-          <Background
-            variant={BackgroundVariant.Dots}
-            gap={20}
-            size={1}
-            color="rgba(255,255,255,0.06)"
-          />
-          <Controls
-            className="!bg-card !border-border/60 !text-foreground"
-            showInteractive={false}
-          />
-          <MiniMap
-            className="!bg-card !border !border-border/60 !rounded-lg"
-            nodeColor={() => `${accent}80`}
-            maskColor="rgba(10,13,26,0.7)"
-            zoomable
-            pannable
-          />
+    <ConnectionsContext.Provider value={enableConnections}>
+      <div className="relative h-[720px] rounded-xl border border-border/60 bg-card/40 overflow-hidden flex">
+        <div className="flex-1 relative">
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onNodeClick={onNodeClick}
+            onPaneClick={() => setSelectedNode(null)}
+            nodeTypes={nodeTypes}
+            fitView
+            fitViewOptions={{ padding: 0.2 }}
+            proOptions={{ hideAttribution: true }}
+            defaultEdgeOptions={{ animated: true }}
+            deleteKeyCode={null}
+            zoomOnScroll={true}
+            zoomActivationKeyCode="Control"
+            preventScrolling={false}
+          >
+            <Background
+              variant={BackgroundVariant.Dots}
+              gap={20}
+              size={1}
+              color="rgba(255,255,255,0.06)"
+            />
+            <Controls
+              className="!bg-card !border-border/60 !text-foreground"
+              showInteractive={false}
+            />
+            <MiniMap
+              className="!bg-card !border !border-border/60 !rounded-lg"
+              nodeColor={() => `${accent}80`}
+              maskColor="rgba(10,13,26,0.7)"
+              zoomable
+              pannable
+            />
 
-          <Panel position="top-left" className="flex gap-1.5 flex-wrap max-w-[640px]">
-            <div className="relative">
+            <Panel position="top-left" className="flex gap-1.5 flex-wrap max-w-[640px]">
+              <div className="relative">
+                <button
+                  onClick={() => setShowTemplates((o) => !o)}
+                  className="flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-2.5 py-1.5 text-[11px] font-medium text-primary hover:bg-primary/20 transition"
+                >
+                  <Sparkles className="h-3 w-3" /> Templates
+                </button>
+                {showTemplates && (
+                  <div className="absolute top-full mt-1 left-0 bg-card border border-border/60 rounded-lg p-1.5 shadow-glow z-20 min-w-[280px] space-y-0.5">
+                    {(Object.keys(FUNNEL_TEMPLATES) as (keyof typeof FUNNEL_TEMPLATES)[]).map(
+                      (k) => (
+                        <button
+                          key={k}
+                          onClick={() => applyTemplate(k)}
+                          className="w-full text-left rounded-md px-2 py-1.5 text-[11px] hover:bg-card-elevated transition"
+                        >
+                          {FUNNEL_TEMPLATES[k].name}
+                        </button>
+                      ),
+                    )}
+                  </div>
+                )}
+              </div>
               <button
-                onClick={() => setShowTemplates((o) => !o)}
-                className="flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-2.5 py-1.5 text-[11px] font-medium text-primary hover:bg-primary/20 transition"
+                onClick={() => setEnableConnections((prev) => !prev)}
+                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition ${
+                  enableConnections
+                    ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
+                    : "border-border/60 bg-card/80 hover:border-primary/40 hover:bg-card text-muted-foreground"
+                }`}
               >
-                <Sparkles className="h-3 w-3" /> Templates
+                <Link2 className="h-3 w-3" /> Ligar Cards: {enableConnections ? "Ativo" : "Inativo"}
               </button>
-              {showTemplates && (
-                <div className="absolute top-full mt-1 left-0 bg-card border border-border/60 rounded-lg p-1.5 shadow-glow z-20 min-w-[280px] space-y-0.5">
-                  {(Object.keys(FUNNEL_TEMPLATES) as (keyof typeof FUNNEL_TEMPLATES)[]).map(
-                    (k) => (
-                      <button
-                        key={k}
-                        onClick={() => applyTemplate(k)}
-                        className="w-full text-left rounded-md px-2 py-1.5 text-[11px] hover:bg-card-elevated transition"
-                      >
-                        {FUNNEL_TEMPLATES[k].name}
-                      </button>
-                    ),
-                  )}
-                </div>
-              )}
-            </div>
-            <button
-              onClick={layoutGrid}
+              <button
+                onClick={layoutGrid}
               className="flex items-center gap-1 rounded-lg border border-border/60 bg-card/80 px-2.5 py-1.5 text-[11px] font-medium hover:border-primary/40 hover:bg-card transition"
             >
               <Target className="h-3 w-3 text-sky-400" /> Layout Grade
@@ -804,6 +854,7 @@ function FunnelInner({ funnel, accent = "#5b8cff", onSave, workspaceId, personaI
         )}
       </AnimatePresence>
     </div>
+    </ConnectionsContext.Provider>
   );
 }
 
