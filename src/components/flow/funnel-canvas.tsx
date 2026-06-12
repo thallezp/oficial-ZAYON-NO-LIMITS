@@ -438,6 +438,8 @@ function FunnelInner({ funnel, accent = "#5b8cff", onSave, workspaceId, personaI
     try {
       await onSave(nodes, edges);
       setIsDirty(false);
+    } catch {
+      // onSave já exibiu o toast de erro; mantém isDirty para não fingir sucesso
     } finally {
       setIsSaving(false);
     }

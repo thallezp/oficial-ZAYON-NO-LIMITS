@@ -73,7 +73,7 @@ export default function FunnelPage() {
       Number(((finalNodeSales / firstNodeTraffic) * 100).toFixed(2)) || 0;
 
     try {
-      await saveMutation.mutateAsync({
+      const res = await saveMutation.mutateAsync({
         funnelId: funnel.id,
         nodes: nodes.map((n) => ({
           id: n.id,
@@ -93,13 +93,22 @@ export default function FunnelPage() {
         })),
         conversionRate: computedConversion,
       });
+      // Só comemora se o servidor confirmar que persistiu TODOS os cards.
+      const saved = (res as any)?.data;
+      if (saved && typeof saved.nodes === "number" && saved.nodes !== nodes.length) {
+        throw new Error(
+          `Servidor persistiu ${saved.nodes}/${nodes.length} cards — recarregue e tente novamente`,
+        );
+      }
       toast.success("Funil salvo com sucesso!");
     } catch (e: any) {
       toast.error("Erro ao salvar funil: " + e.message);
+      throw e; // mantém o canvas marcado como "não salvo"
     }
   };
 
   const handleCreateFunnel = async () => {
+    if (createMutation.isPending || saveMutation.isPending) return; // evita double-click criar funis duplicados
     if (!funnelName.trim()) {
       toast.error("Insira o nome do funil");
       return;
@@ -311,7 +320,15 @@ export default function FunnelPage() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-              <Button variant="gradient" onClick={handleCreateFunnel}>Criar e Aplicar</Button>
+              <Button
+                variant="gradient"
+                onClick={handleCreateFunnel}
+                disabled={createMutation.isPending || saveMutation.isPending}
+              >
+                {createMutation.isPending || saveMutation.isPending
+                  ? "Criando..."
+                  : "Criar e Aplicar"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

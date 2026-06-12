@@ -337,6 +337,8 @@ function ProcessInner({
         addEdge(
           {
             ...c,
+            // id UUID real — flow_edges.id/source/target são uuid no banco
+            id: crypto.randomUUID(),
             type: "smoothstep",
             animated: true,
             style: { stroke: "#5b8cff", strokeWidth: 1.5 },
@@ -355,6 +357,8 @@ function ProcessInner({
     try {
       await onSave(nodes, edges);
       setIsDirty(false);
+    } catch {
+      // onSave já exibiu o toast de erro; mantém isDirty para não fingir sucesso
     } finally {
       setIsSaving(false);
     }
@@ -402,7 +406,7 @@ function ProcessInner({
 
   const handleAddStep = React.useCallback(
     (kind: keyof typeof ICONS) => {
-      const id = `n_${Date.now()}`;
+      const id = crypto.randomUUID();
       const existing = nodes.length;
       const col = existing % 4;
       const row = Math.floor(existing / 4);
@@ -463,7 +467,7 @@ function ProcessInner({
     (id: string) => {
       const original = nodes.find((n) => n.id === id);
       if (!original) return;
-      const newId = `n_${Date.now()}`;
+      const newId = crypto.randomUUID();
       const copy: Node = {
         ...original,
         id: newId,
