@@ -865,14 +865,21 @@ export const queries = {
       if (f.workspaceId) conds.push(eq(s.focusSessions.workspaceId, f.workspaceId));
       if (f.userId)      conds.push(eq(s.focusSessions.userId, f.userId));
       if (f.personaId)   conds.push(eq(s.focusSessions.personaId, f.personaId));
+
+      const settingsConds = [];
+      if (f.workspaceId) settingsConds.push(eq(s.studySettings.workspaceId, f.workspaceId));
+      if (f.userId)      settingsConds.push(eq(s.studySettings.userId, f.userId));
       
-      const [sessions, tracks, reviews, achievements] = await Promise.all([
+      const [sessions, tracks, reviews, achievements, settingsRows] = await Promise.all([
         db.select().from(s.focusSessions)
           .where(conds.length ? and(...conds) : undefined)
           .orderBy(desc(s.focusSessions.startedAt)),
         queries.study.tracks(f),
         queries.study.reviewsDue(f),
         queries.study.achievements(f),
+        db.select().from(s.studySettings)
+          .where(settingsConds.length ? and(...settingsConds) : undefined)
+          .limit(1),
       ]);
       
       // Calculate streak
@@ -938,6 +945,7 @@ export const queries = {
         tracks,
         reviews,
         achievements,
+        settings: settingsRows[0] || null,
       };
     },
   },
