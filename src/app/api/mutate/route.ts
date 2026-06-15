@@ -2633,6 +2633,12 @@ export async function POST(req: Request) {
         break;
       }
 
+      case "deleteReview": {
+        await deleteOrThrow(supabase, "study_reviews", payload.id);
+        result = { id: payload.id };
+        break;
+      }
+
       case "upsertPlan": {
         const row = {
           workspace_id: payload.workspaceId,

@@ -1817,6 +1817,17 @@ export function useReviewCard() {
   });
 }
 
+export function useDeleteReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("deleteReview", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["studyReviews"] });
+      qc.invalidateQueries({ queryKey: ["studyDashboard"] });
+    },
+  });
+}
+
 export function useUpsertPlan() {
   const qc = useQueryClient();
   return useMutation({

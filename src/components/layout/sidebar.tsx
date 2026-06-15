@@ -8,6 +8,7 @@ import {
   Bot,
   Brain,
   Calendar,
+  CalendarClock,
   CircleDollarSign,
   ClipboardList,
   Cog,
@@ -25,10 +26,13 @@ import {
   LayoutDashboard,
   Library,
   ListChecks,
+  Milestone,
   Music2,
   Plus,
+  Repeat,
   Sparkles,
   Target,
+  Timer,
   Users,
   Wand2,
   Workflow,
@@ -54,8 +58,6 @@ const workspaceNav: NavItem[] = [
   { href: "/dashboard", label: "Home", icon: Home },
   { href: "/tasks", label: "Tasks", icon: ListChecks, badge: "12" },
   { href: "/projects", label: "Projects", icon: Folders },
-  { href: "/study/tracks", label: "Estudos", icon: GraduationCap },
-  { href: "/study/library", label: "Biblioteca", icon: Library },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/documents", label: "Documents", icon: FileText },
   { href: "/materials", label: "Materials", icon: Library },
@@ -63,6 +65,15 @@ const workspaceNav: NavItem[] = [
   { href: "/team", label: "Team", icon: Users },
   { href: "/tools", label: "Tools Hub", icon: Hammer },
   { href: "/notifications", label: "Notifications", icon: Bell, badge: "5" },
+];
+
+const studyNav: NavItem[] = [
+  { href: "/study", label: "Dashboard", icon: GraduationCap },
+  { href: "/study/tracks", label: "Trilhas de Estudo", icon: Milestone },
+  { href: "/study/library", label: "Biblioteca", icon: Library },
+  { href: "/study/sessions", label: "Timer de Foco", icon: Timer },
+  { href: "/study/reviews", label: "Revisões (Card)", icon: Repeat },
+  { href: "/study/planner", label: "Rotina & Blocos", icon: CalendarClock },
 ];
 
 const personaNav = (id: string): NavItem[] => [
@@ -176,6 +187,7 @@ export function SidebarContent() {
 
       <div className="flex-1 overflow-y-auto px-3 pb-4 no-scrollbar space-y-5">
         <NavGroup label="Workspace" items={workspaceNav} pathname={pathname} />
+        <NavGroup label="Estudo & Foco" items={studyNav} pathname={pathname} />
         <NavGroup label="Persona Ops" items={personaItems} pathname={pathname} />
         <NavGroup label="Inteligência" items={intelligenceNav} pathname={pathname} />
         <NavGroup label="Sistema" items={systemNav} pathname={pathname} />

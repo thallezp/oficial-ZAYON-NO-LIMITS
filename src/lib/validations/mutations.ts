@@ -534,6 +534,7 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
   endFocusSession: z.object({ id, actualMinutes: z.coerce.number().min(0).optional(), interruptions: z.coerce.number().min(0).optional(), focusScore: z.coerce.number().optional(), notes: z.string().optional().nullable() }).passthrough(),
   upsertReview: z.object({ id: optionalId, workspaceId: id, kind: z.enum(["note","flashcard","attack_note"]).optional(), content: z.string().optional().nullable() }).passthrough(),
   reviewCard: z.object({ id, grade: z.coerce.number().min(0).max(5) }).passthrough(),
+  deleteReview: simpleDelete,
   upsertPlan: z.object({ id: optionalId, workspaceId: id, name: z.string().min(1), kind: z.string().optional(), schedule: z.any().optional() }).passthrough(),
   deletePlan: simpleDelete,
   unlockAchievement: z.object({ workspaceId: id, key: z.string().min(1), name: z.string().min(1), tier: z.string().optional() }).passthrough(),
