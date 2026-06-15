@@ -40,6 +40,12 @@ const realtimeQueryKeys: Record<string, string[]> = {
   task_comments: ["taskComments"],
   tasks: ["tasks", "taskSubtasks"],
   tools: ["tools"],
+  focus_sessions: ["focusSessions", "studyDashboard"],
+  study_tracks: ["studyTracks", "studyDashboard"],
+  study_modules: ["studyTracks"],
+  study_module_items: ["studyTracks"],
+  study_resources: ["studyResources"],
+  study_reviews: ["studyReviews", "studyDashboard"],
 };
 
 export function useRealtime<T extends Record<string, any> = Record<string, any>>({
@@ -234,5 +240,21 @@ export function useRealtimeTools(
     filter: workspaceId ? `workspace_id=eq.${workspaceId}` : undefined,
     enabled: !!workspaceId,
     onPayload: onChange,
+  });
+}
+
+export function useRealtimeFocusSession(workspaceId?: string) {
+  useRealtime({
+    table: "focus_sessions",
+    filter: workspaceId ? `workspace_id=eq.${workspaceId}` : undefined,
+    enabled: !!workspaceId,
+  });
+}
+
+export function useRealtimeStudyTracks(workspaceId?: string) {
+  useRealtime({
+    table: "study_tracks",
+    filter: workspaceId ? `workspace_id=eq.${workspaceId}` : undefined,
+    enabled: !!workspaceId,
   });
 }

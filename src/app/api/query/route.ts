@@ -64,6 +64,15 @@ const handlers: Record<string, (p: Params) => Promise<unknown>> = {
     qa.getCalendarEventsAction({ workspaceId: p.workspaceId, personaId: p.personaId }),
   taskComments: (p) => qa.getTaskCommentsAction(p.taskId as string),
   taskSubtasks: (p) => qa.getTaskSubtasksAction(p.taskId as string),
+  studyTracks: (p) => qa.getStudyTracksAction({ workspaceId: p.workspaceId, personaId: p.personaId }),
+  studyResources: (p) => qa.getStudyResourcesAction({ workspaceId: p.workspaceId, personaId: p.personaId }),
+  studyObjectives: (p) => qa.getStudyObjectivesAction({ workspaceId: p.workspaceId, personaId: p.personaId }),
+  studyGoals: (p) => qa.getStudyGoalsAction({ workspaceId: p.workspaceId, personaId: p.personaId }),
+  focusSessions: (p) => qa.getFocusSessionsAction({ workspaceId: p.workspaceId, personaId: p.personaId }),
+  studyReviews: (p) => qa.getStudyReviewsAction({ workspaceId: p.workspaceId, personaId: p.personaId }),
+  studyPlans: (p) => qa.getStudyPlansAction({ workspaceId: p.workspaceId, personaId: p.personaId }),
+  studyAchievements: (p) => qa.getStudyAchievementsAction({ workspaceId: p.workspaceId, personaId: p.personaId }),
+  studyDashboard: (p) => qa.getStudyDashboardAction({ workspaceId: p.workspaceId, personaId: p.personaId }),
 };
 
 export async function POST(req: Request) {

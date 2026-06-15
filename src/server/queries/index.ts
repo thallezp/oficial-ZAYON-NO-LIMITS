@@ -767,4 +767,178 @@ export const queries = {
         .orderBy(s.tasks.createdAt);
     },
   },
+  study: {
+    tracks: async (f?: ScopeFilter) => {
+      const conds = [];
+      if (f?.workspaceId) conds.push(eq(s.studyTracks.workspaceId, f.workspaceId));
+      if (f?.personaId)  conds.push(eq(s.studyTracks.personaId, f.personaId));
+      const tracks = await db.select().from(s.studyTracks)
+        .where(conds.length ? and(...conds) : undefined)
+        .orderBy(s.studyTracks.sortOrder);
+      if (!tracks.length) return [];
+      const ids = tracks.map((t: any) => t.id);
+      const [modules, sessions] = await Promise.all([
+        db.select().from(s.studyModules).where(inArray(s.studyModules.trackId, ids)),
+        db.select().from(s.focusSessions).where(inArray(s.focusSessions.trackId, ids)),
+      ]);
+      const modIds = modules.map((m: any) => m.id);
+      const items = modIds.length
+        ? await db.select().from(s.studyModuleItems).where(inArray(s.studyModuleItems.moduleId, modIds))
+        : [];
+      return tracks.map((t: any) => {
+        const mods = modules.filter((m: any) => m.trackId === t.id).map((m: any) => ({
+          ...m,
+          items: items.filter((i: any) => i.moduleId === m.id),
+        }));
+        const allItems = mods.flatMap((m: any) => m.items);
+        const done = allItems.filter((i: any) => i.status === "completed").length;
+        const hoursDone = sessions.filter((x: any) => x.trackId === t.id)
+          .reduce((a: number, x: any) => a + (x.actualMinutes || 0), 0) / 60;
+        return {
+          ...t,
+          modules: mods,
+          progress: allItems.length ? Math.round((done / allItems.length) * 100) : 0,
+          hoursDone: Math.round(hoursDone),
+        };
+      });
+    },
+    resources: async (f?: ScopeFilter) => {
+      const conds = [];
+      if (f?.workspaceId) conds.push(eq(s.studyResources.workspaceId, f.workspaceId));
+      if (f?.personaId)  conds.push(eq(s.studyResources.personaId, f.personaId));
+      return db.select().from(s.studyResources)
+        .where(conds.length ? and(...conds) : undefined)
+        .orderBy(desc(s.studyResources.updatedAt));
+    },
+    objectives: async (f?: ScopeFilter) => {
+      const conds = [];
+      if (f?.workspaceId) conds.push(eq(s.studyObjectives.workspaceId, f.workspaceId));
+      if (f?.personaId)  conds.push(eq(s.studyObjectives.personaId, f.personaId));
+      return db.select().from(s.studyObjectives)
+        .where(conds.length ? and(...conds) : undefined)
+        .orderBy(desc(s.studyObjectives.createdAt));
+    },
+    goals: async (f?: ScopeFilter) => {
+      const conds = [];
+      if (f?.workspaceId) conds.push(eq(s.studyGoals.workspaceId, f.workspaceId));
+      if (f?.personaId)  conds.push(eq(s.studyGoals.personaId, f.personaId));
+      return db.select().from(s.studyGoals)
+        .where(conds.length ? and(...conds) : undefined)
+        .orderBy(desc(s.studyGoals.createdAt));
+    },
+    focusSessions: async (f: { workspaceId?: string; personaId?: string; userId?: string }) => {
+      const conds = [];
+      if (f.workspaceId) conds.push(eq(s.focusSessions.workspaceId, f.workspaceId));
+      if (f.userId)      conds.push(eq(s.focusSessions.userId, f.userId));
+      if (f.personaId)   conds.push(eq(s.focusSessions.personaId, f.personaId));
+      return db.select().from(s.focusSessions)
+        .where(conds.length ? and(...conds) : undefined)
+        .orderBy(desc(s.focusSessions.startedAt));
+    },
+    reviewsDue: async (f?: ScopeFilter & { userId?: string }) => {
+      const conds = [];
+      if (f?.workspaceId) conds.push(eq(s.studyReviews.workspaceId, f.workspaceId));
+      if (f?.userId)      conds.push(eq(s.studyReviews.userId, f.userId));
+      conds.push(sql`${s.studyReviews.dueAt} <= now()`);
+      return db.select().from(s.studyReviews)
+        .where(conds.length ? and(...conds) : undefined)
+        .orderBy(s.studyReviews.dueAt);
+    },
+    plans: async (f?: ScopeFilter & { userId?: string }) => {
+      const conds = [];
+      if (f?.workspaceId) conds.push(eq(s.studyPlans.workspaceId, f.workspaceId));
+      if (f?.userId)      conds.push(eq(s.studyPlans.userId, f.userId));
+      return db.select().from(s.studyPlans)
+        .where(conds.length ? and(...conds) : undefined)
+        .orderBy(desc(s.studyPlans.createdAt));
+    },
+    achievements: async (f?: ScopeFilter & { userId?: string }) => {
+      const conds = [];
+      if (f?.workspaceId) conds.push(eq(s.studyAchievements.workspaceId, f.workspaceId));
+      if (f?.userId)      conds.push(eq(s.studyAchievements.userId, f.userId));
+      return db.select().from(s.studyAchievements)
+        .where(conds.length ? and(...conds) : undefined)
+        .orderBy(desc(s.studyAchievements.unlockedAt));
+    },
+    dashboard: async (f: ScopeFilter & { userId?: string }) => {
+      const conds = [];
+      if (f.workspaceId) conds.push(eq(s.focusSessions.workspaceId, f.workspaceId));
+      if (f.userId)      conds.push(eq(s.focusSessions.userId, f.userId));
+      if (f.personaId)   conds.push(eq(s.focusSessions.personaId, f.personaId));
+      
+      const [sessions, tracks, reviews, achievements] = await Promise.all([
+        db.select().from(s.focusSessions)
+          .where(conds.length ? and(...conds) : undefined)
+          .orderBy(desc(s.focusSessions.startedAt)),
+        queries.study.tracks(f),
+        queries.study.reviewsDue(f),
+        queries.study.achievements(f),
+      ]);
+      
+      // Calculate streak
+      let streak = 0;
+      const sessionDates = new Set<string>();
+      
+      sessions.forEach((sess: any) => {
+        if (sess.startedAt && sess.status === "completed") {
+          const dateStr = new Date(sess.startedAt).toLocaleDateString("en-CA");
+          sessionDates.add(dateStr);
+        }
+      });
+      
+      const sortedDates = Array.from(sessionDates).sort((a, b) => b.localeCompare(a));
+      
+      if (sortedDates.length > 0) {
+        const todayStr = new Date().toLocaleDateString("en-CA");
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toLocaleDateString("en-CA");
+        
+        if (sortedDates[0] === todayStr || sortedDates[0] === yesterdayStr) {
+          streak = 1;
+          let current = new Date(sortedDates[0]);
+          for (let i = 1; i < sortedDates.length; i++) {
+            const prevDay = new Date(current);
+            prevDay.setDate(prevDay.getDate() - 1);
+            const prevDayStr = prevDay.toLocaleDateString("en-CA");
+            
+            if (sortedDates[i] === prevDayStr) {
+              streak++;
+              current = prevDay;
+            } else {
+              break;
+            }
+          }
+        }
+      }
+      
+      // Calculate weekly hours
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const distanceToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - distanceToMonday);
+      startOfWeek.setHours(0, 0, 0, 0);
+      
+      let weeklyMinutes = 0;
+      sessions.forEach((sess: any) => {
+        if (sess.startedAt && sess.actualMinutes && sess.status === "completed") {
+          const sessDate = new Date(sess.startedAt);
+          if (sessDate >= startOfWeek) {
+            weeklyMinutes += sess.actualMinutes;
+          }
+        }
+      });
+      const weeklyHours = Math.round((weeklyMinutes / 60) * 10) / 10;
+      
+      return {
+        streak,
+        weeklyHours,
+        sessions,
+        tracks,
+        reviews,
+        achievements,
+      };
+    },
+  },
 };

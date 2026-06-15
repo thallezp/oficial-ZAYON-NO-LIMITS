@@ -156,3 +156,23 @@ export const getAiActionsAction = (workspaceId: string, personaId?: string) =>
     workspaceId,
     personaId,
   });
+
+export const getStudyTracksAction = (f?: ScopeFilter) =>
+  callQuery<ResultOf<typeof Real.getStudyTracksAction>>("studyTracks", { workspaceId: f?.workspaceId, personaId: f?.personaId });
+export const getStudyResourcesAction = (f?: ScopeFilter) =>
+  callQuery<ResultOf<typeof Real.getStudyResourcesAction>>("studyResources", { workspaceId: f?.workspaceId, personaId: f?.personaId });
+export const getStudyObjectivesAction = (f?: ScopeFilter) =>
+  callQuery<ResultOf<typeof Real.getStudyObjectivesAction>>("studyObjectives", { workspaceId: f?.workspaceId, personaId: f?.personaId });
+export const getStudyGoalsAction = (f?: ScopeFilter) =>
+  callQuery<ResultOf<typeof Real.getStudyGoalsAction>>("studyGoals", { workspaceId: f?.workspaceId, personaId: f?.personaId });
+export const getFocusSessionsAction = (f?: ScopeFilter) =>
+  callQuery<ResultOf<typeof Real.getFocusSessionsAction>>("focusSessions", { workspaceId: f?.workspaceId, personaId: f?.personaId });
+export const getStudyReviewsAction = (f?: ScopeFilter) =>
+  callQuery<ResultOf<typeof Real.getStudyReviewsAction>>("studyReviews", { workspaceId: f?.workspaceId, personaId: f?.personaId });
+export const getStudyPlansAction = (f?: ScopeFilter) =>
+  callQuery<ResultOf<typeof Real.getStudyPlansAction>>("studyPlans", { workspaceId: f?.workspaceId, personaId: f?.personaId });
+export const getStudyAchievementsAction = (f?: ScopeFilter) =>
+  callQuery<ResultOf<typeof Real.getStudyAchievementsAction>>("studyAchievements", { workspaceId: f?.workspaceId, personaId: f?.personaId });
+export const getStudyDashboardAction = (f?: ScopeFilter) =>
+  callQuery<ResultOf<typeof Real.getStudyDashboardAction>>("studyDashboard", { workspaceId: f?.workspaceId, personaId: f?.personaId });
+

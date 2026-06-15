@@ -2252,6 +2252,447 @@ export async function POST(req: Request) {
         break;
       }
 
+      // ── STUDY MODULE ──────────────────────────────────────────────────────
+      case "upsertStudyTrack": {
+        const row = {
+          workspace_id: payload.workspaceId,
+          persona_id: payload.personaId || null,
+          objective_id: payload.objectiveId || null,
+          name: payload.name,
+          area: payload.area || null,
+          description: payload.description || null,
+          status: payload.status || "active",
+          mode: payload.mode || null,
+          start_date: payload.startDate || null,
+          target_date: payload.targetDate || null,
+          hours_target: payload.hoursTarget ?? null,
+          color: payload.color || null,
+          icon: payload.icon || null,
+          sort_order: payload.sortOrder ?? 0,
+          updated_at: new Date().toISOString(),
+        };
+        let q;
+        if (payload.id) {
+          q = supabase.from("study_tracks").update(row).eq("id", payload.id);
+        } else {
+          q = supabase.from("study_tracks").insert({ ...row, created_by: user.id });
+        }
+        const { data, error } = await q.select().single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deleteStudyTrack": {
+        await deleteOrThrow(supabase, "study_tracks", payload.id);
+        result = { id: payload.id };
+        break;
+      }
+
+      case "upsertStudyModule": {
+        const row = {
+          track_id: payload.trackId,
+          name: payload.name,
+          status: payload.status || "not_started",
+          hours_target: payload.hoursTarget ?? null,
+          position: payload.position ?? 0,
+          expanded: payload.expanded ?? false,
+          updated_at: new Date().toISOString(),
+        };
+        let q;
+        if (payload.id) {
+          q = supabase.from("study_modules").update(row).eq("id", payload.id);
+        } else {
+          q = supabase.from("study_modules").insert(row);
+        }
+        const { data, error } = await q.select().single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deleteStudyModule": {
+        await deleteOrThrow(supabase, "study_modules", payload.id);
+        result = { id: payload.id };
+        break;
+      }
+
+      case "upsertModuleItem": {
+        const row = {
+          module_id: payload.moduleId,
+          name: payload.name,
+          status: payload.status || "not_started",
+          hours: payload.hours ?? 1,
+          position: payload.position ?? 0,
+          resource_id: payload.resourceId || null,
+          link: payload.link || null,
+          updated_at: new Date().toISOString(),
+        };
+        let q;
+        if (payload.id) {
+          q = supabase.from("study_module_items").update(row).eq("id", payload.id);
+        } else {
+          q = supabase.from("study_module_items").insert(row);
+        }
+        const { data, error } = await q.select().single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deleteModuleItem": {
+        await deleteOrThrow(supabase, "study_module_items", payload.id);
+        result = { id: payload.id };
+        break;
+      }
+
+      case "reorderModuleItems": {
+        for (const it of payload.items) {
+          const { error } = await supabase
+            .from("study_module_items")
+            .update({ position: it.position, updated_at: new Date().toISOString() })
+            .eq("id", it.id);
+          if (error) throw error;
+        }
+        result = { ok: true };
+        break;
+      }
+
+      case "setItemStatus": {
+        const { data, error } = await supabase
+          .from("study_module_items")
+          .update({ status: payload.status, updated_at: new Date().toISOString() })
+          .eq("id", payload.id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "upsertStudyResource": {
+        const row = {
+          workspace_id: payload.workspaceId,
+          persona_id: payload.personaId || null,
+          track_id: payload.trackId || null,
+          objective_id: payload.objectiveId || null,
+          title: payload.title,
+          subtitle: payload.subtitle || null,
+          authors: payload.authors || null,
+          type: payload.type || "book",
+          status: payload.status || "backlog",
+          area: payload.area || null,
+          language: payload.language || null,
+          year: payload.year ?? null,
+          publisher: payload.publisher || null,
+          pages: payload.pages ?? null,
+          current_page: payload.currentPage ?? 0,
+          hours_done: payload.hoursDone ?? 0,
+          link: payload.link || null,
+          isbn: payload.isbn || null,
+          edition: payload.edition || null,
+          rating: payload.rating ?? null,
+          review: payload.review || null,
+          recommend: payload.recommend ?? null,
+          tags: payload.tags || null,
+          cover_url: payload.coverUrl || null,
+          file_url: payload.fileUrl || null,
+          started_at: payload.startedAt || null,
+          completed_at: payload.completedAt || null,
+          updated_at: new Date().toISOString(),
+        };
+        let q;
+        if (payload.id) {
+          q = supabase.from("study_resources").update(row).eq("id", payload.id);
+        } else {
+          q = supabase.from("study_resources").insert({ ...row, created_by: user.id });
+        }
+        const { data, error } = await q.select().single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deleteStudyResource": {
+        await deleteOrThrow(supabase, "study_resources", payload.id);
+        result = { id: payload.id };
+        break;
+      }
+
+      case "setResourceStatus": {
+        const row: any = {
+          status: payload.status,
+          updated_at: new Date().toISOString(),
+        };
+        if (payload.status === "reading") {
+          row.started_at = new Date().toISOString();
+        } else if (payload.status === "completed") {
+          row.completed_at = new Date().toISOString();
+        }
+        const { data, error } = await supabase
+          .from("study_resources")
+          .update(row)
+          .eq("id", payload.id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "setResourceProgress": {
+        const patch: any = { updated_at: new Date().toISOString() };
+        if (payload.currentPage !== undefined) patch.current_page = payload.currentPage;
+        if (payload.hoursDone !== undefined) patch.hours_done = payload.hoursDone;
+        const { data, error } = await supabase
+          .from("study_resources")
+          .update(patch)
+          .eq("id", payload.id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "upsertObjective": {
+        const row = {
+          workspace_id: payload.workspaceId,
+          persona_id: payload.personaId || null,
+          name: payload.name,
+          description: payload.description || null,
+          emoji: payload.emoji || null,
+          category: payload.category || null,
+          status: payload.status || "active",
+          deadline: payload.deadline || null,
+          milestones: payload.milestones || null,
+          achieved_at: payload.achievedAt || null,
+          updated_at: new Date().toISOString(),
+        };
+        let q;
+        if (payload.id) {
+          q = supabase.from("study_objectives").update(row).eq("id", payload.id);
+        } else {
+          q = supabase.from("study_objectives").insert({ ...row, created_by: user.id });
+        }
+        const { data, error } = await q.select().single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deleteObjective": {
+        await deleteOrThrow(supabase, "study_objectives", payload.id);
+        result = { id: payload.id };
+        break;
+      }
+
+      case "upsertGoal": {
+        const row = {
+          workspace_id: payload.workspaceId,
+          persona_id: payload.personaId || null,
+          track_id: payload.trackId || null,
+          objective_id: payload.objectiveId || null,
+          title: payload.title,
+          metric: payload.metric || null,
+          target: payload.target ?? null,
+          current: payload.current ?? 0,
+          period: payload.period || null,
+          status: payload.status || "active",
+          start_date: payload.startDate || null,
+          due_date: payload.dueDate || null,
+          updated_at: new Date().toISOString(),
+        };
+        let q;
+        if (payload.id) {
+          q = supabase.from("study_goals").update(row).eq("id", payload.id);
+        } else {
+          q = supabase.from("study_goals").insert(row);
+        }
+        const { data, error } = await q.select().single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deleteGoal": {
+        await deleteOrThrow(supabase, "study_goals", payload.id);
+        result = { id: payload.id };
+        break;
+      }
+
+      case "startFocusSession": {
+        const { data, error } = await supabase.from("focus_sessions").insert({
+          workspace_id: payload.workspaceId,
+          persona_id: payload.personaId || null,
+          user_id: user.id,
+          type: payload.type || "study",
+          status: "active",
+          track_id: payload.trackId || null,
+          module_id: payload.moduleId || null,
+          module_item_id: payload.moduleItemId || null,
+          resource_id: payload.resourceId || null,
+          project_id: payload.projectId || null,
+          task_id: payload.taskId || null,
+          label: payload.label || null,
+          technique: payload.technique || "pomodoro",
+          planned_minutes: payload.plannedMinutes ?? null,
+          started_at: new Date().toISOString(),
+        }).select().single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "tickFocusSession": {
+        const { data, error } = await supabase.from("focus_sessions").update({
+          actual_minutes: payload.actualMinutes,
+          interruptions: payload.interruptions ?? 0,
+          updated_at: new Date().toISOString(),
+        }).eq("id", payload.id).select().single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "endFocusSession": {
+        const { id, actualMinutes, interruptions, focusScore, notes } = payload;
+        const { data, error } = await supabase.from("focus_sessions").update({
+          status: "completed",
+          actual_minutes: actualMinutes ?? 0,
+          interruptions: interruptions ?? 0,
+          focus_score: focusScore ?? null,
+          notes: notes || null,
+          ended_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }).eq("id", id).select().single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "upsertReview": {
+        const row = {
+          workspace_id: payload.workspaceId,
+          user_id: user.id,
+          track_id: payload.trackId || null,
+          module_id: payload.moduleId || null,
+          resource_id: payload.resourceId || null,
+          title: payload.title || null,
+          content: payload.content || null,
+          kind: payload.kind || "note",
+          status: payload.status || "due",
+          ease: payload.ease ?? 250,
+          interval_days: payload.intervalDays ?? 0,
+          reps: payload.reps ?? 0,
+          due_at: payload.dueAt || new Date().toISOString(),
+          last_reviewed_at: payload.lastReviewedAt || null,
+          updated_at: new Date().toISOString(),
+        };
+        let q;
+        if (payload.id) {
+          q = supabase.from("study_reviews").update(row).eq("id", payload.id);
+        } else {
+          q = supabase.from("study_reviews").insert(row);
+        }
+        const { data, error } = await q.select().single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "reviewCard": {
+        const { data: card, error: cardError } = await supabase.from("study_reviews").select("*").eq("id", payload.id).single();
+        if (cardError) throw cardError;
+        const g = payload.grade; // 0..5
+        let ease = (card.ease ?? 250) / 100; // stored *100
+        let reps = card.reps ?? 0;
+        let interval = card.interval_days ?? 0;
+        if (g < 3) {
+          reps = 0;
+          interval = 1;
+        } else {
+          reps += 1;
+          interval = reps === 1 ? 1 : reps === 2 ? 6 : Math.round(interval * ease);
+          ease = Math.max(1.3, ease + (0.1 - (5 - g) * (0.08 + (5 - g) * 0.02)));
+        }
+        const due = new Date();
+        due.setDate(due.getDate() + interval);
+        const status = interval >= 21 ? "mastered" : reps <= 1 ? "learning" : "review";
+        const { data, error } = await supabase.from("study_reviews").update({
+          ease: Math.round(ease * 100),
+          reps,
+          interval_days: interval,
+          due_at: due.toISOString(),
+          last_reviewed_at: new Date().toISOString(),
+          status,
+          updated_at: new Date().toISOString(),
+        }).eq("id", payload.id).select().single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "upsertPlan": {
+        const row = {
+          workspace_id: payload.workspaceId,
+          user_id: user.id,
+          kind: payload.kind || "study",
+          name: payload.name,
+          schedule: payload.schedule || null,
+          active: payload.active ?? true,
+          updated_at: new Date().toISOString(),
+        };
+        let q;
+        if (payload.id) {
+          q = supabase.from("study_plans").update(row).eq("id", payload.id);
+        } else {
+          q = supabase.from("study_plans").insert(row);
+        }
+        const { data, error } = await q.select().single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deletePlan": {
+        await deleteOrThrow(supabase, "study_plans", payload.id);
+        result = { id: payload.id };
+        break;
+      }
+
+      case "unlockAchievement": {
+        const { data, error } = await supabase.from("study_achievements")
+          .upsert({
+            workspace_id: payload.workspaceId,
+            user_id: user.id,
+            key: payload.key,
+            name: payload.name,
+            tier: payload.tier || "bronze",
+            unlocked_at: new Date().toISOString(),
+          }, { onConflict: "workspace_id,user_id,key" })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "updateStudySettings": {
+        const { data, error } = await supabase.from("study_settings")
+          .upsert({
+            workspace_id: payload.workspaceId,
+            user_id: user.id,
+            data: payload.data,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: "workspace_id,user_id" })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
       default:
         return NextResponse.json({ error: `Ação desconhecida: ${action}` }, { status: 400 });
     }

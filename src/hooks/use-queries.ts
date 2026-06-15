@@ -1519,3 +1519,344 @@ export function useBulkTagDocumentsMutation() {
     },
   });
 }
+
+// ── STUDY MODULE QUERY HOOKS ──────────────────────────────────────────────────
+
+export function useStudyTracks(workspaceId?: string | null, personaId?: string | null) {
+  return useQuery({
+    queryKey: ["studyTracks", workspaceId, personaId],
+    queryFn: () => qa.getStudyTracksAction({ workspaceId: workspaceId ?? undefined, personaId: personaId ?? undefined }),
+    enabled: !!workspaceId,
+  });
+}
+
+export function useStudyResources(workspaceId?: string | null, personaId?: string | null) {
+  return useQuery({
+    queryKey: ["studyResources", workspaceId, personaId],
+    queryFn: () => qa.getStudyResourcesAction({ workspaceId: workspaceId ?? undefined, personaId: personaId ?? undefined }),
+    enabled: !!workspaceId,
+  });
+}
+
+export function useStudyObjectives(workspaceId?: string | null, personaId?: string | null) {
+  return useQuery({
+    queryKey: ["studyObjectives", workspaceId, personaId],
+    queryFn: () => qa.getStudyObjectivesAction({ workspaceId: workspaceId ?? undefined, personaId: personaId ?? undefined }),
+    enabled: !!workspaceId,
+  });
+}
+
+export function useStudyGoals(workspaceId?: string | null, personaId?: string | null) {
+  return useQuery({
+    queryKey: ["studyGoals", workspaceId, personaId],
+    queryFn: () => qa.getStudyGoalsAction({ workspaceId: workspaceId ?? undefined, personaId: personaId ?? undefined }),
+    enabled: !!workspaceId,
+  });
+}
+
+export function useFocusSessions(workspaceId?: string | null, personaId?: string | null) {
+  return useQuery({
+    queryKey: ["focusSessions", workspaceId, personaId],
+    queryFn: () => qa.getFocusSessionsAction({ workspaceId: workspaceId ?? undefined, personaId: personaId ?? undefined }),
+    enabled: !!workspaceId,
+  });
+}
+
+export function useStudyReviews(workspaceId?: string | null, personaId?: string | null) {
+  return useQuery({
+    queryKey: ["studyReviews", workspaceId, personaId],
+    queryFn: () => qa.getStudyReviewsAction({ workspaceId: workspaceId ?? undefined, personaId: personaId ?? undefined }),
+    enabled: !!workspaceId,
+  });
+}
+
+export function useStudyPlans(workspaceId?: string | null, personaId?: string | null) {
+  return useQuery({
+    queryKey: ["studyPlans", workspaceId, personaId],
+    queryFn: () => qa.getStudyPlansAction({ workspaceId: workspaceId ?? undefined, personaId: personaId ?? undefined }),
+    enabled: !!workspaceId,
+  });
+}
+
+export function useStudyAchievements(workspaceId?: string | null, personaId?: string | null) {
+  return useQuery({
+    queryKey: ["studyAchievements", workspaceId, personaId],
+    queryFn: () => qa.getStudyAchievementsAction({ workspaceId: workspaceId ?? undefined, personaId: personaId ?? undefined }),
+    enabled: !!workspaceId,
+  });
+}
+
+export function useStudyDashboard(workspaceId?: string | null, personaId?: string | null) {
+  return useQuery({
+    queryKey: ["studyDashboard", workspaceId, personaId],
+    queryFn: () => qa.getStudyDashboardAction({ workspaceId: workspaceId ?? undefined, personaId: personaId ?? undefined }),
+    enabled: !!workspaceId,
+  });
+}
+
+// ── STUDY MODULE MUTATION HOOKS ────────────────────────────────────────────────
+
+export function useStartFocusSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("startFocusSession", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["focusSessions"] });
+      qc.invalidateQueries({ queryKey: ["studyDashboard"] });
+    },
+  });
+}
+
+export function useTickFocusSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("tickFocusSession", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["focusSessions"] });
+      qc.invalidateQueries({ queryKey: ["studyDashboard"] });
+    },
+  });
+}
+
+export function useEndFocusSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("endFocusSession", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["focusSessions"] });
+      qc.invalidateQueries({ queryKey: ["studyTracks"] });
+      qc.invalidateQueries({ queryKey: ["studyDashboard"] });
+    },
+  });
+}
+
+export function useUpsertStudyTrack() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("upsertStudyTrack", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["studyTracks"] });
+      qc.invalidateQueries({ queryKey: ["studyDashboard"] });
+    },
+  });
+}
+
+export function useDeleteStudyTrack() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("deleteStudyTrack", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["studyTracks"] });
+      qc.invalidateQueries({ queryKey: ["studyDashboard"] });
+    },
+  });
+}
+
+export function useUpsertStudyModule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("upsertStudyModule", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["studyTracks"] });
+    },
+  });
+}
+
+export function useDeleteStudyModule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("deleteStudyModule", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["studyTracks"] });
+    },
+  });
+}
+
+export function useUpsertModuleItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("upsertModuleItem", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["studyTracks"] });
+    },
+  });
+}
+
+export function useDeleteModuleItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("deleteModuleItem", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["studyTracks"] });
+    },
+  });
+}
+
+export function useReorderModuleItems() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("reorderModuleItems", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["studyTracks"] });
+    },
+  });
+}
+
+export function useSetItemStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("setItemStatus", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["studyTracks"] });
+      qc.invalidateQueries({ queryKey: ["studyDashboard"] });
+    },
+  });
+}
+
+export function useUpsertStudyResource() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("upsertStudyResource", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["studyResources"] });
+      qc.invalidateQueries({ queryKey: ["studyTracks"] });
+    },
+  });
+}
+
+export function useDeleteStudyResource() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("deleteStudyResource", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["studyResources"] });
+      qc.invalidateQueries({ queryKey: ["studyTracks"] });
+    },
+  });
+}
+
+export function useSetResourceStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("setResourceStatus", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["studyResources"] });
+    },
+  });
+}
+
+export function useSetResourceProgress() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("setResourceProgress", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["studyResources"] });
+    },
+  });
+}
+
+export function useUpsertObjective() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("upsertObjective", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["studyObjectives"] });
+    },
+  });
+}
+
+export function useDeleteObjective() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("deleteObjective", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["studyObjectives"] });
+    },
+  });
+}
+
+export function useUpsertGoal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("upsertGoal", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["studyGoals"] });
+    },
+  });
+}
+
+export function useDeleteGoal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("deleteGoal", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["studyGoals"] });
+    },
+  });
+}
+
+export function useUpsertReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("upsertReview", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["studyReviews"] });
+      qc.invalidateQueries({ queryKey: ["studyDashboard"] });
+    },
+  });
+}
+
+export function useReviewCard() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("reviewCard", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["studyReviews"] });
+      qc.invalidateQueries({ queryKey: ["studyDashboard"] });
+    },
+  });
+}
+
+export function useUpsertPlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("upsertPlan", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["studyPlans"] });
+      qc.invalidateQueries({ queryKey: ["studyDashboard"] });
+    },
+  });
+}
+
+export function useDeletePlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("deletePlan", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["studyPlans"] });
+      qc.invalidateQueries({ queryKey: ["studyDashboard"] });
+    },
+  });
+}
+
+export function useUnlockAchievement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("unlockAchievement", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["studyAchievements"] });
+      qc.invalidateQueries({ queryKey: ["studyDashboard"] });
+    },
+  });
+}
+
+export function useUpdateStudySettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("updateStudySettings", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["studyDashboard"] });
+    },
+  });
+}
+
