@@ -25,6 +25,7 @@ import {
   UserPlus,
   Users,
   Workflow,
+  Timer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -42,6 +43,7 @@ import { useUIStore } from "@/stores/ui-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useQuickCreate } from "@/stores/quick-create-store";
 import { usePersonaStore } from "@/stores/persona-store";
+import { useStudyStore } from "@/stores/study-store";
 import { logoutAction } from "@/server/actions/auth";
 import { initials } from "@/lib/utils/format";
 import { toast } from "sonner";
@@ -109,6 +111,8 @@ export function Topbar() {
         <Button variant="ghost" size="icon" onClick={toggleAI} aria-label="IA">
           <Bot className="h-4 w-4" />
         </Button>
+
+        <FocusTimerBadge />
 
         <NotificationsPopover />
 
@@ -289,6 +293,18 @@ export function Topbar() {
             </DropdownMenuItem>
 
             <DropdownMenuSeparator />
+            <DropdownMenuLabel>Estudo & Foco</DropdownMenuLabel>
+            <DropdownMenuItem
+              onClick={() => {
+                setCreateOpen(false);
+                router.push("/study/sessions");
+              }}
+            >
+              <Timer className="h-4 w-4" />
+              Novo Foco (Timer)
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
             <DropdownMenuLabel>Outros</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => openQuickCreate("event")}>
               <CalendarPlus className="h-4 w-4" />
@@ -302,5 +318,59 @@ export function Topbar() {
         </DropdownMenu>
       </div>
     </header>
+  );
+}
+
+function FocusTimerBadge() {
+  const router = useRouter();
+  const sessionId = useStudyStore((s) => s.sessionId);
+  const startedAt = useStudyStore((s) => s.startedAt);
+  const paused = useStudyStore((s) => s.paused);
+  const baseSeconds = useStudyStore((s) => s.baseSeconds);
+
+  const [seconds, setSeconds] = React.useState(0);
+
+  React.useEffect(() => {
+    if (!sessionId) {
+      setSeconds(0);
+      return;
+    }
+
+    const update = () => {
+      if (paused) {
+        setSeconds(baseSeconds);
+      } else if (startedAt) {
+        const elapsed = baseSeconds + Math.floor((Date.now() - startedAt) / 1000);
+        setSeconds(elapsed);
+      }
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [sessionId, startedAt, paused, baseSeconds]);
+
+  if (!sessionId) return null;
+
+  const format = (s: number) => {
+    const hrs = Math.floor(s / 3600);
+    const mins = Math.floor((s % 3600) / 60);
+    const secs = s % 60;
+    const pad = (n: number) => String(n).padStart(2, "0");
+    if (hrs > 0) return `${hrs}:${pad(mins)}:${pad(secs)}`;
+    return `${pad(mins)}:${pad(secs)}`;
+  };
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="h-8 gap-2 bg-success/10 border-success/30 hover:bg-success/20 text-success font-mono animate-pulse rounded-full"
+      onClick={() => router.push("/study/sessions")}
+    >
+      <span className="h-2 w-2 rounded-full bg-success animate-ping shrink-0" />
+      <Timer className="h-3.5 w-3.5" />
+      <span className="text-xs">{format(seconds)}</span>
+    </Button>
   );
 }

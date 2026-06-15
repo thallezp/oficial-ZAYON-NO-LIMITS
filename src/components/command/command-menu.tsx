@@ -36,6 +36,8 @@ import {
   BarChart3,
   ScrollText,
   MessageSquare,
+  Timer,
+  GraduationCap,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -62,6 +64,9 @@ const workspaceLinks = [
   { href: "/dashboard", label: "Home", icon: Home, group: "Workspace" },
   { href: "/tasks", label: "Tarefas", icon: ListChecks, group: "Workspace" },
   { href: "/projects", label: "Projetos", icon: Folders, group: "Workspace" },
+  { href: "/study/tracks", label: "Estudos", icon: GraduationCap, group: "Workspace" },
+  { href: "/study/library", label: "Biblioteca", icon: Library, group: "Workspace" },
+  { href: "/study/sessions", label: "Timer de Foco", icon: Timer, group: "Workspace" },
   { href: "/calendar", label: "Calendário", icon: Calendar, group: "Workspace" },
   { href: "/documents", label: "Documentos", icon: FileText, group: "Workspace" },
   { href: "/materials", label: "Materiais", icon: Library, group: "Workspace" },
