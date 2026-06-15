@@ -124,6 +124,17 @@ alter table public.activity_logs             enable row level security;
 alter table public.notifications             enable row level security;
 alter table public.roles                     enable row level security;
 alter table public.permissions               enable row level security;
+alter table public.study_objectives          enable row level security;
+alter table public.study_tracks              enable row level security;
+alter table public.study_modules             enable row level security;
+alter table public.study_module_items        enable row level security;
+alter table public.study_resources           enable row level security;
+alter table public.study_goals               enable row level security;
+alter table public.focus_sessions            enable row level security;
+alter table public.study_reviews             enable row level security;
+alter table public.study_plans               enable row level security;
+alter table public.study_achievements        enable row level security;
+alter table public.study_settings            enable row level security;
 
 drop policy if exists users_insert_self on public.users;
 create policy users_insert_self on public.users
@@ -161,7 +172,9 @@ begin
       'lead_sources','leads','google_sheets_connections','tool_categories','tools',
       'launch_campaigns','icp_pains','sales_copies','ai_threads','ai_actions',
       'comments','presence_sessions','activity_logs','notifications','roles',
-      'invitations'
+      'invitations',
+      'study_objectives','study_tracks','study_resources','study_goals',
+      'focus_sessions','study_reviews','study_plans','study_achievements','study_settings'
     ])
   loop
     execute format('drop policy if exists %I_workspace_select on public.%I;', t, t);
@@ -207,7 +220,9 @@ begin
       ('ai_messages', 'exists (select 1 from public.ai_threads parent where parent.id = thread_id and parent.workspace_id in (select private.user_workspaces()))'),
       ('ai_tool_calls', 'exists (select 1 from public.ai_actions parent where parent.id = action_id and parent.workspace_id in (select private.user_workspaces()))'),
       ('mentions', 'exists (select 1 from public.comments parent where parent.id = comment_id and parent.workspace_id in (select private.user_workspaces()))'),
-      ('permissions', 'exists (select 1 from public.roles parent where parent.id = role_id and parent.workspace_id in (select private.user_workspaces()))')
+      ('permissions', 'exists (select 1 from public.roles parent where parent.id = role_id and parent.workspace_id in (select private.user_workspaces()))'),
+      ('study_modules', 'exists (select 1 from public.study_tracks parent where parent.id = track_id and parent.workspace_id in (select private.user_workspaces()))'),
+      ('study_module_items', 'exists (select 1 from public.study_modules m join public.study_tracks t on t.id = m.track_id where m.id = module_id and t.workspace_id in (select private.user_workspaces()))')
     ) as policies(table_name, predicate_sql)
   loop
     execute format('drop policy if exists %I_workspace_select on public.%I;', policy_record.table_name, policy_record.table_name);

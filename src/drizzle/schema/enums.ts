@@ -133,3 +133,12 @@ export const aiActionStatusEnum = pgEnum("ai_action_status", [
   "completed",
   "failed",
 ]);
+
+export const studyTrackStatusEnum   = pgEnum("study_track_status",   ["planned","active","paused","completed","archived"]);
+export const studyItemStatusEnum    = pgEnum("study_item_status",    ["not_started","in_progress","completed"]);
+export const studyResourceTypeEnum  = pgEnum("study_resource_type",  ["book","course","video","article","doc","pdf","other"]);
+export const studyResourceStatusEnum= pgEnum("study_resource_status",["backlog","reading","completed","abandoned"]);
+export const studyGoalStatusEnum    = pgEnum("study_goal_status",    ["active","achieved","paused","dropped"]);
+export const focusSessionTypeEnum   = pgEnum("focus_session_type",   ["study","work","reading","review","deep_work"]);
+export const focusSessionStatusEnum = pgEnum("focus_session_status", ["planned","active","completed","abandoned"]);
+export const studyReviewKindEnum    = pgEnum("study_review_kind",    ["note","flashcard","attack_note"]);

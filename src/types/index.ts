@@ -489,3 +489,237 @@ export interface AIAction {
   output?: Record<string, unknown>;
   createdAt: string;
 }
+
+export type StudyTrackStatus = "planned" | "active" | "paused" | "completed" | "archived";
+export type StudyItemStatus = "not_started" | "in_progress" | "completed";
+export type StudyResourceType = "book" | "course" | "video" | "article" | "doc" | "pdf" | "other";
+export type StudyResourceStatus = "backlog" | "reading" | "completed" | "abandoned";
+export type StudyGoalStatus = "active" | "achieved" | "paused" | "dropped";
+export type FocusSessionType = "study" | "work" | "reading" | "review" | "deep_work";
+export type FocusSessionStatus = "planned" | "active" | "completed" | "abandoned";
+export type StudyReviewKind = "note" | "flashcard" | "attack_note";
+
+export interface StudyObjective {
+  id: ID;
+  workspaceId: ID;
+  personaId?: ID | null;
+  name: string;
+  description?: string | null;
+  emoji?: string | null;
+  category?: string | null;
+  status?: string | null;
+  deadline?: string | null;
+  milestones?: any | null;
+  achievedAt?: string | null;
+  sourceId?: string | null;
+  metadata?: Record<string, any> | null;
+  createdBy?: ID | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudyTrack {
+  id: ID;
+  workspaceId: ID;
+  personaId?: ID | null;
+  objectiveId?: ID | null;
+  name: string;
+  area?: string | null;
+  description?: string | null;
+  status: StudyTrackStatus;
+  mode?: string | null;
+  startDate?: string | null;
+  targetDate?: string | null;
+  hoursTarget?: number | null;
+  color?: string | null;
+  icon?: string | null;
+  source?: any | null;
+  sortOrder?: number | null;
+  sourceId?: string | null;
+  createdBy?: ID | null;
+  createdAt: string;
+  updatedAt: string;
+  
+  // Derived fields added by mappers
+  progress?: number;
+  hoursDone?: number;
+}
+
+export interface StudyModule {
+  id: ID;
+  trackId: ID;
+  name: string;
+  status: StudyItemStatus;
+  hoursTarget?: number | null;
+  position?: number | null;
+  expanded?: boolean | null;
+  sourceId?: string | null;
+  metadata?: Record<string, any> | null;
+  createdAt: string;
+  updatedAt: string;
+  
+  // Derived/related items
+  items?: StudyModuleItem[];
+}
+
+export interface StudyModuleItem {
+  id: ID;
+  moduleId: ID;
+  name: string;
+  status: StudyItemStatus;
+  hours?: number | null;
+  position?: number | null;
+  resourceId?: ID | null;
+  link?: string | null;
+  sourceId?: string | null;
+  metadata?: Record<string, any> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudyResource {
+  id: ID;
+  workspaceId: ID;
+  personaId?: ID | null;
+  trackId?: ID | null;
+  objectiveId?: ID | null;
+  title: string;
+  subtitle?: string | null;
+  authors?: string | null;
+  type: StudyResourceType;
+  status: StudyResourceStatus;
+  area?: string | null;
+  language?: string | null;
+  year?: number | null;
+  publisher?: string | null;
+  pages?: number | null;
+  currentPage?: number | null;
+  hoursDone?: number | null;
+  link?: string | null;
+  isbn?: string | null;
+  edition?: string | null;
+  rating?: number | null;
+  review?: string | null;
+  recommend?: boolean | null;
+  tags?: any | null;
+  coverUrl?: string | null;
+  fileUrl?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  sourceId?: string | null;
+  metadata?: Record<string, any> | null;
+  createdBy?: ID | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudyGoal {
+  id: ID;
+  workspaceId: ID;
+  personaId?: ID | null;
+  trackId?: ID | null;
+  objectiveId?: ID | null;
+  title: string;
+  metric?: string | null; // hours | pages | sessions | streak | custom
+  target?: number | null;
+  current?: number | null;
+  period?: string | null; // daily | weekly | monthly | total
+  status: StudyGoalStatus;
+  startDate?: string | null;
+  dueDate?: string | null;
+  metadata?: Record<string, any> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FocusSession {
+  id: ID;
+  workspaceId: ID;
+  personaId?: ID | null;
+  userId: ID;
+  type: FocusSessionType;
+  status: FocusSessionStatus;
+  trackId?: ID | null;
+  moduleId?: ID | null;
+  moduleItemId?: ID | null;
+  resourceId?: ID | null;
+  projectId?: ID | null;
+  taskId?: ID | null;
+  label?: string | null;
+  technique?: string | null; // pomodoro | deep_work | free
+  plannedMinutes?: number | null;
+  actualMinutes?: number | null;
+  interruptions?: number | null;
+  focusScore?: number | null;
+  notes?: string | null;
+  startedAt?: string | null;
+  endedAt?: string | null;
+  metadata?: Record<string, any> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudyReview {
+  id: ID;
+  workspaceId: ID;
+  userId: ID;
+  trackId?: ID | null;
+  moduleId?: ID | null;
+  resourceId?: ID | null;
+  title?: string | null;
+  content?: string | null;
+  kind: StudyReviewKind;
+  status?: string | null; // due | learning | review | mastered
+  ease?: number | null;
+  intervalDays?: number | null;
+  reps?: number | null;
+  dueAt?: string | null;
+  lastReviewedAt?: string | null;
+  metadata?: Record<string, any> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudyPlan {
+  id: ID;
+  workspaceId: ID;
+  userId: ID;
+  kind?: string | null; // study | work | routine
+  name: string;
+  schedule?: Array<{
+    days: number[];
+    start: string;
+    end: string;
+    label: string;
+    trackId?: string;
+    projectId?: string;
+  }> | null;
+  active?: boolean | null;
+  metadata?: Record<string, any> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudyAchievement {
+  id: ID;
+  workspaceId: ID;
+  userId: ID;
+  key: string;
+  name: string;
+  description?: string | null;
+  icon?: string | null;
+  tier?: string | null; // bronze | silver | gold
+  unlockedAt?: string | null;
+  progress?: any | null;
+  createdAt: string;
+}
+
+export interface StudySettings {
+  id: ID;
+  workspaceId: ID;
+  userId: ID;
+  data?: Record<string, any> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
