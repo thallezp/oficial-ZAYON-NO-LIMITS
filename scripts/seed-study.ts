@@ -91,12 +91,22 @@ async function main() {
 
   // Helper function to upsert rows into target database by source_id
   const upsert = async (table: string, sourceId: string, row: Record<string, any>) => {
-    const existing = await db`select id from ${db(table)} where source_id = ${sourceId} and workspace_id = ${WS} limit 1`;
+    const hasWorkspace = ["study_objectives", "study_resources", "study_tracks"].includes(table);
+    
+    const existing = hasWorkspace
+      ? await db`select id from ${db(table)} where source_id = ${sourceId} and workspace_id = ${WS} limit 1`
+      : await db`select id from ${db(table)} where source_id = ${sourceId} limit 1`;
+      
     if (existing.length) {
       await db`update ${db(table)} set ${db(row)} where id = ${existing[0].id}`;
       return existing[0].id;
     }
-    const ins = await db`insert into ${db(table)} ${db({ ...row, source_id: sourceId, workspace_id: WS })} returning id`;
+    
+    const insertData = hasWorkspace
+      ? { ...row, source_id: sourceId, workspace_id: WS }
+      : { ...row, source_id: sourceId };
+      
+    const ins = await db`insert into ${db(table)} ${db(insertData)} returning id`;
     return ins[0].id;
   };
 
@@ -124,7 +134,7 @@ async function main() {
     for (const r of (data.recursos ?? [])) {
       resMap[r.id] = await upsert("study_resources", r.id, {
         persona_id: PERSONA,
-        objective_id: r.objetivoId ? objMap[r.objetivoId] : null,
+        objective_id: r.objetivoId ? (objMap[r.objetivoId] ?? null) : null,
         title: r.titulo,
         subtitle: r.subtitulo || null,
         authors: r.autores || null,
@@ -157,7 +167,7 @@ async function main() {
     for (const t of (data.trilhas ?? [])) {
       const trackId = await upsert("study_tracks", t.id, {
         persona_id: PERSONA,
-        objective_id: t.objetivoId ? objMap[t.objectiveId] : null,
+        objective_id: t.objetivoId ? (objMap[t.objetivoId] ?? null) : null,
         name: t.nome,
         area: t.area || null,
         status: PT2EN.track[t.status] || "active",

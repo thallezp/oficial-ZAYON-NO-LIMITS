@@ -1,0 +1,1643 @@
+{
+  "objetivos": [
+    {
+      "id": "obj-fortaleza",
+      "nome": "Aprender programação",
+      "emoji": "💻",
+      "categoria": "Carreira",
+      "marcos": [
+        {
+          "id": "m1",
+          "titulo": "Completar 1º Semestre",
+          "concluido": false
+        },
+        {
+          "id": "m2",
+          "titulo": "Alcançar Fluência em Inglês",
+          "concluido": false
+        }
+      ]
+    }
+  ],
+  "recursos": [
+    {
+      "id": "res-fortaleza-1",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "Código Limpo (Clean Code)",
+      "subtitulo": "Edição de Estudo 1",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Lendo",
+      "idioma": "Português",
+      "ano": 2000,
+      "editora": "Fortaleza Press",
+      "paginas": 200,
+      "paginaAtual": 100,
+      "horasConcluidas": 10,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-0",
+      "edicao": "1ª Edição",
+      "rating": 1,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-2",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "O Programador Pragmático",
+      "subtitulo": "Edição de Estudo 2",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Concluído",
+      "idioma": "Português",
+      "ano": 2001,
+      "editora": "Fortaleza Press",
+      "paginas": 215,
+      "paginaAtual": 215,
+      "horasConcluidas": 20,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-1",
+      "edicao": "1ª Edição",
+      "rating": 2,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-3",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "Padrões de Projetos (Design Patterns)",
+      "subtitulo": "Edição de Estudo 3",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Na fila",
+      "idioma": "Português",
+      "ano": 2002,
+      "editora": "Fortaleza Press",
+      "paginas": 230,
+      "paginaAtual": 0,
+      "horasConcluidas": 0,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-2",
+      "edicao": "1ª Edição",
+      "rating": 3,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-4",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "Refatoração",
+      "subtitulo": "Edição de Estudo 4",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Lendo",
+      "idioma": "Português",
+      "ano": 2003,
+      "editora": "Fortaleza Press",
+      "paginas": 245,
+      "paginaAtual": 122,
+      "horasConcluidas": 10,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-3",
+      "edicao": "1ª Edição",
+      "rating": 4,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-5",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "Algoritmos: Teoria e Prática",
+      "subtitulo": "Edição de Estudo 5",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Concluído",
+      "idioma": "Português",
+      "ano": 2004,
+      "editora": "Fortaleza Press",
+      "paginas": 260,
+      "paginaAtual": 260,
+      "horasConcluidas": 20,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-4",
+      "edicao": "1ª Edição",
+      "rating": 5,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-6",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "DDD (Domain-Driven Design)",
+      "subtitulo": "Edição de Estudo 6",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Na fila",
+      "idioma": "Português",
+      "ano": 2005,
+      "editora": "Fortaleza Press",
+      "paginas": 275,
+      "paginaAtual": 0,
+      "horasConcluidas": 0,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-5",
+      "edicao": "1ª Edição",
+      "rating": 1,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-7",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "Entendendo Algoritmos",
+      "subtitulo": "Edição de Estudo 7",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Lendo",
+      "idioma": "Português",
+      "ano": 2006,
+      "editora": "Fortaleza Press",
+      "paginas": 290,
+      "paginaAtual": 145,
+      "horasConcluidas": 10,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-6",
+      "edicao": "1ª Edição",
+      "rating": 2,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-8",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "JavaScript: O Guia Definitivo",
+      "subtitulo": "Edição de Estudo 8",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Concluído",
+      "idioma": "Português",
+      "ano": 2007,
+      "editora": "Fortaleza Press",
+      "paginas": 305,
+      "paginaAtual": 305,
+      "horasConcluidas": 20,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-7",
+      "edicao": "1ª Edição",
+      "rating": 3,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-9",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "Eloquent JavaScript",
+      "subtitulo": "Edição de Estudo 9",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Na fila",
+      "idioma": "Português",
+      "ano": 2008,
+      "editora": "Fortaleza Press",
+      "paginas": 320,
+      "paginaAtual": 0,
+      "horasConcluidas": 0,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-8",
+      "edicao": "1ª Edição",
+      "rating": 4,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-10",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "Estruturas de Dados e Algoritmos em JS",
+      "subtitulo": "Edição de Estudo 10",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Lendo",
+      "idioma": "Português",
+      "ano": 2009,
+      "editora": "Fortaleza Press",
+      "paginas": 335,
+      "paginaAtual": 167,
+      "horasConcluidas": 10,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-9",
+      "edicao": "1ª Edição",
+      "rating": 5,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-11",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "Arquitetura Limpa",
+      "subtitulo": "Edição de Estudo 11",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Concluído",
+      "idioma": "Português",
+      "ano": 2010,
+      "editora": "Fortaleza Press",
+      "paginas": 350,
+      "paginaAtual": 350,
+      "horasConcluidas": 20,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-10",
+      "edicao": "1ª Edição",
+      "rating": 1,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-12",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "O Mítico Homem-Mês",
+      "subtitulo": "Edição de Estudo 12",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Na fila",
+      "idioma": "Português",
+      "ano": 2011,
+      "editora": "Fortaleza Press",
+      "paginas": 365,
+      "paginaAtual": 0,
+      "horasConcluidas": 0,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-11",
+      "edicao": "1ª Edição",
+      "rating": 2,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-13",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "Grokking Algorithms",
+      "subtitulo": "Edição de Estudo 13",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Lendo",
+      "idioma": "Português",
+      "ano": 2012,
+      "editora": "Fortaleza Press",
+      "paginas": 380,
+      "paginaAtual": 190,
+      "horasConcluidas": 10,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-12",
+      "edicao": "1ª Edição",
+      "rating": 3,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-14",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "Designing Data-Intensive Applications",
+      "subtitulo": "Edição de Estudo 14",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Concluído",
+      "idioma": "Português",
+      "ano": 2013,
+      "editora": "Fortaleza Press",
+      "paginas": 395,
+      "paginaAtual": 395,
+      "horasConcluidas": 20,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-13",
+      "edicao": "1ª Edição",
+      "rating": 4,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-15",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "Patterns of Enterprise Application Architecture",
+      "subtitulo": "Edição de Estudo 15",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Na fila",
+      "idioma": "Português",
+      "ano": 2014,
+      "editora": "Fortaleza Press",
+      "paginas": 410,
+      "paginaAtual": 0,
+      "horasConcluidas": 0,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-14",
+      "edicao": "1ª Edição",
+      "rating": 5,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-16",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "Introduction to the Theory of Computation",
+      "subtitulo": "Edição de Estudo 16",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Lendo",
+      "idioma": "Português",
+      "ano": 2015,
+      "editora": "Fortaleza Press",
+      "paginas": 425,
+      "paginaAtual": 212,
+      "horasConcluidas": 10,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-15",
+      "edicao": "1ª Edição",
+      "rating": 1,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-17",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "Compilers: Principles, Techniques, and Tools",
+      "subtitulo": "Edição de Estudo 17",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Concluído",
+      "idioma": "Português",
+      "ano": 2016,
+      "editora": "Fortaleza Press",
+      "paginas": 440,
+      "paginaAtual": 440,
+      "horasConcluidas": 20,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-16",
+      "edicao": "1ª Edição",
+      "rating": 2,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-18",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "Computer Networks",
+      "subtitulo": "Edição de Estudo 18",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Na fila",
+      "idioma": "Português",
+      "ano": 2017,
+      "editora": "Fortaleza Press",
+      "paginas": 455,
+      "paginaAtual": 0,
+      "horasConcluidas": 0,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-17",
+      "edicao": "1ª Edição",
+      "rating": 3,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-19",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "Modern Operating Systems",
+      "subtitulo": "Edição de Estudo 19",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Lendo",
+      "idioma": "Português",
+      "ano": 2018,
+      "editora": "Fortaleza Press",
+      "paginas": 470,
+      "paginaAtual": 235,
+      "horasConcluidas": 10,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-18",
+      "edicao": "1ª Edição",
+      "rating": 4,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-20",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "Database System Concepts",
+      "subtitulo": "Edição de Estudo 20",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Concluído",
+      "idioma": "Português",
+      "ano": 2019,
+      "editora": "Fortaleza Press",
+      "paginas": 485,
+      "paginaAtual": 485,
+      "horasConcluidas": 20,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-19",
+      "edicao": "1ª Edição",
+      "rating": 5,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-21",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "Test Driven Development by Example",
+      "subtitulo": "Edição de Estudo 21",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Na fila",
+      "idioma": "Português",
+      "ano": 2020,
+      "editora": "Fortaleza Press",
+      "paginas": 500,
+      "paginaAtual": 0,
+      "horasConcluidas": 0,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-20",
+      "edicao": "1ª Edição",
+      "rating": 1,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-22",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "Working Effectively with Legacy Code",
+      "subtitulo": "Edição de Estudo 22",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Lendo",
+      "idioma": "Português",
+      "ano": 2021,
+      "editora": "Fortaleza Press",
+      "paginas": 515,
+      "paginaAtual": 257,
+      "horasConcluidas": 10,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-21",
+      "edicao": "1ª Edição",
+      "rating": 2,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-23",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "Continuous Delivery",
+      "subtitulo": "Edição de Estudo 23",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Concluído",
+      "idioma": "Português",
+      "ano": 2022,
+      "editora": "Fortaleza Press",
+      "paginas": 530,
+      "paginaAtual": 530,
+      "horasConcluidas": 20,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-22",
+      "edicao": "1ª Edição",
+      "rating": 3,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-24",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "The Clean Coder",
+      "subtitulo": "Edição de Estudo 24",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Na fila",
+      "idioma": "Português",
+      "ano": 2023,
+      "editora": "Fortaleza Press",
+      "paginas": 545,
+      "paginaAtual": 0,
+      "horasConcluidas": 0,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-23",
+      "edicao": "1ª Edição",
+      "rating": 4,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-25",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "Soft Skills: The software developer's life manual",
+      "subtitulo": "Edição de Estudo 25",
+      "autores": "Autor Fortaleza",
+      "area": "Tecnologia",
+      "tipo": "Livro",
+      "status": "Lendo",
+      "idioma": "Português",
+      "ano": 2024,
+      "editora": "Fortaleza Press",
+      "paginas": 560,
+      "paginaAtual": 280,
+      "horasConcluidas": 10,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-24",
+      "edicao": "1ª Edição",
+      "rating": 5,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-26",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "Peopleware: Productive Projects and Teams",
+      "subtitulo": "Edição de Estudo 26",
+      "autores": "Autor Fortaleza",
+      "area": "Inglês / Carreira",
+      "tipo": "Livro",
+      "status": "Concluído",
+      "idioma": "Português",
+      "ano": 2025,
+      "editora": "Fortaleza Press",
+      "paginas": 575,
+      "paginaAtual": 575,
+      "horasConcluidas": 20,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-25",
+      "edicao": "1ª Edição",
+      "rating": 1,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-27",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "English for Tech Professionals",
+      "subtitulo": "Edição de Estudo 27",
+      "autores": "Autor Fortaleza",
+      "area": "Inglês / Carreira",
+      "tipo": "Livro",
+      "status": "Na fila",
+      "idioma": "Inglês",
+      "ano": 2000,
+      "editora": "Fortaleza Press",
+      "paginas": 590,
+      "paginaAtual": 0,
+      "horasConcluidas": 0,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-26",
+      "edicao": "1ª Edição",
+      "rating": 2,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-28",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "Technical Writing for Developers",
+      "subtitulo": "Edição de Estudo 28",
+      "autores": "Autor Fortaleza",
+      "area": "Inglês / Carreira",
+      "tipo": "Livro",
+      "status": "Lendo",
+      "idioma": "Português",
+      "ano": 2001,
+      "editora": "Fortaleza Press",
+      "paginas": 605,
+      "paginaAtual": 302,
+      "horasConcluidas": 10,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-27",
+      "edicao": "1ª Edição",
+      "rating": 3,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-29",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "How to Win Friends and Influence People",
+      "subtitulo": "Edição de Estudo 29",
+      "autores": "Autor Fortaleza",
+      "area": "Inglês / Carreira",
+      "tipo": "Livro",
+      "status": "Concluído",
+      "idioma": "Português",
+      "ano": 2002,
+      "editora": "Fortaleza Press",
+      "paginas": 620,
+      "paginaAtual": 620,
+      "horasConcluidas": 20,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-28",
+      "edicao": "1ª Edição",
+      "rating": 4,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-30",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "The Phoenix Project",
+      "subtitulo": "Edição de Estudo 30",
+      "autores": "Autor Fortaleza",
+      "area": "Inglês / Carreira",
+      "tipo": "Livro",
+      "status": "Na fila",
+      "idioma": "Português",
+      "ano": 2003,
+      "editora": "Fortaleza Press",
+      "paginas": 635,
+      "paginaAtual": 0,
+      "horasConcluidas": 0,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-29",
+      "edicao": "1ª Edição",
+      "rating": 5,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    },
+    {
+      "id": "res-fortaleza-31",
+      "objetivoId": "obj-fortaleza",
+      "titulo": "The DevOps Handbook",
+      "subtitulo": "Edição de Estudo 31",
+      "autores": "Autor Fortaleza",
+      "area": "Inglês / Carreira",
+      "tipo": "Livro",
+      "status": "Lendo",
+      "idioma": "Português",
+      "ano": 2004,
+      "editora": "Fortaleza Press",
+      "paginas": 650,
+      "paginaAtual": 325,
+      "horasConcluidas": 10,
+      "link": "https://fortaleza.dev",
+      "isbn": "978-3-16-148410-30",
+      "edicao": "1ª Edição",
+      "rating": 1,
+      "resenha": "Excelente livro para formação de base sólida.",
+      "recomendaria": true,
+      "tags": [
+        "estudo",
+        "programação",
+        "fortaleza"
+      ]
+    }
+  ],
+  "trilhas": [
+    {
+      "id": "track-fortaleza-1",
+      "objetivoId": "obj-fortaleza",
+      "nome": "Semestre 1 - Introdução e Fundamentos",
+      "area": "Tecnologia",
+      "status": "Ativo",
+      "modo": "Online",
+      "horasMeta": 120,
+      "modulos": [
+        {
+          "id": "mod-fortaleza-1",
+          "nome": "Módulo 1 - Semestre 1 Disciplina 1",
+          "status": "em andamento",
+          "horas": 15,
+          "_expanded": true,
+          "submodulos": [
+            {
+              "id": "submod-fortaleza-1",
+              "nome": "Submódulo 1 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 2,
+              "recursoId": "res-fortaleza-1",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-2",
+              "nome": "Submódulo 2 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 3,
+              "recursoId": "res-fortaleza-2",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-3",
+              "nome": "Submódulo 3 - Tópico Detalhado",
+              "status": "não iniciado",
+              "horas": 4,
+              "recursoId": "res-fortaleza-3",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-4",
+              "nome": "Submódulo 4 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 5,
+              "recursoId": "res-fortaleza-4",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-5",
+              "nome": "Submódulo 5 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 2,
+              "recursoId": "res-fortaleza-5",
+              "link": "https://fortaleza.dev/aula"
+            }
+          ]
+        },
+        {
+          "id": "mod-fortaleza-2",
+          "nome": "Módulo 2 - Semestre 1 Disciplina 2",
+          "status": "não iniciado",
+          "horas": 15,
+          "_expanded": true,
+          "submodulos": [
+            {
+              "id": "submod-fortaleza-6",
+              "nome": "Submódulo 6 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 2,
+              "recursoId": "res-fortaleza-6",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-7",
+              "nome": "Submódulo 7 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 3,
+              "recursoId": "res-fortaleza-7",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-8",
+              "nome": "Submódulo 8 - Tópico Detalhado",
+              "status": "não iniciado",
+              "horas": 4,
+              "recursoId": "res-fortaleza-8",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-9",
+              "nome": "Submódulo 9 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 5,
+              "recursoId": "res-fortaleza-9",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-10",
+              "nome": "Submódulo 10 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 2,
+              "recursoId": "res-fortaleza-10",
+              "link": "https://fortaleza.dev/aula"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "track-fortaleza-2",
+      "objetivoId": "obj-fortaleza",
+      "nome": "Semestre 2 - Algoritmos e Estruturas de Dados",
+      "area": "Tecnologia",
+      "status": "Pausado",
+      "modo": "Online",
+      "horasMeta": 120,
+      "modulos": [
+        {
+          "id": "mod-fortaleza-3",
+          "nome": "Módulo 1 - Semestre 2 Disciplina 1",
+          "status": "em andamento",
+          "horas": 15,
+          "_expanded": true,
+          "submodulos": [
+            {
+              "id": "submod-fortaleza-11",
+              "nome": "Submódulo 11 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 2,
+              "recursoId": "res-fortaleza-11",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-12",
+              "nome": "Submódulo 12 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 3,
+              "recursoId": "res-fortaleza-12",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-13",
+              "nome": "Submódulo 13 - Tópico Detalhado",
+              "status": "não iniciado",
+              "horas": 4,
+              "recursoId": "res-fortaleza-13",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-14",
+              "nome": "Submódulo 14 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 5,
+              "recursoId": "res-fortaleza-14",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-15",
+              "nome": "Submódulo 15 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 2,
+              "recursoId": "res-fortaleza-15",
+              "link": "https://fortaleza.dev/aula"
+            }
+          ]
+        },
+        {
+          "id": "mod-fortaleza-4",
+          "nome": "Módulo 2 - Semestre 2 Disciplina 2",
+          "status": "não iniciado",
+          "horas": 15,
+          "_expanded": true,
+          "submodulos": [
+            {
+              "id": "submod-fortaleza-16",
+              "nome": "Submódulo 16 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 2,
+              "recursoId": "res-fortaleza-16",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-17",
+              "nome": "Submódulo 17 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 3,
+              "recursoId": "res-fortaleza-17",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-18",
+              "nome": "Submódulo 18 - Tópico Detalhado",
+              "status": "não iniciado",
+              "horas": 4,
+              "recursoId": "res-fortaleza-18",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-19",
+              "nome": "Submódulo 19 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 5,
+              "recursoId": "res-fortaleza-19",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-20",
+              "nome": "Submódulo 20 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 2,
+              "recursoId": "res-fortaleza-20",
+              "link": "https://fortaleza.dev/aula"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "track-fortaleza-3",
+      "objetivoId": "obj-fortaleza",
+      "nome": "Semestre 3 - Programação Orientada a Objetos",
+      "area": "Tecnologia",
+      "status": "Pausado",
+      "modo": "Online",
+      "horasMeta": 120,
+      "modulos": [
+        {
+          "id": "mod-fortaleza-5",
+          "nome": "Módulo 1 - Semestre 3 Disciplina 1",
+          "status": "em andamento",
+          "horas": 15,
+          "_expanded": true,
+          "submodulos": [
+            {
+              "id": "submod-fortaleza-21",
+              "nome": "Submódulo 21 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 2,
+              "recursoId": "res-fortaleza-21",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-22",
+              "nome": "Submódulo 22 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 3,
+              "recursoId": "res-fortaleza-22",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-23",
+              "nome": "Submódulo 23 - Tópico Detalhado",
+              "status": "não iniciado",
+              "horas": 4,
+              "recursoId": "res-fortaleza-23",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-24",
+              "nome": "Submódulo 24 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 5,
+              "recursoId": "res-fortaleza-24",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-25",
+              "nome": "Submódulo 25 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 2,
+              "recursoId": "res-fortaleza-25",
+              "link": "https://fortaleza.dev/aula"
+            }
+          ]
+        },
+        {
+          "id": "mod-fortaleza-6",
+          "nome": "Módulo 2 - Semestre 3 Disciplina 2",
+          "status": "não iniciado",
+          "horas": 15,
+          "_expanded": true,
+          "submodulos": [
+            {
+              "id": "submod-fortaleza-26",
+              "nome": "Submódulo 26 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 2,
+              "recursoId": "res-fortaleza-26",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-27",
+              "nome": "Submódulo 27 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 3,
+              "recursoId": "res-fortaleza-27",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-28",
+              "nome": "Submódulo 28 - Tópico Detalhado",
+              "status": "não iniciado",
+              "horas": 4,
+              "recursoId": "res-fortaleza-28",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-29",
+              "nome": "Submódulo 29 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 5,
+              "recursoId": "res-fortaleza-29",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-30",
+              "nome": "Submódulo 30 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 2,
+              "recursoId": "res-fortaleza-30",
+              "link": "https://fortaleza.dev/aula"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "track-fortaleza-4",
+      "objetivoId": "obj-fortaleza",
+      "nome": "Semestre 4 - Bancos de Dados e Web",
+      "area": "Tecnologia",
+      "status": "Pausado",
+      "modo": "Online",
+      "horasMeta": 120,
+      "modulos": [
+        {
+          "id": "mod-fortaleza-7",
+          "nome": "Módulo 1 - Semestre 4 Disciplina 1",
+          "status": "em andamento",
+          "horas": 15,
+          "_expanded": true,
+          "submodulos": [
+            {
+              "id": "submod-fortaleza-31",
+              "nome": "Submódulo 31 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 2,
+              "recursoId": "res-fortaleza-31",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-32",
+              "nome": "Submódulo 32 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 3,
+              "recursoId": "res-fortaleza-1",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-33",
+              "nome": "Submódulo 33 - Tópico Detalhado",
+              "status": "não iniciado",
+              "horas": 4,
+              "recursoId": "res-fortaleza-2",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-34",
+              "nome": "Submódulo 34 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 5,
+              "recursoId": "res-fortaleza-3",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-35",
+              "nome": "Submódulo 35 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 2,
+              "recursoId": "res-fortaleza-4",
+              "link": "https://fortaleza.dev/aula"
+            }
+          ]
+        },
+        {
+          "id": "mod-fortaleza-8",
+          "nome": "Módulo 2 - Semestre 4 Disciplina 2",
+          "status": "não iniciado",
+          "horas": 15,
+          "_expanded": true,
+          "submodulos": [
+            {
+              "id": "submod-fortaleza-36",
+              "nome": "Submódulo 36 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 2,
+              "recursoId": "res-fortaleza-5",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-37",
+              "nome": "Submódulo 37 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 3,
+              "recursoId": "res-fortaleza-6",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-38",
+              "nome": "Submódulo 38 - Tópico Detalhado",
+              "status": "não iniciado",
+              "horas": 4,
+              "recursoId": "res-fortaleza-7",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-39",
+              "nome": "Submódulo 39 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 5,
+              "recursoId": "res-fortaleza-8",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-40",
+              "nome": "Submódulo 40 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 2,
+              "recursoId": "res-fortaleza-9",
+              "link": "https://fortaleza.dev/aula"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "track-fortaleza-5",
+      "objetivoId": "obj-fortaleza",
+      "nome": "Semestre 5 - Engenharia de Software e Testes",
+      "area": "Tecnologia",
+      "status": "Pausado",
+      "modo": "Online",
+      "horasMeta": 120,
+      "modulos": [
+        {
+          "id": "mod-fortaleza-9",
+          "nome": "Módulo 1 - Semestre 5 Disciplina 1",
+          "status": "em andamento",
+          "horas": 15,
+          "_expanded": true,
+          "submodulos": [
+            {
+              "id": "submod-fortaleza-41",
+              "nome": "Submódulo 41 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 2,
+              "recursoId": "res-fortaleza-10",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-42",
+              "nome": "Submódulo 42 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 3,
+              "recursoId": "res-fortaleza-11",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-43",
+              "nome": "Submódulo 43 - Tópico Detalhado",
+              "status": "não iniciado",
+              "horas": 4,
+              "recursoId": "res-fortaleza-12",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-44",
+              "nome": "Submódulo 44 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 5,
+              "recursoId": "res-fortaleza-13",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-45",
+              "nome": "Submódulo 45 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 2,
+              "recursoId": "res-fortaleza-14",
+              "link": "https://fortaleza.dev/aula"
+            }
+          ]
+        },
+        {
+          "id": "mod-fortaleza-10",
+          "nome": "Módulo 2 - Semestre 5 Disciplina 2",
+          "status": "não iniciado",
+          "horas": 15,
+          "_expanded": true,
+          "submodulos": [
+            {
+              "id": "submod-fortaleza-46",
+              "nome": "Submódulo 46 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 2,
+              "recursoId": "res-fortaleza-15",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-47",
+              "nome": "Submódulo 47 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 3,
+              "recursoId": "res-fortaleza-16",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-48",
+              "nome": "Submódulo 48 - Tópico Detalhado",
+              "status": "não iniciado",
+              "horas": 4,
+              "recursoId": "res-fortaleza-17",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-49",
+              "nome": "Submódulo 49 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 5,
+              "recursoId": "res-fortaleza-18",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-50",
+              "nome": "Submódulo 50 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 2,
+              "recursoId": "res-fortaleza-19",
+              "link": "https://fortaleza.dev/aula"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "track-fortaleza-6",
+      "objetivoId": "obj-fortaleza",
+      "nome": "Semestre 6 - Arquitetura e Sistemas Distribuídos",
+      "area": "Tecnologia",
+      "status": "Pausado",
+      "modo": "Online",
+      "horasMeta": 120,
+      "modulos": [
+        {
+          "id": "mod-fortaleza-11",
+          "nome": "Módulo 1 - Semestre 6 Disciplina 1",
+          "status": "em andamento",
+          "horas": 15,
+          "_expanded": true,
+          "submodulos": [
+            {
+              "id": "submod-fortaleza-51",
+              "nome": "Submódulo 51 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 2,
+              "recursoId": "res-fortaleza-20",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-52",
+              "nome": "Submódulo 52 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 3,
+              "recursoId": "res-fortaleza-21",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-53",
+              "nome": "Submódulo 53 - Tópico Detalhado",
+              "status": "não iniciado",
+              "horas": 4,
+              "recursoId": "res-fortaleza-22",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-54",
+              "nome": "Submódulo 54 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 5,
+              "recursoId": "res-fortaleza-23",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-55",
+              "nome": "Submódulo 55 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 2,
+              "recursoId": "res-fortaleza-24",
+              "link": "https://fortaleza.dev/aula"
+            }
+          ]
+        },
+        {
+          "id": "mod-fortaleza-12",
+          "nome": "Módulo 2 - Semestre 6 Disciplina 2",
+          "status": "não iniciado",
+          "horas": 12,
+          "_expanded": true,
+          "submodulos": [
+            {
+              "id": "submod-fortaleza-56",
+              "nome": "Submódulo 56 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 2,
+              "recursoId": "res-fortaleza-25",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-57",
+              "nome": "Submódulo 57 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 3,
+              "recursoId": "res-fortaleza-26",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-58",
+              "nome": "Submódulo 58 - Tópico Detalhado",
+              "status": "não iniciado",
+              "horas": 4,
+              "recursoId": "res-fortaleza-27",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-59",
+              "nome": "Submódulo 59 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 5,
+              "recursoId": "res-fortaleza-28",
+              "link": "https://fortaleza.dev/aula"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "track-fortaleza-7",
+      "objetivoId": "obj-fortaleza",
+      "nome": "Inglês Instrumental para Programadores",
+      "area": "Inglês",
+      "status": "Concluído",
+      "modo": "Online",
+      "horasMeta": 120,
+      "modulos": [
+        {
+          "id": "mod-fortaleza-13",
+          "nome": "Módulo 1 - Inglês Técnico",
+          "status": "em andamento",
+          "horas": 12,
+          "_expanded": true,
+          "submodulos": [
+            {
+              "id": "submod-fortaleza-60",
+              "nome": "Submódulo 60 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 2,
+              "recursoId": "res-fortaleza-29",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-61",
+              "nome": "Submódulo 61 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 3,
+              "recursoId": "res-fortaleza-30",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-62",
+              "nome": "Submódulo 62 - Tópico Detalhado",
+              "status": "não iniciado",
+              "horas": 4,
+              "recursoId": "res-fortaleza-31",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-63",
+              "nome": "Submódulo 63 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 5,
+              "recursoId": "res-fortaleza-1",
+              "link": "https://fortaleza.dev/aula"
+            }
+          ]
+        },
+        {
+          "id": "mod-fortaleza-14",
+          "nome": "Módulo 2 - Inglês Técnico",
+          "status": "não iniciado",
+          "horas": 12,
+          "_expanded": true,
+          "submodulos": [
+            {
+              "id": "submod-fortaleza-64",
+              "nome": "Submódulo 64 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 2,
+              "recursoId": "res-fortaleza-2",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-65",
+              "nome": "Submódulo 65 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 3,
+              "recursoId": "res-fortaleza-3",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-66",
+              "nome": "Submódulo 66 - Tópico Detalhado",
+              "status": "não iniciado",
+              "horas": 4,
+              "recursoId": "res-fortaleza-4",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-67",
+              "nome": "Submódulo 67 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 5,
+              "recursoId": "res-fortaleza-5",
+              "link": "https://fortaleza.dev/aula"
+            }
+          ]
+        },
+        {
+          "id": "mod-fortaleza-15",
+          "nome": "Módulo 3 - Inglês Técnico",
+          "status": "não iniciado",
+          "horas": 12,
+          "_expanded": true,
+          "submodulos": [
+            {
+              "id": "submod-fortaleza-68",
+              "nome": "Submódulo 68 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 2,
+              "recursoId": "res-fortaleza-6",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-69",
+              "nome": "Submódulo 69 - Tópico Detalhado",
+              "status": "em andamento",
+              "horas": 3,
+              "recursoId": "res-fortaleza-7",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-70",
+              "nome": "Submódulo 70 - Tópico Detalhado",
+              "status": "não iniciado",
+              "horas": 4,
+              "recursoId": "res-fortaleza-8",
+              "link": "https://fortaleza.dev/aula"
+            },
+            {
+              "id": "submod-fortaleza-71",
+              "nome": "Submódulo 71 - Tópico Detalhado",
+              "status": "concluído",
+              "horas": 5,
+              "recursoId": "res-fortaleza-9",
+              "link": "https://fortaleza.dev/aula"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
