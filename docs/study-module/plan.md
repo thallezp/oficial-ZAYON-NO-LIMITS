@@ -68,6 +68,6 @@ React Query nos hooks, `sonner`, `uploadthing`, `zod`, RLS por workspace.
 
 ## Status
 
-- [x] Fase 0 — leitura + docs (`00-notes.md`, `plan.md`) — **aguardando revisão**
-- [ ] Fase 0 — schema + enums + migration + RLS + tipos
-- [ ] Fases 1–6
+- [x] Fase 0 — leitura + docs (`00-notes.md`, `plan.md`)
+- [x] Fase 0 — schema + enums + migration + RLS + tipos
+- [x] Fases 1–6 (Data layer, Trilhas, Foco, Revisões/Planner, Bento/Achievements, Seed)

@@ -605,11 +605,11 @@ main().catch((e) => { console.error(e); process.exit(1); });
 ---
 
 # CHECKLIST FINAL POR FASE
-- [ ] F0 schema+enums+RLS+tipos · `db:generate` (sem push) · `tsc` ok
-- [ ] F1 4-arquivos-leitura + 3-escrita + hooks + realtime + store · `/api/query` responde
-- [ ] F2 tracks + [trackId] + library (dnd + upload)
-- [ ] F3 sessions (timer + ponte + realtime + atalho global)
-- [ ] F4 reviews (SM-2) + planner (FullCalendar) + objetivos/metas
-- [ ] F5 overview bento + achievements + settings + sidebar/command-menu + fx premium
-- [ ] F6 seed idempotente
+- [x] F0 schema+enums+RLS+tipos · `db:generate` (sem push) · `tsc` ok
+- [x] F1 4-arquivos-leitura + 3-escrita + hooks + realtime + store · `/api/query` responde
+- [x] F2 tracks + [trackId] + library (dnd + upload)
+- [x] F3 sessions (timer + ponte + realtime + atalho global)
+- [x] F4 reviews (SM-2) + planner (FullCalendar) + objetivos/metas
+- [x] F5 overview bento + achievements + settings + sidebar/command-menu + fx premium
+- [x] F6 seed idempotente
 Cada fase: `npm run lint` + `npx tsc --noEmit` + `npm run build` limpos + 1 commit.
