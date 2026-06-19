@@ -154,8 +154,8 @@ export const queries = {
 
       return rows.map((r: any) => ({
         ...r.task,
-        assignee: r.assignee.id ? r.assignee : undefined,
-        dependsOn: r.dependsOn.id ? r.dependsOn : undefined,
+        assignee: r.assignee?.id ? r.assignee : undefined,
+        dependsOn: r.dependsOn?.id ? r.dependsOn : undefined,
       }));
     },
   },
