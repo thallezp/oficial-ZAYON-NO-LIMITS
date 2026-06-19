@@ -166,6 +166,22 @@ const createProject = z
   })
   .passthrough();
 
+const updateProject = z
+  .object({
+    id,
+    input: z
+      .object({
+        name: z.string().min(2, "Nome do projeto e obrigatorio").optional(),
+        description: z.string().optional().nullable(),
+        status: z.enum(["active", "paused", "done"]).optional(),
+        color: z.string().optional().nullable(),
+        icon: z.string().optional().nullable(),
+        personaId: optionalId,
+      })
+      .passthrough(),
+  })
+  .passthrough();
+
 const upsertPersona = z
   .object({
     id: optionalId,
@@ -303,6 +319,7 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
     .passthrough(),
   toggleToolFavorite: z.object({ toolId: id }).passthrough(),
   createProject,
+  updateProject,
   updateUserMetadata: z.record(z.any()),
   updateProfile: z
     .object({
@@ -532,6 +549,7 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
   startFocusSession: z.object({ workspaceId: id, personaId: optionalId, type: z.enum(["study","work","reading","review","deep_work"]).optional(), trackId: optionalId, moduleId: optionalId, moduleItemId: optionalId, resourceId: optionalId, projectId: optionalId, taskId: optionalId, technique: z.string().optional(), plannedMinutes: z.coerce.number().optional(), label: z.string().optional() }).passthrough(),
   tickFocusSession: z.object({ id, actualMinutes: z.coerce.number().min(0), interruptions: z.coerce.number().min(0).optional() }).passthrough(),
   endFocusSession: z.object({ id, actualMinutes: z.coerce.number().min(0).optional(), interruptions: z.coerce.number().min(0).optional(), focusScore: z.coerce.number().optional(), notes: z.string().optional().nullable() }).passthrough(),
+  logManualSession: z.object({ workspaceId: id, personaId: optionalId, type: z.enum(["study","work","reading","review","deep_work"]).optional(), trackId: optionalId, moduleId: optionalId, moduleItemId: optionalId, resourceId: optionalId, projectId: optionalId, taskId: optionalId, technique: z.string().optional(), actualMinutes: z.coerce.number().min(1, "Informe o tempo da sessão"), interruptions: z.coerce.number().min(0).optional(), focusScore: z.coerce.number().optional(), notes: z.string().optional().nullable(), label: z.string().optional(), occurredAt: isoish }).passthrough(),
   upsertReview: z.object({ id: optionalId, workspaceId: id, kind: z.enum(["note","flashcard","attack_note"]).optional(), content: z.string().optional().nullable() }).passthrough(),
   reviewCard: z.object({ id, grade: z.coerce.number().min(0).max(5) }).passthrough(),
   deleteReview: simpleDelete,

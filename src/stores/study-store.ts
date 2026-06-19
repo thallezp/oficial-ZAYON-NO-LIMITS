@@ -28,6 +28,21 @@ export const useStudyStore = create<TimerState>()(
       stop: () => set({ sessionId: null, startedAt: null, baseSeconds: 0, paused: false, target: null }),
       setLibraryView: (v) => set({ libraryView: v }),
     }),
-    { name: "zayon.study", partialize: (st) => ({ libraryView: st.libraryView }) }, // SÓ UI persiste
+    {
+      name: "zayon.study",
+      // Persiste o estado do timer (além da UI) para que a sessão continue
+      // contando mesmo se o usuário fechar o navegador/sistema. O tempo decorrido
+      // é recalculado a partir de `startedAt` (epoch ms), então o relógio de parede
+      // segue correndo enquanto o app esteve fechado — só para quando alguém parar.
+      partialize: (st) => ({
+        libraryView: st.libraryView,
+        sessionId: st.sessionId,
+        startedAt: st.startedAt,
+        baseSeconds: st.baseSeconds,
+        paused: st.paused,
+        technique: st.technique,
+        target: st.target,
+      }),
+    },
   ),
 );

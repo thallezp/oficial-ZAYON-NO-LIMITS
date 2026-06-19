@@ -13,6 +13,7 @@ import {
   useStartFocusSession,
   useTickFocusSession,
   useEndFocusSession,
+  useLogManualSession,
 } from "@/hooks/use-queries";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRealtimeFocusSession } from "@/hooks/use-realtime";
@@ -48,6 +49,7 @@ import {
   Star,
   CheckCircle2,
   Trash2,
+  PlusCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -94,6 +96,7 @@ function FocusSessionsContent() {
   const startSessionMutation = useStartFocusSession();
   const tickSessionMutation = useTickFocusSession();
   const endSessionMutation = useEndFocusSession();
+  const logManualMutation = useLogManualSession();
 
   // Timer Zustand Store
   const store = useStudyStore();
@@ -119,6 +122,33 @@ function FocusSessionsContent() {
   const [interruptions, setInterruptions] = React.useState("0");
   const [notes, setNotes] = React.useState("");
   const [submittingComplete, setSubmittingComplete] = React.useState(false);
+
+  // Manual session states (lançar sessão sem cronômetro)
+  const [manualDialogOpen, setManualDialogOpen] = React.useState(false);
+  const [manualType, setManualType] = React.useState<"study" | "work">("study");
+  const [manualTrackId, setManualTrackId] = React.useState<string>("none");
+  const [manualModuleId, setManualModuleId] = React.useState<string>("none");
+  const [manualItemId, setManualItemId] = React.useState<string>("none");
+  const [manualProjectId, setManualProjectId] = React.useState<string>("none");
+  const [manualTaskId, setManualTaskId] = React.useState<string>("none");
+  const [manualHours, setManualHours] = React.useState("0");
+  const [manualMinutes, setManualMinutes] = React.useState("30");
+  const [manualDate, setManualDate] = React.useState(() => new Date().toISOString().slice(0, 16));
+  const [manualLabel, setManualLabel] = React.useState("");
+  const [manualFocusScore, setManualFocusScore] = React.useState(5);
+  const [manualNotes, setManualNotes] = React.useState("");
+  const [submittingManual, setSubmittingManual] = React.useState(false);
+
+  const manualTrack = React.useMemo(
+    () => tracks.find((t: any) => t.id === manualTrackId),
+    [tracks, manualTrackId]
+  );
+  const manualModules = React.useMemo(() => manualTrack?.modules || [], [manualTrack]);
+  const manualModule = React.useMemo(
+    () => manualModules.find((m: any) => m.id === manualModuleId),
+    [manualModules, manualModuleId]
+  );
+  const manualItems = React.useMemo(() => manualModule?.items || [], [manualModule]);
 
   // Resolve pre-fill targets from URL params
   React.useEffect(() => {
@@ -225,7 +255,7 @@ function FocusSessionsContent() {
 
   const handlePause = () => {
     store.pause(elapsed);
-    toast.info("Timer paused.");
+    toast.info("Timer pausado.");
   };
 
   const handleResume = () => {
@@ -279,6 +309,61 @@ function FocusSessionsContent() {
     }
   };
 
+  const resetManualForm = () => {
+    setManualType("study");
+    setManualTrackId("none");
+    setManualModuleId("none");
+    setManualItemId("none");
+    setManualProjectId("none");
+    setManualTaskId("none");
+    setManualHours("0");
+    setManualMinutes("30");
+    setManualDate(new Date().toISOString().slice(0, 16));
+    setManualLabel("");
+    setManualFocusScore(5);
+    setManualNotes("");
+  };
+
+  const handleManualSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeWorkspaceId) {
+      toast.error("Selecione um workspace.");
+      return;
+    }
+    const totalMinutes = (parseInt(manualHours, 10) || 0) * 60 + (parseInt(manualMinutes, 10) || 0);
+    if (totalMinutes < 1) {
+      toast.error("Informe um tempo maior que zero.");
+      return;
+    }
+
+    setSubmittingManual(true);
+    try {
+      await logManualMutation.mutateAsync({
+        workspaceId: activeWorkspaceId,
+        personaId: activePersonaId || undefined,
+        type: manualType,
+        trackId: manualType === "study" && manualTrackId !== "none" ? manualTrackId : undefined,
+        moduleId: manualType === "study" && manualModuleId !== "none" ? manualModuleId : undefined,
+        moduleItemId: manualType === "study" && manualItemId !== "none" ? manualItemId : undefined,
+        projectId: manualType === "work" && manualProjectId !== "none" ? manualProjectId : undefined,
+        taskId: manualType === "work" && manualTaskId !== "none" ? manualTaskId : undefined,
+        label: manualLabel.trim() || undefined,
+        actualMinutes: totalMinutes,
+        focusScore: manualFocusScore,
+        notes: manualNotes.trim() || undefined,
+        occurredAt: manualDate ? new Date(manualDate).toISOString() : undefined,
+      });
+
+      toast.success(`Sessão de ${totalMinutes} min registrada! 🎉`);
+      setManualDialogOpen(false);
+      resetManualForm();
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao registrar sessão manual.");
+    } finally {
+      setSubmittingManual(false);
+    }
+  };
+
   // Timer format display helpers
   const formatTime = (s: number) => {
     const hrs = Math.floor(s / 3600);
@@ -300,10 +385,14 @@ function FocusSessionsContent() {
     }
   };
 
-  // Remaining calculation for pomodoro/deepwork countdowns
+  // Remaining calculation for pomodoro/deepwork countdowns.
+  // Quando ocioso, usa a técnica selecionada localmente (timerType) para que o
+  // mostrador reflita a escolha (ex.: "Livre" zera o relógio). Quando há sessão
+  // ativa, usa a técnica gravada na sessão.
+  const activeTechnique = store.sessionId ? store.technique : timerType;
   let targetTotal = 0;
-  if (store.technique === "pomodoro") targetTotal = 25 * 60;
-  else if (store.technique === "deep_work") targetTotal = 50 * 60;
+  if (activeTechnique === "pomodoro") targetTotal = 25 * 60;
+  else if (activeTechnique === "deep_work") targetTotal = 50 * 60;
 
   const displayTime = targetTotal > 0 && elapsed <= targetTotal
     ? formatTime(targetTotal - elapsed)
@@ -360,9 +449,14 @@ function FocusSessionsContent() {
               {/* Controles de Play/Pause */}
               <div className="flex gap-3 justify-center">
                 {!store.sessionId ? (
-                  <Button variant="gradient" size="lg" onClick={handleStart} className="px-8 shadow-glow">
-                    <Play className="h-4.5 w-4.5 mr-2" /> Iniciar Foco
-                  </Button>
+                  <>
+                    <Button variant="gradient" size="lg" onClick={handleStart} className="px-8 shadow-glow">
+                      <Play className="h-4.5 w-4.5 mr-2" /> Iniciar Foco
+                    </Button>
+                    <Button variant="outline" size="lg" onClick={() => setManualDialogOpen(true)}>
+                      <PlusCircle className="h-4.5 w-4.5 mr-2" /> Lançar Sessão
+                    </Button>
+                  </>
                 ) : (
                   <>
                     {store.paused ? (
@@ -680,6 +774,164 @@ function FocusSessionsContent() {
               <div className="flex-1" />
               <Button type="submit" variant="gradient" disabled={submittingComplete}>
                 {submittingComplete ? "Concluindo..." : "Salvar e Fechar"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manual Session Dialog (lançar sessão sem cronômetro) */}
+      <Dialog open={manualDialogOpen} onOpenChange={(o) => { setManualDialogOpen(o); if (!o) resetManualForm(); }}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Lançar Sessão Manual</DialogTitle>
+            <DialogDescription>
+              Registre uma sessão de estudo ou trabalho que você já fez, sem cronômetro. Informe o tempo livremente.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleManualSubmit} className="space-y-4 pt-2">
+            {/* Tipo: Estudos vs Trabalho */}
+            <div className="grid grid-cols-2 gap-2 p-0.5 bg-muted/40 rounded-lg border border-border/40">
+              <button
+                type="button"
+                onClick={() => setManualType("study")}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold rounded-md transition",
+                  manualType === "study"
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <GraduationCap className="h-4 w-4" /> Estudos
+              </button>
+              <button
+                type="button"
+                onClick={() => setManualType("work")}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold rounded-md transition",
+                  manualType === "work"
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Briefcase className="h-4 w-4" /> Trabalho
+              </button>
+            </div>
+
+            {/* Alvos dinâmicos */}
+            {manualType === "study" ? (
+              <div className="grid grid-cols-1 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Trilha</Label>
+                  <Select value={manualTrackId} onValueChange={(v) => { setManualTrackId(v); setManualModuleId("none"); setManualItemId("none"); }}>
+                    <SelectTrigger className="text-xs"><SelectValue placeholder="Selecione a trilha..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhuma Trilha</SelectItem>
+                      {tracks.map((t: any) => (<SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Módulo</Label>
+                    <Select value={manualModuleId} onValueChange={(v) => { setManualModuleId(v); setManualItemId("none"); }} disabled={manualTrackId === "none"}>
+                      <SelectTrigger className="text-xs"><SelectValue placeholder="Módulo..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum Módulo</SelectItem>
+                        {manualModules.map((m: any) => (<SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Submódulo</Label>
+                    <Select value={manualItemId} onValueChange={setManualItemId} disabled={manualModuleId === "none"}>
+                      <SelectTrigger className="text-xs"><SelectValue placeholder="Item..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum Submódulo</SelectItem>
+                        {manualItems.map((i: any) => (<SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Projeto</Label>
+                  <Select value={manualProjectId} onValueChange={(v) => { setManualProjectId(v); setManualTaskId("none"); }}>
+                    <SelectTrigger className="text-xs"><SelectValue placeholder="Selecione o projeto..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum Projeto</SelectItem>
+                      {projects.map((p: any) => (<SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Tarefa</Label>
+                  <Select value={manualTaskId} onValueChange={setManualTaskId} disabled={manualProjectId === "none"}>
+                    <SelectTrigger className="text-xs"><SelectValue placeholder="Selecione a tarefa..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhuma Tarefa</SelectItem>
+                      {tasks.filter((t: any) => t.projectId === manualProjectId).map((t: any) => (<SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+            {/* Tempo manual (horas + minutos) */}
+            <div className="space-y-1">
+              <Label className="text-xs">Tempo Focado</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center gap-2">
+                  <Input type="number" min={0} value={manualHours} onChange={(e) => setManualHours(e.target.value)} className="text-sm" />
+                  <span className="text-xs text-muted-foreground">horas</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input type="number" min={0} max={59} value={manualMinutes} onChange={(e) => setManualMinutes(e.target.value)} className="text-sm" />
+                  <span className="text-xs text-muted-foreground">min</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Data/hora da sessão */}
+            <div className="space-y-1">
+              <Label className="text-xs" htmlFor="manualDate">Quando foi?</Label>
+              <Input id="manualDate" type="datetime-local" value={manualDate} onChange={(e) => setManualDate(e.target.value)} className="text-sm" />
+            </div>
+
+            {/* Rótulo */}
+            <div className="space-y-1">
+              <Label className="text-xs" htmlFor="manualLabel">Rótulo / O que você fez?</Label>
+              <Input id="manualLabel" value={manualLabel} onChange={(e) => setManualLabel(e.target.value)} placeholder="Ex: Revisei anatomia, Programei o login" className="text-sm" />
+            </div>
+
+            {/* Nota de foco */}
+            <div className="space-y-1">
+              <Label className="text-xs">Qualidade do Foco (Nota)</Label>
+              <div className="flex items-center gap-1 justify-center py-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button key={star} type="button" onClick={() => setManualFocusScore(star)} className="text-amber-400 hover:scale-110 transition">
+                    <Star className="h-6 w-6" fill={manualFocusScore >= star ? "currentColor" : "none"} />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Notas */}
+            <div className="space-y-1">
+              <Label className="text-xs" htmlFor="manualNotes">Anotações</Label>
+              <Textarea id="manualNotes" value={manualNotes} onChange={(e) => setManualNotes(e.target.value)} placeholder="Resumo do que foi feito (opcional)" rows={2} />
+            </div>
+
+            <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
+              <Button type="button" variant="ghost" onClick={() => { setManualDialogOpen(false); resetManualForm(); }}>
+                Cancelar
+              </Button>
+              <div className="flex-1" />
+              <Button type="submit" variant="gradient" disabled={submittingManual}>
+                {submittingManual ? "Registrando..." : "Registrar Sessão"}
               </Button>
             </DialogFooter>
           </form>

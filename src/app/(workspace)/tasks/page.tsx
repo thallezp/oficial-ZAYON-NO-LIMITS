@@ -33,12 +33,20 @@ import { useRealtimeTasks } from "@/hooks/use-realtime";
 import { useNewEntityShortcut } from "@/hooks/use-page-shortcuts";
 
 const columns: KanbanColumn<TaskStatus>[] = [
-  { id: "backlog", label: "Backlog", tone: "bg-muted/40" },
-  { id: "todo", label: "Todo", tone: "bg-secondary/40" },
-  { id: "doing", label: "Doing", tone: "bg-primary/10" },
-  { id: "review", label: "Review", tone: "bg-warning/10" },
-  { id: "done", label: "Done", tone: "bg-success/10" },
+  { id: "backlog", label: "Pendências", tone: "bg-muted/40" },
+  { id: "todo", label: "A Fazer", tone: "bg-secondary/40" },
+  { id: "doing", label: "Em Progresso", tone: "bg-primary/10" },
+  { id: "review", label: "Em Revisão", tone: "bg-warning/10" },
+  { id: "done", label: "Concluído", tone: "bg-success/10" },
 ];
+
+const statusLabel: Record<string, string> = {
+  backlog: "Pendências",
+  todo: "A Fazer",
+  doing: "Em Progresso",
+  review: "Em Revisão",
+  done: "Concluído",
+};
 
 const priorityColor: Record<string, string> = {
   urgent: "bg-destructive",
@@ -110,7 +118,7 @@ export default function TasksPage() {
         header: "Status",
         cell: ({ getValue }) => (
           <Badge size="sm" variant={statusColor[getValue<string>()] ?? "outline"}>
-            {getValue<string>()}
+            {statusLabel[getValue<string>()] ?? getValue<string>()}
           </Badge>
         ),
       },
@@ -330,7 +338,7 @@ export default function TasksPage() {
                   </div>
                 </div>
                 <Badge size="sm" variant={statusColor[task.status] ?? "outline"}>
-                  {task.status}
+                  {statusLabel[task.status] ?? task.status}
                 </Badge>
                 {task.dueAt && (
                   <span className="text-[10px] text-muted-foreground hidden sm:block">

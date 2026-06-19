@@ -1537,7 +1537,28 @@ export async function POST(req: Request) {
             description: payload.description || null,
             status: payload.status || "active",
             color: payload.color || "#3b82f6",
+            icon: payload.icon || "Folder",
           })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "updateProject": {
+        const { id, input } = payload;
+        const patch: Record<string, any> = { updated_at: new Date().toISOString() };
+        if (input.name !== undefined) patch.name = input.name;
+        if (input.description !== undefined) patch.description = input.description || null;
+        if (input.status !== undefined) patch.status = input.status;
+        if (input.color !== undefined) patch.color = input.color;
+        if (input.icon !== undefined) patch.icon = input.icon;
+        if (input.personaId !== undefined) patch.persona_id = input.personaId || null;
+        const { data, error } = await supabase
+          .from("projects")
+          .update(patch)
+          .eq("id", id)
           .select()
           .single();
         if (error) throw error;
@@ -2566,6 +2587,38 @@ export async function POST(req: Request) {
           ended_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }).eq("id", id).select().single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      // Lançar uma sessão já concluída SEM cronômetro (entrada manual de tempo).
+      case "logManualSession": {
+        const minutes = Math.max(1, Math.round(payload.actualMinutes));
+        const startedAt = payload.occurredAt ? new Date(payload.occurredAt) : new Date();
+        const endedAt = new Date(startedAt.getTime() + minutes * 60_000);
+        const { data, error } = await supabase.from("focus_sessions").insert({
+          workspace_id: payload.workspaceId,
+          persona_id: payload.personaId || null,
+          user_id: user.id,
+          type: payload.type || "study",
+          status: "completed",
+          track_id: payload.trackId || null,
+          module_id: payload.moduleId || null,
+          module_item_id: payload.moduleItemId || null,
+          resource_id: payload.resourceId || null,
+          project_id: payload.projectId || null,
+          task_id: payload.taskId || null,
+          label: payload.label || null,
+          technique: payload.technique || "manual",
+          planned_minutes: minutes,
+          actual_minutes: minutes,
+          interruptions: payload.interruptions ?? 0,
+          focus_score: payload.focusScore ?? null,
+          notes: payload.notes || null,
+          started_at: startedAt.toISOString(),
+          ended_at: endedAt.toISOString(),
+        }).select().single();
         if (error) throw error;
         result = data;
         break;

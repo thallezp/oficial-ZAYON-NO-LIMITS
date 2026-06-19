@@ -829,6 +829,17 @@ export function useDeleteTaskMutation() {
   });
 }
 
+export function useUpdateProjectMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: any }) =>
+      callMutate("updateProject", { id, input }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}
+
 export function useDeleteProjectMutation() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -1622,6 +1633,18 @@ export function useEndFocusSession() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (p: any) => callMutate("endFocusSession", p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["focusSessions"] });
+      qc.invalidateQueries({ queryKey: ["studyTracks"] });
+      qc.invalidateQueries({ queryKey: ["studyDashboard"] });
+    },
+  });
+}
+
+export function useLogManualSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("logManualSession", p),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["focusSessions"] });
       qc.invalidateQueries({ queryKey: ["studyTracks"] });
