@@ -5,6 +5,7 @@ import {
   Calendar,
   CheckCircle2,
   Flag,
+  GitBranch,
   Link2,
   ListChecks,
   MessageSquare,
@@ -28,6 +29,13 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { initials, relativeTime } from "@/lib/utils/format";
 import type { Task } from "@/types";
 import { cn } from "@/lib/utils/cn";
@@ -43,8 +51,10 @@ import { useWorkspaceStore } from "@/stores/workspace-store";
 import {
   useTaskComments,
   useTaskSubtasks,
+  useTeam,
   useCreateTaskCommentMutation,
   useCreateSubtaskMutation,
+  useCreateTaskMutation,
   useDeleteTaskMutation,
   useUpdateTaskStatusAndPositionMutation,
 } from "@/hooks/use-queries";
@@ -61,15 +71,23 @@ export function TaskDetailDrawer({ task, open, onOpenChange }: Props) {
   const [newSubtaskTitle, setNewSubtaskTitle] = React.useState("");
   const [showAddSubtask, setShowAddSubtask] = React.useState(false);
 
+  // "Gerar próxima tarefa" — encadeamento de fluxo (tipo ClickUp)
+  const [showNextTask, setShowNextTask] = React.useState(false);
+  const [nextTitle, setNextTitle] = React.useState("");
+  const [nextAssignee, setNextAssignee] = React.useState("none");
+  const [nextDependent, setNextDependent] = React.useState(true);
+
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
 
   // Queries reais
   const { data: dbComments = [] } = useTaskComments(task?.id);
   const { data: dbSubtasks = [] } = useTaskSubtasks(task?.id);
+  const { data: team = [] } = useTeam(activeWorkspaceId);
 
   // Mutations reais
   const createTaskComment = useCreateTaskCommentMutation();
   const createSubtask = useCreateSubtaskMutation();
+  const createTask = useCreateTaskMutation();
   const deleteTask = useDeleteTaskMutation();
   const updateTaskStatus = useUpdateTaskStatusAndPositionMutation();
 
@@ -104,6 +122,38 @@ export function TaskDetailDrawer({ task, open, onOpenChange }: Props) {
       toast.success("Subtarefa criada!");
     } catch (e: any) {
       toast.error("Erro ao criar subtarefa: " + e.message);
+    }
+  };
+
+  const handleCreateNextTask = async () => {
+    if (!nextTitle.trim() || !activeWorkspaceId || !task) return;
+    try {
+      await createTask.mutateAsync({
+        workspaceId: activeWorkspaceId,
+        personaId: task.personaId || undefined,
+        projectId: task.projectId || undefined,
+        title: nextTitle.trim(),
+        status: "todo",
+        priority: task.priority,
+        assigneeId: nextAssignee === "none" ? undefined : nextAssignee,
+        // Quando dependente, a nova tarefa fica bloqueada até esta concluir.
+        // Quando não, guardamos só a origem (de onde foi gerada) em relatedEntity.
+        dependsOnTaskId: nextDependent ? task.id : undefined,
+        relatedEntity: nextDependent
+          ? undefined
+          : { type: "task", id: task.id, title: task.title },
+      });
+      setNextTitle("");
+      setNextAssignee("none");
+      setNextDependent(true);
+      setShowNextTask(false);
+      toast.success(
+        nextDependent
+          ? "Próxima tarefa criada e dependente desta!"
+          : "Próxima tarefa criada!",
+      );
+    } catch (e: any) {
+      toast.error("Erro ao gerar tarefa: " + e.message);
     }
   };
 
@@ -285,6 +335,64 @@ export function TaskDetailDrawer({ task, open, onOpenChange }: Props) {
               })
             )}
           </div>
+        </section>
+
+        <Separator />
+
+        <section className="py-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <GitBranch className="h-3.5 w-3.5 text-primary" /> Gerar próxima tarefa
+            </h3>
+            <Button variant="ghost" size="sm" onClick={() => setShowNextTask(!showNextTask)}>
+              {showNextTask ? "Cancelar" : "+ Encadear"}
+            </Button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Crie a próxima etapa do fluxo (passa para outra pessoa). Marque
+            &quot;Depende desta&quot; para que ela só seja liberada quando esta
+            tarefa for concluída.
+          </p>
+
+          {showNextTask && (
+            <div className="space-y-2 rounded-lg border border-border/60 bg-card-elevated/40 p-3">
+              <Input
+                value={nextTitle}
+                onChange={(e) => setNextTitle(e.target.value)}
+                placeholder="Título da próxima tarefa…"
+                className="text-xs"
+              />
+              <Select value={nextAssignee} onValueChange={setNextAssignee}>
+                <SelectTrigger className="text-xs">
+                  <SelectValue placeholder="Responsável…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem responsável</SelectItem>
+                  {team.map((m: any) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.fullName || m.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                <Checkbox
+                  checked={nextDependent}
+                  onCheckedChange={(c) => setNextDependent(!!c)}
+                />
+                Depende desta tarefa (fica bloqueada até esta concluir)
+              </label>
+              <Button
+                size="sm"
+                variant="gradient"
+                className="w-full"
+                onClick={handleCreateNextTask}
+                disabled={!nextTitle.trim() || createTask.isPending}
+              >
+                {createTask.isPending ? "Gerando…" : "Gerar tarefa"}
+              </Button>
+            </div>
+          )}
         </section>
 
         <Separator />
