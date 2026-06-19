@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -45,6 +46,8 @@ import { PersonaSwitcher } from "./persona-switcher";
 import { useUIStore } from "@/stores/ui-store";
 import { usePersonaStore } from "@/stores/persona-store";
 import { useQuickCreate } from "@/stores/quick-create-store";
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useTasks } from "@/hooks/use-queries";
 import { cn } from "@/lib/utils/cn";
 
 type NavItem = {
@@ -56,7 +59,7 @@ type NavItem = {
 
 const workspaceNav: NavItem[] = [
   { href: "/dashboard", label: "Home", icon: Home },
-  { href: "/tasks", label: "Tasks", icon: ListChecks, badge: "12" },
+  { href: "/tasks", label: "Tasks", icon: ListChecks },
   { href: "/projects", label: "Projects", icon: Folders },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/documents", label: "Documents", icon: FileText },
@@ -167,6 +170,22 @@ export function SidebarContent() {
   const defaultPersonaId = activePersonaId ?? personas[0]?.id ?? "";
   const personaItems = personaNav(defaultPersonaId);
 
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const { data: tasks = [] } = useTasks(activeWorkspaceId);
+  const activeTasksCount = tasks.filter((t: any) => t.status !== "done").length;
+
+  const dynamicWorkspaceNav = React.useMemo(() => {
+    return workspaceNav.map((item) => {
+      if (item.href === "/tasks") {
+        return {
+          ...item,
+          badge: activeTasksCount > 0 ? activeTasksCount.toString() : undefined,
+        };
+      }
+      return item;
+    });
+  }, [activeTasksCount]);
+
   return (
     <>
       <div className="p-3 space-y-2">
@@ -186,7 +205,7 @@ export function SidebarContent() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 pb-4 no-scrollbar space-y-5">
-        <NavGroup label="Workspace" items={workspaceNav} pathname={pathname} />
+        <NavGroup label="Workspace" items={dynamicWorkspaceNav} pathname={pathname} />
         <NavGroup label="Estudo & Foco" items={studyNav} pathname={pathname} />
         <NavGroup label="Persona Ops" items={personaItems} pathname={pathname} />
         <NavGroup label="Inteligência" items={intelligenceNav} pathname={pathname} />
