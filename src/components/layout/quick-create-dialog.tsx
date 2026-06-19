@@ -69,11 +69,13 @@ import {
   usePersonas,
   useDocuments,
   useTeam,
+  useTasks,
   useLaunchCampaigns,
 } from "@/hooks/use-queries";
 import { TOOL_CATEGORIES, TOOL_SUBCATEGORIES } from "@/lib/constants/tools";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { getAutoPreview } from "@/lib/utils/tool-utils";
+import { uploadToStorage } from "@/lib/upload";
 
 type EntityMeta = {
   title: string;
@@ -318,12 +320,68 @@ function FormFooter({
 function TaskForm({ workspaceId, personaId, context, submitLabel, onSuccess }: EntityFormProps) {
   const create = useCreateTaskMutation();
   const { data: team = [] } = useTeam(workspaceId);
+  const { data: tasks = [] } = useTasks(workspaceId);
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [priority, setPriority] = React.useState<"low" | "medium" | "high" | "urgent">("medium");
   const [status, setStatus] = React.useState<"backlog" | "todo" | "doing" | "review" | "done">("todo");
   const [assigneeId, setAssigneeId] = React.useState<string>("none");
+  const [dependsOnTaskId, setDependsOnTaskId] = React.useState<string>("none");
   const [dueAt, setDueAt] = React.useState("");
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") !== -1) {
+        e.preventDefault();
+        const file = items[i].getAsFile();
+        if (!file) continue;
+
+        toast.promise(
+          (async () => {
+            const url = await uploadToStorage(file, "task-descriptions");
+            const start = e.currentTarget.selectionStart;
+            const end = e.currentTarget.selectionEnd;
+            const text = e.currentTarget.value;
+            const before = text.substring(0, start);
+            const after = text.substring(end, text.length);
+            const mdImage = `\n![imagem](${url})\n`;
+            setDescription(before + mdImage + after);
+          })(),
+          {
+            loading: "Enviando print...",
+            success: "Print colado com sucesso!",
+            error: "Erro ao enviar print",
+          }
+        );
+      }
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLTextAreaElement>) => {
+    const files = e.dataTransfer.files;
+    if (files.length > 0 && files[0].type.indexOf("image") !== -1) {
+      e.preventDefault();
+      const file = files[0];
+      toast.promise(
+        (async () => {
+          const url = await uploadToStorage(file, "task-descriptions");
+          const start = e.currentTarget.selectionStart;
+          const end = e.currentTarget.selectionEnd;
+          const text = e.currentTarget.value;
+          const before = text.substring(0, start);
+          const after = text.substring(end, text.length);
+          const mdImage = `\n![imagem](${url})\n`;
+          setDescription(before + mdImage + after);
+        })(),
+        {
+          loading: "Enviando imagem...",
+          success: "Imagem adicionada!",
+          error: "Erro ao enviar imagem",
+        }
+      );
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -339,6 +397,7 @@ function TaskForm({ workspaceId, personaId, context, submitLabel, onSuccess }: E
         status,
         dueAt: dueAt || undefined,
         assigneeId: assigneeId === "none" ? undefined : assigneeId,
+        dependsOnTaskId: dependsOnTaskId === "none" ? undefined : dependsOnTaskId,
       });
       toast.success("Tarefa criada!", { description: title });
       onSuccess();
@@ -358,26 +417,46 @@ function TaskForm({ workspaceId, personaId, context, submitLabel, onSuccess }: E
         />
       </Field>
       <Field label="Descrição">
+        <span className="text-[10px] text-muted-foreground block mb-1">
+          Arraste imagens ou cole prints (Ctrl+V) diretamente no campo abaixo:
+        </span>
         <Textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Contexto, links, critérios…"
+          onPaste={handlePaste}
+          onDrop={handleDrop}
+          placeholder="Contexto, links, critérios, prints colados..."
           rows={3}
         />
       </Field>
-      <Field label="Responsável">
-        <Select value={assigneeId} onValueChange={setAssigneeId}>
-          <SelectTrigger><SelectValue placeholder="Selecione o responsável..." /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">Sem responsável</SelectItem>
-            {team.map((m: any) => (
-              <SelectItem key={m.id} value={m.id}>
-                {m.fullName || m.email}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Field>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Responsável">
+          <Select value={assigneeId} onValueChange={setAssigneeId}>
+            <SelectTrigger><SelectValue placeholder="Selecione o responsável..." /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Sem responsável</SelectItem>
+              {team.map((m: any) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.fullName || m.email}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        <Field label="Depende de (Pre-requisito)">
+          <Select value={dependsOnTaskId} onValueChange={setDependsOnTaskId}>
+            <SelectTrigger><SelectValue placeholder="Selecione a tarefa impedimento..." /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Nenhuma (Sem dependências)</SelectItem>
+              {tasks.map((t: any) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+      </div>
       <div className="grid grid-cols-3 gap-2">
         <Field label="Status">
           <Select value={status} onValueChange={(v) => setStatus(v as any)}>

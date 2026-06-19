@@ -41,6 +41,7 @@ export const tasks = pgTable(
     personaId: uuid("persona_id").references(() => personas.id, { onDelete: "set null" }),
     projectId: uuid("project_id").references(() => projects.id, { onDelete: "set null" }),
     parentTaskId: uuid("parent_task_id"),
+    dependsOnTaskId: uuid("depends_on_task_id"),
     title: text("title").notNull(),
     description: text("description"),
     status: taskStatusEnum("status").default("todo").notNull(),
@@ -60,6 +61,7 @@ export const tasks = pgTable(
     personaIdx: index("tasks_persona_idx").on(table.personaId),
     statusIdx: index("tasks_status_idx").on(table.status),
     assigneeIdx: index("tasks_assignee_idx").on(table.assigneeId),
+    dependsOnIdx: index("tasks_depends_on_idx").on(table.dependsOnTaskId),
   }),
 );
 

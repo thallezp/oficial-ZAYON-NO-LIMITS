@@ -5,6 +5,7 @@
 import { db } from "@/lib/db";
 import { supabaseServer } from "@/lib/supabase/server";
 import { eq, and, sql, inArray, desc, isNull } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import * as s from "@/drizzle/schema";
 
 interface ScopeFilter {
@@ -129,6 +130,8 @@ export const queries = {
       if (filter?.workspaceId) conditions.push(eq(s.tasks.workspaceId, filter.workspaceId));
       if (filter?.personaId) conditions.push(eq(s.tasks.personaId, filter.personaId));
 
+      const dependsOnTask = alias(s.tasks, "depends_on_task");
+
       const rows = await db
         .select({
           task: s.tasks,
@@ -138,14 +141,21 @@ export const queries = {
             fullName: s.users.fullName,
             avatarUrl: s.users.avatarUrl,
           },
+          dependsOn: {
+            id: dependsOnTask.id,
+            title: dependsOnTask.title,
+            status: dependsOnTask.status,
+          },
         })
         .from(s.tasks)
         .leftJoin(s.users, eq(s.tasks.assigneeId, s.users.id))
+        .leftJoin(dependsOnTask, eq(s.tasks.dependsOnTaskId, dependsOnTask.id))
         .where(conditions.length > 0 ? and(...conditions) : undefined);
 
       return rows.map((r: any) => ({
         ...r.task,
         assignee: r.assignee.id ? r.assignee : undefined,
+        dependsOn: r.dependsOn.id ? r.dependsOn : undefined,
       }));
     },
   },

@@ -47,6 +47,7 @@ const createTask = z
     status: taskStatus.optional(),
     priority: taskPriority.optional(),
     assigneeId: optionalId,
+    dependsOnTaskId: optionalId,
     dueAt: isoish,
     labels: z.array(z.string()).optional().nullable(),
   })

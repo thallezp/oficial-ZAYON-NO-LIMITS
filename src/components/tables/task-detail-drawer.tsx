@@ -12,6 +12,7 @@ import {
   Sparkles,
   Tag,
   User as UserIcon,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Sheet,
@@ -149,7 +150,9 @@ export function TaskDetailDrawer({ task, open, onOpenChange }: Props) {
           </div>
           <SheetTitle className="text-xl">{task.title}</SheetTitle>
           {task.description && (
-            <SheetDescription>{task.description}</SheetDescription>
+            <div className="text-sm text-muted-foreground whitespace-pre-wrap mt-1">
+              {renderDescriptionWithImages(task.description)}
+            </div>
           )}
         </SheetHeader>
 
@@ -182,6 +185,25 @@ export function TaskDetailDrawer({ task, open, onOpenChange }: Props) {
             label="Prazo"
             value={task.dueAt ? relativeTime(task.dueAt) : "—"}
           />
+          {task.dependsOn && (
+            <Field
+              icon={<AlertTriangle className="h-3 w-3 text-warning" />}
+              label="Depende de"
+              value={
+                <div className="flex flex-col gap-1 p-2 rounded-lg border border-warning/20 bg-warning/5">
+                  <span className="font-medium text-foreground">{task.dependsOn.title}</span>
+                  <Badge 
+                    size="sm" 
+                    variant={task.dependsOn.status === "done" ? "success" : "warning"}
+                    className="w-fit"
+                  >
+                    {task.dependsOn.status === "done" ? "Liberada (Pronto)" : "Bloqueada (Pendente)"}
+                  </Badge>
+                </div>
+              }
+              colSpan={3}
+            />
+          )}
           {task.labels && task.labels.length > 0 && (
             <Field
               icon={<Tag className="h-3 w-3" />}
@@ -379,7 +401,11 @@ function Field({
   colSpan?: number;
 }) {
   return (
-    <div className={cn("space-y-1.5", colSpan === 2 && "col-span-2")}>
+    <div className={cn(
+      "space-y-1.5",
+      colSpan === 2 && "col-span-2",
+      colSpan === 3 && "col-span-3"
+    )}>
       <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
         {icon}
         {label}
@@ -387,4 +413,32 @@ function Field({
       <div className="text-sm">{value}</div>
     </div>
   );
+}
+
+function renderDescriptionWithImages(description: string) {
+  const regex = /!\[.*?\]\((https?:\/\/.*?)\)/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(description)) !== null) {
+    const textBefore = description.substring(lastIndex, match.index);
+    if (textBefore) {
+      parts.push(<span key={lastIndex} className="whitespace-pre-wrap">{textBefore}</span>);
+    }
+    const imageUrl = match[1];
+    parts.push(
+      <div key={match.index} className="my-2 border border-border/40 rounded-lg overflow-hidden max-w-full bg-card">
+        <img src={imageUrl} alt="screenshot" className="max-w-full h-auto object-contain max-h-[350px] mx-auto" />
+      </div>
+    );
+    lastIndex = regex.lastIndex;
+  }
+
+  const textAfter = description.substring(lastIndex);
+  if (textAfter) {
+    parts.push(<span key={lastIndex} className="whitespace-pre-wrap">{textAfter}</span>);
+  }
+
+  return parts.length > 0 ? <div className="space-y-1">{parts}</div> : <div className="whitespace-pre-wrap">{description}</div>;
 }
