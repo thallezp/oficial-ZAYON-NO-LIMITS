@@ -219,6 +219,7 @@ export async function POST(req: Request) {
             description: input.description,
             status: input.status,
             priority: input.priority,
+            assignee_id: input.assigneeId,
             due_at: input.dueAt,
             labels: input.labels,
             related_entity: input.relatedEntity,

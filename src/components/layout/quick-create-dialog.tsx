@@ -317,10 +317,12 @@ function FormFooter({
 
 function TaskForm({ workspaceId, personaId, context, submitLabel, onSuccess }: EntityFormProps) {
   const create = useCreateTaskMutation();
+  const { data: team = [] } = useTeam(workspaceId);
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [priority, setPriority] = React.useState<"low" | "medium" | "high" | "urgent">("medium");
   const [status, setStatus] = React.useState<"backlog" | "todo" | "doing" | "review" | "done">("todo");
+  const [assigneeId, setAssigneeId] = React.useState<string>("none");
   const [dueAt, setDueAt] = React.useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -336,6 +338,7 @@ function TaskForm({ workspaceId, personaId, context, submitLabel, onSuccess }: E
         priority,
         status,
         dueAt: dueAt || undefined,
+        assigneeId: assigneeId === "none" ? undefined : assigneeId,
       });
       toast.success("Tarefa criada!", { description: title });
       onSuccess();
@@ -361,6 +364,19 @@ function TaskForm({ workspaceId, personaId, context, submitLabel, onSuccess }: E
           placeholder="Contexto, links, critérios…"
           rows={3}
         />
+      </Field>
+      <Field label="Responsável">
+        <Select value={assigneeId} onValueChange={setAssigneeId}>
+          <SelectTrigger><SelectValue placeholder="Selecione o responsável..." /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Sem responsável</SelectItem>
+            {team.map((m: any) => (
+              <SelectItem key={m.id} value={m.id}>
+                {m.fullName || m.email}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </Field>
       <div className="grid grid-cols-3 gap-2">
         <Field label="Status">

@@ -128,7 +128,25 @@ export const queries = {
       const conditions = [];
       if (filter?.workspaceId) conditions.push(eq(s.tasks.workspaceId, filter.workspaceId));
       if (filter?.personaId) conditions.push(eq(s.tasks.personaId, filter.personaId));
-      return db.select().from(s.tasks).where(conditions.length > 0 ? and(...conditions) : undefined);
+
+      const rows = await db
+        .select({
+          task: s.tasks,
+          assignee: {
+            id: s.users.id,
+            email: s.users.email,
+            fullName: s.users.fullName,
+            avatarUrl: s.users.avatarUrl,
+          },
+        })
+        .from(s.tasks)
+        .leftJoin(s.users, eq(s.tasks.assigneeId, s.users.id))
+        .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+      return rows.map((r: any) => ({
+        ...r.task,
+        assignee: r.assignee.id ? r.assignee : undefined,
+      }));
     },
   },
   projects: {
