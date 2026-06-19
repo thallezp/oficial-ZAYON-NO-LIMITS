@@ -130,8 +130,6 @@ export const queries = {
       if (filter?.workspaceId) conditions.push(eq(s.tasks.workspaceId, filter.workspaceId));
       if (filter?.personaId) conditions.push(eq(s.tasks.personaId, filter.personaId));
 
-      const dependsOnTask = alias(s.tasks, "depends_on_task");
-
       const rows = await db
         .select({
           task: s.tasks,
@@ -141,21 +139,45 @@ export const queries = {
             fullName: s.users.fullName,
             avatarUrl: s.users.avatarUrl,
           },
-          dependsOn: {
-            id: dependsOnTask.id,
-            title: dependsOnTask.title,
-            status: dependsOnTask.status,
-          },
         })
         .from(s.tasks)
         .leftJoin(s.users, eq(s.tasks.assigneeId, s.users.id))
-        .leftJoin(dependsOnTask, eq(s.tasks.dependsOnTaskId, dependsOnTask.id))
         .where(conditions.length > 0 ? and(...conditions) : undefined);
 
-      return rows.map((r: any) => ({
+      const tasksList = rows.map((r: any) => ({
         ...r.task,
         assignee: r.assignee?.id ? r.assignee : undefined,
-        dependsOn: r.dependsOn?.id ? r.dependsOn : undefined,
+      }));
+
+      if (tasksList.length === 0) return [];
+
+      // Dependências muitos-para-muitos: cada tarefa pode depender de várias.
+      const ids = tasksList.map((t: any) => t.id);
+      const prereq = alias(s.tasks, "prereq_task");
+      const depRows = await db
+        .select({
+          taskId: s.taskDependencies.taskId,
+          prereq: {
+            id: prereq.id,
+            title: prereq.title,
+            status: prereq.status,
+          },
+        })
+        .from(s.taskDependencies)
+        .leftJoin(prereq, eq(s.taskDependencies.dependsOnTaskId, prereq.id))
+        .where(inArray(s.taskDependencies.taskId, ids));
+
+      const byTask = new Map<string, any[]>();
+      for (const d of depRows as any[]) {
+        if (!d.prereq?.id) continue;
+        const arr = byTask.get(d.taskId) ?? [];
+        arr.push(d.prereq);
+        byTask.set(d.taskId, arr);
+      }
+
+      return tasksList.map((t: any) => ({
+        ...t,
+        dependsOn: byTask.get(t.id) ?? [],
       }));
     },
   },

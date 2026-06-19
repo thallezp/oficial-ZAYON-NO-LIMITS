@@ -88,8 +88,7 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   assignee?: User;
-  dependsOn?: { id: ID; title: string; status: TaskStatus };
-  dependsOnTaskId?: ID;
+  dependsOn?: { id: ID; title: string; status: TaskStatus }[];
   dueAt?: string;
   labels?: string[];
   relatedEntity?: { type: string; id: ID; title?: string };

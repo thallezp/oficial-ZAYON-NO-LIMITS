@@ -199,7 +199,6 @@ export async function POST(req: Request) {
             priority: payload.priority || "medium",
             creator_id: user.id,
             assignee_id: payload.assigneeId || null,
-            depends_on_task_id: payload.dependsOnTaskId || null,
             due_at: payload.dueAt || null,
             labels: payload.labels || null,
             related_entity: payload.relatedEntity || null,
@@ -207,6 +206,27 @@ export async function POST(req: Request) {
           .select()
           .single();
         if (error) throw error;
+
+        // Dependências (muitos-para-muitos). Aceita lista nova ou o legado single.
+        const depIds: string[] = Array.isArray(payload.dependsOnTaskIds)
+          ? payload.dependsOnTaskIds
+          : payload.dependsOnTaskId
+            ? [payload.dependsOnTaskId]
+            : [];
+        const cleanDeps = Array.from(
+          new Set(depIds.filter((d: string) => d && d !== data.id)),
+        );
+        if (cleanDeps.length > 0) {
+          const { error: depErr } = await supabase
+            .from("task_dependencies")
+            .insert(
+              cleanDeps.map((d: string) => ({
+                task_id: data.id,
+                depends_on_task_id: d,
+              })),
+            );
+          if (depErr) throw depErr;
+        }
         result = data;
         break;
       }
@@ -221,7 +241,6 @@ export async function POST(req: Request) {
             status: input.status,
             priority: input.priority,
             assignee_id: input.assigneeId,
-            depends_on_task_id: input.dependsOnTaskId,
             due_at: input.dueAt,
             labels: input.labels,
             related_entity: input.relatedEntity,
@@ -1735,6 +1754,40 @@ export async function POST(req: Request) {
           .single();
         if (error) throw error;
         result = data;
+        break;
+      }
+
+      case "addTaskDependency": {
+        const { taskId, dependsOnTaskId } = payload;
+        if (taskId === dependsOnTaskId) {
+          throw new Error("Uma tarefa não pode depender de si mesma.");
+        }
+        const { data, error } = await supabase
+          .from("task_dependencies")
+          .insert({ task_id: taskId, depends_on_task_id: dependsOnTaskId })
+          .select()
+          .single();
+        if (error) {
+          // 23505 = unique_violation → dependência já existe, trata como ok
+          if ((error as any).code === "23505") {
+            result = { ok: true, duplicate: true };
+            break;
+          }
+          throw error;
+        }
+        result = data;
+        break;
+      }
+
+      case "removeTaskDependency": {
+        const { taskId, dependsOnTaskId } = payload;
+        const { error } = await supabase
+          .from("task_dependencies")
+          .delete()
+          .eq("task_id", taskId)
+          .eq("depends_on_task_id", dependsOnTaskId);
+        if (error) throw error;
+        result = { ok: true };
         break;
       }
 

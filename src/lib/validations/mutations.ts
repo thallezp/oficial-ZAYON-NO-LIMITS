@@ -48,6 +48,7 @@ const createTask = z
     priority: taskPriority.optional(),
     assigneeId: optionalId,
     dependsOnTaskId: optionalId,
+    dependsOnTaskIds: z.array(z.string()).optional().nullable(),
     dueAt: isoish,
     labels: z.array(z.string()).optional().nullable(),
   })
@@ -407,6 +408,8 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
   deleteSalesCopy: simpleDelete,
   deleteCalendarEvent: simpleDelete,
   createTaskComment: z.object({ taskId: id, body: z.string().min(1, "Comentario vazio") }).passthrough(),
+  addTaskDependency: z.object({ taskId: id, dependsOnTaskId: id }).passthrough(),
+  removeTaskDependency: z.object({ taskId: id, dependsOnTaskId: id }).passthrough(),
   createSubtask: z
     .object({
       parentTaskId: id,

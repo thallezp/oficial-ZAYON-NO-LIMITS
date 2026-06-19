@@ -14,6 +14,7 @@ import {
   Tag,
   User as UserIcon,
   AlertTriangle,
+  X,
 } from "lucide-react";
 import {
   Sheet,
@@ -52,9 +53,12 @@ import {
   useTaskComments,
   useTaskSubtasks,
   useTeam,
+  useTasks,
   useCreateTaskCommentMutation,
   useCreateSubtaskMutation,
   useCreateTaskMutation,
+  useAddTaskDependencyMutation,
+  useRemoveTaskDependencyMutation,
   useDeleteTaskMutation,
   useUpdateTaskStatusAndPositionMutation,
 } from "@/hooks/use-queries";
@@ -73,9 +77,11 @@ export function TaskDetailDrawer({ task, open, onOpenChange }: Props) {
 
   // "Gerar próxima tarefa" — encadeamento de fluxo (tipo ClickUp)
   const [showNextTask, setShowNextTask] = React.useState(false);
+  const [nextMode, setNextMode] = React.useState<"new" | "existing">("new");
   const [nextTitle, setNextTitle] = React.useState("");
   const [nextAssignee, setNextAssignee] = React.useState("none");
   const [nextDependent, setNextDependent] = React.useState(true);
+  const [nextExistingId, setNextExistingId] = React.useState("none");
 
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
 
@@ -83,11 +89,14 @@ export function TaskDetailDrawer({ task, open, onOpenChange }: Props) {
   const { data: dbComments = [] } = useTaskComments(task?.id);
   const { data: dbSubtasks = [] } = useTaskSubtasks(task?.id);
   const { data: team = [] } = useTeam(activeWorkspaceId);
+  const { data: allTasks = [] } = useTasks(activeWorkspaceId);
 
   // Mutations reais
   const createTaskComment = useCreateTaskCommentMutation();
   const createSubtask = useCreateSubtaskMutation();
   const createTask = useCreateTaskMutation();
+  const addDependency = useAddTaskDependencyMutation();
+  const removeDependency = useRemoveTaskDependencyMutation();
   const deleteTask = useDeleteTaskMutation();
   const updateTaskStatus = useUpdateTaskStatusAndPositionMutation();
 
@@ -125,6 +134,14 @@ export function TaskDetailDrawer({ task, open, onOpenChange }: Props) {
     }
   };
 
+  const resetNextTask = () => {
+    setNextTitle("");
+    setNextAssignee("none");
+    setNextDependent(true);
+    setNextExistingId("none");
+    setShowNextTask(false);
+  };
+
   const handleCreateNextTask = async () => {
     if (!nextTitle.trim() || !activeWorkspaceId || !task) return;
     try {
@@ -138,15 +155,12 @@ export function TaskDetailDrawer({ task, open, onOpenChange }: Props) {
         assigneeId: nextAssignee === "none" ? undefined : nextAssignee,
         // Quando dependente, a nova tarefa fica bloqueada até esta concluir.
         // Quando não, guardamos só a origem (de onde foi gerada) em relatedEntity.
-        dependsOnTaskId: nextDependent ? task.id : undefined,
+        dependsOnTaskIds: nextDependent ? [task.id] : undefined,
         relatedEntity: nextDependent
           ? undefined
           : { type: "task", id: task.id, title: task.title },
       });
-      setNextTitle("");
-      setNextAssignee("none");
-      setNextDependent(true);
-      setShowNextTask(false);
+      resetNextTask();
       toast.success(
         nextDependent
           ? "Próxima tarefa criada e dependente desta!"
@@ -154,6 +168,34 @@ export function TaskDetailDrawer({ task, open, onOpenChange }: Props) {
       );
     } catch (e: any) {
       toast.error("Erro ao gerar tarefa: " + e.message);
+    }
+  };
+
+  // Encadeia uma tarefa JÁ existente: ela passa a depender desta.
+  const handleChainExisting = async () => {
+    if (nextExistingId === "none" || !task) return;
+    try {
+      await addDependency.mutateAsync({
+        taskId: nextExistingId,
+        dependsOnTaskId: task.id,
+      });
+      const chained = allTasks.find((t: any) => t.id === nextExistingId);
+      resetNextTask();
+      toast.success(
+        `"${chained?.title ?? "Tarefa"}" agora depende desta tarefa.`,
+      );
+    } catch (e: any) {
+      toast.error("Erro ao encadear tarefa: " + e.message);
+    }
+  };
+
+  const handleRemoveDependency = async (dependsOnTaskId: string) => {
+    if (!task) return;
+    try {
+      await removeDependency.mutateAsync({ taskId: task.id, dependsOnTaskId });
+      toast.success("Dependência removida!");
+    } catch (e: any) {
+      toast.error("Erro ao remover dependência: " + e.message);
     }
   };
 
@@ -235,19 +277,51 @@ export function TaskDetailDrawer({ task, open, onOpenChange }: Props) {
             label="Prazo"
             value={task.dueAt ? relativeTime(task.dueAt) : "—"}
           />
-          {task.dependsOn && (
+          {task.dependsOn && task.dependsOn.length > 0 && (
             <Field
               icon={<AlertTriangle className="h-3 w-3 text-warning" />}
-              label="Depende de"
+              label={`Depende de (${task.dependsOn.length})`}
               value={
-                <div className="flex flex-col gap-1 p-2 rounded-lg border border-warning/20 bg-warning/5">
-                  <span className="font-medium text-foreground">{task.dependsOn.title}</span>
-                  <Badge 
-                    size="sm" 
-                    variant={task.dependsOn.status === "done" ? "success" : "warning"}
+                <div className="flex flex-col gap-1.5">
+                  {task.dependsOn.map((dep) => (
+                    <div
+                      key={dep.id}
+                      className="flex items-center justify-between gap-2 p-2 rounded-lg border border-warning/20 bg-warning/5"
+                    >
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <span className="font-medium text-foreground truncate">
+                          {dep.title}
+                        </span>
+                        <Badge
+                          size="sm"
+                          variant={dep.status === "done" ? "success" : "warning"}
+                          className="w-fit"
+                        >
+                          {dep.status === "done" ? "Pronto" : "Pendente"}
+                        </Badge>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDependency(dep.id)}
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                        title="Remover dependência"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                  <Badge
+                    size="sm"
+                    variant={
+                      task.dependsOn.every((d) => d.status === "done")
+                        ? "success"
+                        : "warning"
+                    }
                     className="w-fit"
                   >
-                    {task.dependsOn.status === "done" ? "Liberada (Pronto)" : "Bloqueada (Pendente)"}
+                    {task.dependsOn.every((d) => d.status === "done")
+                      ? "Liberada (todas concluídas)"
+                      : "Bloqueada (aguardando pré-requisitos)"}
                   </Badge>
                 </div>
               }
@@ -349,48 +423,116 @@ export function TaskDetailDrawer({ task, open, onOpenChange }: Props) {
             </Button>
           </div>
           <p className="text-[11px] text-muted-foreground">
-            Crie a próxima etapa do fluxo (passa para outra pessoa). Marque
-            &quot;Depende desta&quot; para que ela só seja liberada quando esta
-            tarefa for concluída.
+            Crie a próxima etapa do fluxo (passa para outra pessoa) ou encadeie
+            uma tarefa que já existe. Marque/use &quot;Depende desta&quot; para
+            que ela só seja liberada quando esta tarefa for concluída.
           </p>
 
           {showNextTask && (
             <div className="space-y-2 rounded-lg border border-border/60 bg-card-elevated/40 p-3">
-              <Input
-                value={nextTitle}
-                onChange={(e) => setNextTitle(e.target.value)}
-                placeholder="Título da próxima tarefa…"
-                className="text-xs"
-              />
-              <Select value={nextAssignee} onValueChange={setNextAssignee}>
-                <SelectTrigger className="text-xs">
-                  <SelectValue placeholder="Responsável…" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem responsável</SelectItem>
-                  {team.map((m: any) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.fullName || m.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
-                <Checkbox
-                  checked={nextDependent}
-                  onCheckedChange={(c) => setNextDependent(!!c)}
-                />
-                Depende desta tarefa (fica bloqueada até esta concluir)
-              </label>
-              <Button
-                size="sm"
-                variant="gradient"
-                className="w-full"
-                onClick={handleCreateNextTask}
-                disabled={!nextTitle.trim() || createTask.isPending}
-              >
-                {createTask.isPending ? "Gerando…" : "Gerar tarefa"}
-              </Button>
+              {/* Modo: criar nova OU encadear existente */}
+              <div className="flex gap-1 rounded-lg bg-muted/40 p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setNextMode("new")}
+                  className={cn(
+                    "flex-1 rounded-md px-2 py-1 transition",
+                    nextMode === "new"
+                      ? "bg-card-elevated font-medium text-foreground shadow-sm"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  Nova tarefa
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNextMode("existing")}
+                  className={cn(
+                    "flex-1 rounded-md px-2 py-1 transition",
+                    nextMode === "existing"
+                      ? "bg-card-elevated font-medium text-foreground shadow-sm"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  Tarefa existente
+                </button>
+              </div>
+
+              {nextMode === "new" ? (
+                <>
+                  <Input
+                    value={nextTitle}
+                    onChange={(e) => setNextTitle(e.target.value)}
+                    placeholder="Título da próxima tarefa…"
+                    className="text-xs"
+                  />
+                  <Select value={nextAssignee} onValueChange={setNextAssignee}>
+                    <SelectTrigger className="text-xs">
+                      <SelectValue placeholder="Responsável…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sem responsável</SelectItem>
+                      {team.map((m: any) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.fullName || m.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                    <Checkbox
+                      checked={nextDependent}
+                      onCheckedChange={(c) => setNextDependent(!!c)}
+                    />
+                    Depende desta tarefa (fica bloqueada até esta concluir)
+                  </label>
+                  <Button
+                    size="sm"
+                    variant="gradient"
+                    className="w-full"
+                    onClick={handleCreateNextTask}
+                    disabled={!nextTitle.trim() || createTask.isPending}
+                  >
+                    {createTask.isPending ? "Gerando…" : "Gerar tarefa"}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="text-[11px] text-muted-foreground">
+                    A tarefa escolhida passará a depender desta — útil quando
+                    várias tarefas sem relação levam à mesma etapa.
+                  </p>
+                  <Select value={nextExistingId} onValueChange={setNextExistingId}>
+                    <SelectTrigger className="text-xs">
+                      <SelectValue placeholder="Selecione a tarefa a encadear…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Selecione…</SelectItem>
+                      {allTasks
+                        .filter(
+                          (t: any) =>
+                            t.id !== task.id &&
+                            !(task.dependsOn ?? []).some((d) => d.id === t.id) &&
+                            !(t.dependsOn ?? []).some((d: any) => d.id === task.id),
+                        )
+                        .map((t: any) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.title}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    variant="gradient"
+                    className="w-full"
+                    onClick={handleChainExisting}
+                    disabled={nextExistingId === "none" || addDependency.isPending}
+                  >
+                    {addDependency.isPending ? "Encadeando…" : "Encadear tarefa"}
+                  </Button>
+                </>
+              )}
             </div>
           )}
         </section>

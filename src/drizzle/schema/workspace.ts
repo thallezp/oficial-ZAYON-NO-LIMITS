@@ -6,6 +6,7 @@ import {
   jsonb,
   boolean,
   index,
+  uniqueIndex,
   integer,
 } from "drizzle-orm/pg-core";
 import { workspaces, users } from "./core";
@@ -62,6 +63,24 @@ export const tasks = pgTable(
     statusIdx: index("tasks_status_idx").on(table.status),
     assigneeIdx: index("tasks_assignee_idx").on(table.assigneeId),
     dependsOnIdx: index("tasks_depends_on_idx").on(table.dependsOnTaskId),
+  }),
+);
+
+// Dependências muitos-para-muitos entre tarefas.
+// Uma linha { taskId: C, dependsOnTaskId: A } significa "C depende de A":
+// C fica bloqueada até A ser concluída. C pode depender de várias (A, B, ...).
+export const taskDependencies = pgTable(
+  "task_dependencies",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id").references(() => tasks.id, { onDelete: "cascade" }).notNull(),
+    dependsOnTaskId: uuid("depends_on_task_id").references(() => tasks.id, { onDelete: "cascade" }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    taskIdx: index("task_dependencies_task_idx").on(table.taskId),
+    dependsOnIdx: index("task_dependencies_depends_on_idx").on(table.dependsOnTaskId),
+    uniquePair: uniqueIndex("task_dependencies_unique_idx").on(table.taskId, table.dependsOnTaskId),
   }),
 );
 

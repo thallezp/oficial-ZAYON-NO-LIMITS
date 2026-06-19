@@ -425,6 +425,28 @@ export function useCreateTaskMutation() {
   });
 }
 
+export function useAddTaskDependencyMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { taskId: string; dependsOnTaskId: string }) =>
+      callMutate("addTaskDependency", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    },
+  });
+}
+
+export function useRemoveTaskDependencyMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { taskId: string; dependsOnTaskId: string }) =>
+      callMutate("removeTaskDependency", input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    },
+  });
+}
+
 export function useUpdateTaskMutation() {
   const queryClient = useQueryClient();
   return useMutation({

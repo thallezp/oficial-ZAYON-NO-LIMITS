@@ -397,7 +397,7 @@ function TaskForm({ workspaceId, personaId, context, submitLabel, onSuccess }: E
         status,
         dueAt: dueAt || undefined,
         assigneeId: assigneeId === "none" ? undefined : assigneeId,
-        dependsOnTaskId: dependsOnTaskId === "none" ? undefined : dependsOnTaskId,
+        dependsOnTaskIds: dependsOnTaskId === "none" ? undefined : [dependsOnTaskId],
       });
       toast.success("Tarefa criada!", { description: title });
       onSuccess();
