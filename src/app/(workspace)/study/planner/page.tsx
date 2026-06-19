@@ -89,18 +89,33 @@ export default function StudyPlannerPage() {
   const [goalDialogOpen, setGoalDialogOpen] = React.useState(false);
   const [selectedGoal, setSelectedGoal] = React.useState<any | null>(null);
 
-  // Auto-create initial plan if none exist
+  // Auto-cria o plano inicial se não existir — UMA única vez por workspace.
+  // Trava por ref evita a corrida que inseria centenas de planos: o mutate é
+  // assíncrono e `plans` continua vazio até o refetch, então sem essa guarda o
+  // effect disparava de novo a cada render. Não dependemos de upsertPlanMutation
+  // (cuja identidade muda a cada render) de propósito.
+  const creatingPlanRef = React.useRef<string | null>(null);
   React.useEffect(() => {
-    if (!loadingPlans && plans.length === 0 && activeWorkspaceId) {
-      upsertPlanMutation.mutate({
+    if (loadingPlans || !activeWorkspaceId || plans.length > 0) return;
+    if (creatingPlanRef.current === activeWorkspaceId) return;
+    creatingPlanRef.current = activeWorkspaceId;
+    upsertPlanMutation.mutate(
+      {
         workspaceId: activeWorkspaceId,
         name: "Rotina Principal",
         kind: "study",
         schedule: [],
         active: true,
-      });
-    }
-  }, [plans, loadingPlans, activeWorkspaceId, upsertPlanMutation]);
+      },
+      {
+        // Se falhar, libera pra permitir nova tentativa.
+        onError: () => {
+          creatingPlanRef.current = null;
+        },
+      },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plans.length, loadingPlans, activeWorkspaceId]);
 
   // Map schedule blocks to FullCalendar events
   const calendarEvents = React.useMemo(() => {
