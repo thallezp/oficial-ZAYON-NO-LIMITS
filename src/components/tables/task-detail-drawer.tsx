@@ -12,6 +12,7 @@ import {
   Paperclip,
   Sparkles,
   Tag,
+  Trash2,
   User as UserIcon,
   AlertTriangle,
   X,
@@ -55,6 +56,7 @@ import {
   useTeam,
   useTasks,
   useCreateTaskCommentMutation,
+  useDeleteTaskCommentMutation,
   useCreateSubtaskMutation,
   useCreateTaskMutation,
   useAddTaskDependencyMutation,
@@ -93,6 +95,7 @@ export function TaskDetailDrawer({ task, open, onOpenChange }: Props) {
 
   // Mutations reais
   const createTaskComment = useCreateTaskCommentMutation();
+  const deleteTaskComment = useDeleteTaskCommentMutation();
   const createSubtask = useCreateSubtaskMutation();
   const createTask = useCreateTaskMutation();
   const addDependency = useAddTaskDependencyMutation();
@@ -196,6 +199,27 @@ export function TaskDetailDrawer({ task, open, onOpenChange }: Props) {
       toast.success("Dependência removida!");
     } catch (e: any) {
       toast.error("Erro ao remover dependência: " + e.message);
+    }
+  };
+
+  const handleDeleteSubtask = async (subtaskId: string) => {
+    if (!window.confirm("Excluir esta subtarefa?")) return;
+    try {
+      await deleteTask.mutateAsync(subtaskId);
+      toast.success("Subtarefa excluída!");
+    } catch (e: any) {
+      toast.error("Erro ao excluir subtarefa: " + e.message);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!task) return;
+    if (!window.confirm("Excluir este comentário?")) return;
+    try {
+      await deleteTaskComment.mutateAsync({ id: commentId, taskId: task.id });
+      toast.success("Comentário excluído!");
+    } catch (e: any) {
+      toast.error("Erro ao excluir comentário: " + e.message);
     }
   };
 
@@ -403,7 +427,15 @@ export function TaskDetailDrawer({ task, open, onOpenChange }: Props) {
                       checked={isDone}
                       onCheckedChange={(checked) => handleToggleSubtask(s.id, !!checked)}
                     />
-                    <span className={cn(isDone && "line-through")}>{s.title}</span>
+                    <span className={cn("flex-1", isDone && "line-through")}>{s.title}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteSubtask(s.id)}
+                      className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                      title="Excluir subtarefa"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 );
               })
@@ -585,6 +617,14 @@ export function TaskDetailDrawer({ task, open, onOpenChange }: Props) {
                       <span className="text-[10px] text-muted-foreground">
                         {relativeTime(c.createdAt)}
                       </span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteComment(c.id)}
+                        className="ml-auto shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                        title="Excluir comentário"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
                     </div>
                     <p className="text-sm">{c.body}</p>
                   </div>

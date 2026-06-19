@@ -1791,6 +1791,12 @@ export async function POST(req: Request) {
         break;
       }
 
+      case "deleteTaskComment": {
+        await deleteOrThrow(supabase, "task_comments", payload.id);
+        result = { ok: true };
+        break;
+      }
+
       case "createSubtask": {
         const { parentTaskId, title, workspaceId, personaId } = payload;
         const { data, error } = await supabase

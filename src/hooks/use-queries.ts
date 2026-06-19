@@ -847,6 +847,8 @@ export function useDeleteTaskMutation() {
     mutationFn: (id: string) => callMutate("deleteTask", { id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      // Subtarefas são tasks; atualiza a lista de subtarefas aberta no drawer.
+      queryClient.invalidateQueries({ queryKey: ["taskSubtasks"] });
     },
   });
 }
@@ -1229,6 +1231,17 @@ export function useCreateTaskCommentMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: { taskId: string; body: string }) => callMutate("createTaskComment", input),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["taskComments", variables.taskId] });
+    },
+  });
+}
+
+export function useDeleteTaskCommentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; taskId: string }) =>
+      callMutate("deleteTaskComment", { id: input.id }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["taskComments", variables.taskId] });
     },

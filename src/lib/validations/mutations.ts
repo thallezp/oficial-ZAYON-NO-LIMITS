@@ -408,6 +408,7 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
   deleteSalesCopy: simpleDelete,
   deleteCalendarEvent: simpleDelete,
   createTaskComment: z.object({ taskId: id, body: z.string().min(1, "Comentario vazio") }).passthrough(),
+  deleteTaskComment: simpleDelete,
   addTaskDependency: z.object({ taskId: id, dependsOnTaskId: id }).passthrough(),
   removeTaskDependency: z.object({ taskId: id, dependsOnTaskId: id }).passthrough(),
   createSubtask: z
