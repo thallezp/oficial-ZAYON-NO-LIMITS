@@ -1929,3 +1929,144 @@ export function useUpdateStudySettings() {
   });
 }
 
+// ── GESTÃO DE ENERGIA ──────────────────────────────────────────────────────────
+
+export function useEnergy(workspaceId?: string | null) {
+  return useQuery({
+    queryKey: ["energy", workspaceId],
+    queryFn: () => qa.getEnergyAction({ workspaceId: workspaceId ?? undefined }),
+    enabled: !!workspaceId,
+  });
+}
+
+export function useUpsertEnergyDailyLog() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("upsertEnergyDailyLog", p),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["energy"] }),
+  });
+}
+
+export function useLogPornEvent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("logPornEvent", p),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["energy"] }),
+  });
+}
+
+export function useDeletePornEvent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deletePornEvent", { id }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["energy"] }),
+  });
+}
+
+export function useUpdateEnergySettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("updateEnergySettings", p),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["energy"] }),
+  });
+}
+
+// ── FINANCEIRO PESSOAL ──────────────────────────────────────────────────────────
+
+export function usePersonalFinance(workspaceId?: string | null) {
+  return useQuery({
+    queryKey: ["personalFinance", workspaceId],
+    queryFn: () => qa.getPersonalFinanceAction({ workspaceId: workspaceId ?? undefined }),
+    enabled: !!workspaceId,
+  });
+}
+
+export function useUpsertPersonalAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("upsertPersonalAccount", p),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["personalFinance"] }),
+  });
+}
+
+export function useDeletePersonalAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deletePersonalAccount", { id }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["personalFinance"] }),
+  });
+}
+
+export function useUpsertPersonalCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("upsertPersonalCategory", p),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["personalFinance"] }),
+  });
+}
+
+export function useDeletePersonalCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deletePersonalCategory", { id }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["personalFinance"] }),
+  });
+}
+
+export function useUpsertPersonalTransaction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("upsertPersonalTransaction", p),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["personalFinance"] }),
+  });
+}
+
+export function useDeletePersonalTransaction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deletePersonalTransaction", { id }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["personalFinance"] }),
+  });
+}
+
+export function useUpsertPersonalBill() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("upsertPersonalBill", p),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["personalFinance"] }),
+  });
+}
+
+export function useSetPersonalBillStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: { id: string; status: "pending" | "paid" }) =>
+      callMutate("setPersonalBillStatus", p),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["personalFinance"] }),
+  });
+}
+
+export function useDeletePersonalBill() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deletePersonalBill", { id }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["personalFinance"] }),
+  });
+}
+
+export function useUpsertPersonalGoal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("upsertPersonalGoal", p),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["personalFinance"] }),
+  });
+}
+
+export function useDeletePersonalGoal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deletePersonalGoal", { id }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["personalFinance"] }),
+  });
+}
+

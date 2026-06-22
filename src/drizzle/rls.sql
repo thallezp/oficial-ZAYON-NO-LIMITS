@@ -135,6 +135,14 @@ alter table public.study_reviews             enable row level security;
 alter table public.study_plans               enable row level security;
 alter table public.study_achievements        enable row level security;
 alter table public.study_settings            enable row level security;
+alter table public.energy_daily_logs         enable row level security;
+alter table public.energy_settings           enable row level security;
+alter table public.porn_events               enable row level security;
+alter table public.personal_accounts         enable row level security;
+alter table public.personal_categories       enable row level security;
+alter table public.personal_transactions     enable row level security;
+alter table public.personal_bills            enable row level security;
+alter table public.personal_goals            enable row level security;
 
 drop policy if exists users_insert_self on public.users;
 create policy users_insert_self on public.users
@@ -240,6 +248,32 @@ begin
       policy_record.table_name,
       policy_record.predicate_sql,
       policy_record.predicate_sql
+    );
+  end loop;
+end $$;
+
+-- Tabelas pessoais (Gestão de Energia + Financeiro Pessoal): além de pertencer
+-- ao workspace, a linha só é visível/editável pelo próprio dono (user_id).
+do $$
+declare t text;
+begin
+  for t in
+    select unnest(array[
+      'energy_daily_logs','energy_settings','porn_events',
+      'personal_accounts','personal_categories','personal_transactions',
+      'personal_bills','personal_goals'
+    ])
+  loop
+    execute format('drop policy if exists %I_owner_select on public.%I;', t, t);
+    execute format('drop policy if exists %I_owner_mutate on public.%I;', t, t);
+
+    execute format(
+      'create policy %I_owner_select on public.%I for select using (workspace_id in (select private.user_workspaces()) and user_id = auth.uid());',
+      t, t
+    );
+    execute format(
+      'create policy %I_owner_mutate on public.%I for all using (workspace_id in (select private.user_workspaces()) and user_id = auth.uid()) with check (workspace_id in (select private.user_workspaces()) and user_id = auth.uid());',
+      t, t
     );
   end loop;
 end $$;

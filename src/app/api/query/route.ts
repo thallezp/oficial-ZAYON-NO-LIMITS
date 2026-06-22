@@ -73,6 +73,8 @@ const handlers: Record<string, (p: Params) => Promise<unknown>> = {
   studyPlans: (p) => qa.getStudyPlansAction({ workspaceId: p.workspaceId, personaId: p.personaId }),
   studyAchievements: (p) => qa.getStudyAchievementsAction({ workspaceId: p.workspaceId, personaId: p.personaId }),
   studyDashboard: (p) => qa.getStudyDashboardAction({ workspaceId: p.workspaceId, personaId: p.personaId }),
+  energy: (p) => qa.getEnergyAction({ workspaceId: p.workspaceId, personaId: p.personaId }),
+  personalFinance: (p) => qa.getPersonalFinanceAction({ workspaceId: p.workspaceId, personaId: p.personaId }),
 };
 
 export async function POST(req: Request) {

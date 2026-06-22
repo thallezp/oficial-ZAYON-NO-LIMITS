@@ -219,3 +219,15 @@ export async function getStudyDashboardAction(f?: ScopeFilter) {
   return queries.study.dashboard({ ...f, userId: user.id });
 }
 
+export async function getEnergyAction(f?: ScopeFilter) {
+  const user = await getCurrentUserOrThrow();
+  await assertScope(f);
+  return queries.energy.bundle({ workspaceId: f?.workspaceId, userId: user.id });
+}
+
+export async function getPersonalFinanceAction(f?: ScopeFilter) {
+  const user = await getCurrentUserOrThrow();
+  await assertScope(f);
+  return queries.personalFinance.bundle({ workspaceId: f?.workspaceId, userId: user.id });
+}
+

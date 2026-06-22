@@ -2814,6 +2814,240 @@ export async function POST(req: Request) {
         break;
       }
 
+      // ── GESTÃO DE ENERGIA ─────────────────────────────────────────────────
+      case "upsertEnergyDailyLog": {
+        const logDate = (payload.logDate || new Date().toISOString()).split("T")[0];
+        const row: Record<string, any> = {
+          workspace_id: payload.workspaceId,
+          user_id: user.id,
+          log_date: logDate,
+          updated_at: new Date().toISOString(),
+        };
+        if (payload.sexualEnergy !== undefined) row.sexual_energy = payload.sexualEnergy;
+        if (payload.retained !== undefined) row.retained = payload.retained;
+        if (payload.libido !== undefined) row.libido = payload.libido;
+        if (payload.sleepHours !== undefined) row.sleep_hours = payload.sleepHours !== null ? String(payload.sleepHours) : null;
+        if (payload.sleepQuality !== undefined) row.sleep_quality = payload.sleepQuality;
+        if (payload.bedtime !== undefined) row.bedtime = payload.bedtime || null;
+        if (payload.wakeTime !== undefined) row.wake_time = payload.wakeTime || null;
+        if (payload.dietQuality !== undefined) row.diet_quality = payload.dietQuality;
+        if (payload.waterMl !== undefined) row.water_ml = payload.waterMl;
+        if (payload.meals !== undefined) row.meals = payload.meals;
+        if (payload.fasting !== undefined) row.fasting = payload.fasting;
+        if (payload.mood !== undefined) row.mood = payload.mood;
+        if (payload.energyLevel !== undefined) row.energy_level = payload.energyLevel;
+        if (payload.notes !== undefined) row.notes = payload.notes || null;
+        const { data, error } = await supabase
+          .from("energy_daily_logs")
+          .upsert(row, { onConflict: "workspace_id,user_id,log_date" })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "logPornEvent": {
+        const { data, error } = await supabase
+          .from("porn_events")
+          .insert({
+            workspace_id: payload.workspaceId,
+            user_id: user.id,
+            type: payload.type,
+            occurred_at: payload.occurredAt || new Date().toISOString(),
+            trigger: payload.trigger || null,
+            intensity: payload.intensity ?? null,
+            notes: payload.notes || null,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deletePornEvent": {
+        await deleteOrThrow(supabase, "porn_events", payload.id);
+        result = { id: payload.id };
+        break;
+      }
+
+      case "updateEnergySettings": {
+        const { data, error } = await supabase
+          .from("energy_settings")
+          .upsert(
+            {
+              workspace_id: payload.workspaceId,
+              user_id: user.id,
+              data: payload.data,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "workspace_id,user_id" },
+          )
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      // ── FINANCEIRO PESSOAL ────────────────────────────────────────────────
+      case "upsertPersonalAccount": {
+        const row = {
+          workspace_id: payload.workspaceId,
+          user_id: user.id,
+          name: payload.name,
+          type: payload.type || "checking",
+          balance: payload.balance !== undefined ? String(payload.balance) : "0",
+          currency: payload.currency || "BRL",
+          color: payload.color || null,
+          icon: payload.icon || null,
+          archived: payload.archived ?? false,
+          sort_order: payload.sortOrder ?? 0,
+          updated_at: new Date().toISOString(),
+        };
+        let q;
+        if (payload.id) q = supabase.from("personal_accounts").update(row).eq("id", payload.id);
+        else q = supabase.from("personal_accounts").insert(row);
+        const { data, error } = await q.select().single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deletePersonalAccount": {
+        await deleteOrThrow(supabase, "personal_accounts", payload.id);
+        result = { id: payload.id };
+        break;
+      }
+
+      case "upsertPersonalCategory": {
+        const row = {
+          workspace_id: payload.workspaceId,
+          user_id: user.id,
+          name: payload.name,
+          kind: payload.kind || "expense",
+          color: payload.color || null,
+          icon: payload.icon || null,
+          monthly_budget:
+            payload.monthlyBudget !== undefined && payload.monthlyBudget !== null
+              ? String(payload.monthlyBudget)
+              : null,
+          updated_at: new Date().toISOString(),
+        };
+        let q;
+        if (payload.id) q = supabase.from("personal_categories").update(row).eq("id", payload.id);
+        else q = supabase.from("personal_categories").insert(row);
+        const { data, error } = await q.select().single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deletePersonalCategory": {
+        await deleteOrThrow(supabase, "personal_categories", payload.id);
+        result = { id: payload.id };
+        break;
+      }
+
+      case "upsertPersonalTransaction": {
+        const row = {
+          workspace_id: payload.workspaceId,
+          user_id: user.id,
+          account_id: payload.accountId || null,
+          category_id: payload.categoryId || null,
+          type: payload.type || "expense",
+          amount: String(payload.amount ?? 0),
+          description: payload.description || null,
+          occurred_at: payload.occurredAt
+            ? payload.occurredAt.split("T")[0]
+            : new Date().toISOString().split("T")[0],
+          notes: payload.notes || null,
+          updated_at: new Date().toISOString(),
+        };
+        let q;
+        if (payload.id) q = supabase.from("personal_transactions").update(row).eq("id", payload.id);
+        else q = supabase.from("personal_transactions").insert(row);
+        const { data, error } = await q.select().single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deletePersonalTransaction": {
+        await deleteOrThrow(supabase, "personal_transactions", payload.id);
+        result = { id: payload.id };
+        break;
+      }
+
+      case "upsertPersonalBill": {
+        const row = {
+          workspace_id: payload.workspaceId,
+          user_id: user.id,
+          name: payload.name,
+          amount: String(payload.amount ?? 0),
+          due_day: payload.dueDay ?? null,
+          recurrence: payload.recurrence || "monthly",
+          category: payload.category || null,
+          status: payload.status || "pending",
+          autopay: payload.autopay ?? false,
+          notes: payload.notes || null,
+          updated_at: new Date().toISOString(),
+        };
+        let q;
+        if (payload.id) q = supabase.from("personal_bills").update(row).eq("id", payload.id);
+        else q = supabase.from("personal_bills").insert(row);
+        const { data, error } = await q.select().single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "setPersonalBillStatus": {
+        const { data, error } = await supabase
+          .from("personal_bills")
+          .update({ status: payload.status, updated_at: new Date().toISOString() })
+          .eq("id", payload.id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deletePersonalBill": {
+        await deleteOrThrow(supabase, "personal_bills", payload.id);
+        result = { id: payload.id };
+        break;
+      }
+
+      case "upsertPersonalGoal": {
+        const row = {
+          workspace_id: payload.workspaceId,
+          user_id: user.id,
+          name: payload.name,
+          target_amount: String(payload.targetAmount ?? 0),
+          current_amount: String(payload.currentAmount ?? 0),
+          due_date: payload.dueDate ? payload.dueDate.split("T")[0] : null,
+          color: payload.color || null,
+          notes: payload.notes || null,
+          updated_at: new Date().toISOString(),
+        };
+        let q;
+        if (payload.id) q = supabase.from("personal_goals").update(row).eq("id", payload.id);
+        else q = supabase.from("personal_goals").insert(row);
+        const { data, error } = await q.select().single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "deletePersonalGoal": {
+        await deleteOrThrow(supabase, "personal_goals", payload.id);
+        result = { id: payload.id };
+        break;
+      }
+
       default:
         return NextResponse.json({ error: `Ação desconhecida: ${action}` }, { status: 400 });
     }

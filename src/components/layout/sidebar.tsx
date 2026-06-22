@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Activity,
+  ArrowLeftRight,
   Bell,
   Bot,
   Brain,
@@ -20,6 +21,7 @@ import {
   Gauge,
   GraduationCap,
   Hammer,
+  HeartPulse,
   History,
   Home,
   Image as ImageIcon,
@@ -28,15 +30,22 @@ import {
   Library,
   ListChecks,
   Milestone,
+  Moon,
   Music2,
+  PiggyBank,
   Plus,
+  Receipt,
   Repeat,
+  ShieldCheck,
   Sparkles,
   Target,
   Timer,
   Users,
+  Utensils,
+  Wallet,
   Wand2,
   Workflow,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -77,6 +86,22 @@ const studyNav: NavItem[] = [
   { href: "/study/sessions", label: "Timer de Foco", icon: Timer },
   { href: "/study/reviews", label: "Revisões (Card)", icon: Repeat },
   { href: "/study/planner", label: "Rotina & Blocos", icon: CalendarClock },
+];
+
+const energyNav: NavItem[] = [
+  { href: "/energy", label: "Dashboard de Energia", icon: Zap },
+  { href: "/energy/sexual", label: "Energia Sexual", icon: HeartPulse },
+  { href: "/energy/porn-control", label: "Controle de Pornografia", icon: ShieldCheck },
+  { href: "/energy/food", label: "Alimentação", icon: Utensils },
+  { href: "/energy/sleep", label: "Sono", icon: Moon },
+];
+
+const moneyNav: NavItem[] = [
+  { href: "/money", label: "Dashboard", icon: Wallet },
+  { href: "/money/transactions", label: "Transações", icon: ArrowLeftRight },
+  { href: "/money/budget", label: "Orçamento", icon: PiggyBank },
+  { href: "/money/bills", label: "Contas & Assinaturas", icon: Receipt },
+  { href: "/money/goals", label: "Metas", icon: Target },
 ];
 
 const personaNav = (id: string): NavItem[] => [
@@ -207,6 +232,8 @@ export function SidebarContent() {
       <div className="flex-1 overflow-y-auto px-3 pb-4 no-scrollbar space-y-5">
         <NavGroup label="Workspace" items={dynamicWorkspaceNav} pathname={pathname} />
         <NavGroup label="Estudo & Foco" items={studyNav} pathname={pathname} />
+        <NavGroup label="Gestão de Energia" items={energyNav} pathname={pathname} />
+        <NavGroup label="Financeiro Pessoal" items={moneyNav} pathname={pathname} />
         <NavGroup label="Persona Ops" items={personaItems} pathname={pathname} />
         <NavGroup label="Inteligência" items={intelligenceNav} pathname={pathname} />
         <NavGroup label="Sistema" items={systemNav} pathname={pathname} />

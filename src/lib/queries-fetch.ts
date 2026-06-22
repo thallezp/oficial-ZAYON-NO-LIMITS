@@ -175,4 +175,8 @@ export const getStudyAchievementsAction = (f?: ScopeFilter) =>
   callQuery<ResultOf<typeof Real.getStudyAchievementsAction>>("studyAchievements", { workspaceId: f?.workspaceId, personaId: f?.personaId });
 export const getStudyDashboardAction = (f?: ScopeFilter) =>
   callQuery<ResultOf<typeof Real.getStudyDashboardAction>>("studyDashboard", { workspaceId: f?.workspaceId, personaId: f?.personaId });
+export const getEnergyAction = (f?: ScopeFilter) =>
+  callQuery<ResultOf<typeof Real.getEnergyAction>>("energy", { workspaceId: f?.workspaceId, personaId: f?.personaId });
+export const getPersonalFinanceAction = (f?: ScopeFilter) =>
+  callQuery<ResultOf<typeof Real.getPersonalFinanceAction>>("personalFinance", { workspaceId: f?.workspaceId, personaId: f?.personaId });
 

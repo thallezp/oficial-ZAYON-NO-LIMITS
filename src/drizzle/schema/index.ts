@@ -10,4 +10,5 @@ export * from "./tools";
 export * from "./launch";
 export * from "./ai";
 export * from "./study";
+export * from "./life";
 

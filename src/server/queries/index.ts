@@ -999,4 +999,62 @@ export const queries = {
       };
     },
   },
+
+  // ── GESTÃO DE ENERGIA ───────────────────────────────────────────────────────
+  energy: {
+    bundle: async (f: { workspaceId?: string; userId?: string }) => {
+      const wsId = f.workspaceId;
+      const userId = f.userId;
+      const dailyConds = [];
+      if (wsId) dailyConds.push(eq(s.energyDailyLogs.workspaceId, wsId));
+      if (userId) dailyConds.push(eq(s.energyDailyLogs.userId, userId));
+      const pornConds = [];
+      if (wsId) pornConds.push(eq(s.pornEvents.workspaceId, wsId));
+      if (userId) pornConds.push(eq(s.pornEvents.userId, userId));
+      const setConds = [];
+      if (wsId) setConds.push(eq(s.energySettings.workspaceId, wsId));
+      if (userId) setConds.push(eq(s.energySettings.userId, userId));
+      const [dailyLogs, events, settingsRows] = await Promise.all([
+        db.select().from(s.energyDailyLogs)
+          .where(dailyConds.length ? and(...dailyConds) : undefined)
+          .orderBy(desc(s.energyDailyLogs.logDate)),
+        db.select().from(s.pornEvents)
+          .where(pornConds.length ? and(...pornConds) : undefined)
+          .orderBy(desc(s.pornEvents.occurredAt)),
+        db.select().from(s.energySettings)
+          .where(setConds.length ? and(...setConds) : undefined)
+          .limit(1),
+      ]);
+      return { dailyLogs, pornEvents: events, settings: settingsRows[0] || null };
+    },
+  },
+
+  // ── FINANCEIRO PESSOAL ──────────────────────────────────────────────────────
+  personalFinance: {
+    bundle: async (f: { workspaceId?: string; userId?: string }) => {
+      const wsId = f.workspaceId;
+      const userId = f.userId;
+      const scope = (colWs: any, colUser: any) => {
+        const c = [];
+        if (wsId) c.push(eq(colWs, wsId));
+        if (userId) c.push(eq(colUser, userId));
+        return c.length ? and(...c) : undefined;
+      };
+      const [accounts, categories, transactions, bills, goals] = await Promise.all([
+        db.select().from(s.personalAccounts)
+          .where(scope(s.personalAccounts.workspaceId, s.personalAccounts.userId))
+          .orderBy(s.personalAccounts.sortOrder),
+        db.select().from(s.personalCategories)
+          .where(scope(s.personalCategories.workspaceId, s.personalCategories.userId)),
+        db.select().from(s.personalTransactions)
+          .where(scope(s.personalTransactions.workspaceId, s.personalTransactions.userId))
+          .orderBy(desc(s.personalTransactions.occurredAt)),
+        db.select().from(s.personalBills)
+          .where(scope(s.personalBills.workspaceId, s.personalBills.userId)),
+        db.select().from(s.personalGoals)
+          .where(scope(s.personalGoals.workspaceId, s.personalGoals.userId)),
+      ]);
+      return { accounts, categories, transactions, bills, goals };
+    },
+  },
 };

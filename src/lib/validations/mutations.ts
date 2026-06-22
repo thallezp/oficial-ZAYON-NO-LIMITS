@@ -562,6 +562,33 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
   deletePlan: simpleDelete,
   unlockAchievement: z.object({ workspaceId: id, key: z.string().min(1), name: z.string().min(1), tier: z.string().optional() }).passthrough(),
   updateStudySettings: z.object({ workspaceId: id, data: z.record(z.any()) }).passthrough(),
+
+  // ── Gestão de Energia ──────────────────────────────────────────────────────
+  upsertEnergyDailyLog: z.object({ workspaceId: id }).passthrough(),
+  logPornEvent: z
+    .object({ workspaceId: id, type: z.enum(["relapse", "urge_resisted", "clean_checkin"]) })
+    .passthrough(),
+  deletePornEvent: simpleDelete,
+  updateEnergySettings: z.object({ workspaceId: id, data: z.record(z.any()) }).passthrough(),
+
+  // ── Financeiro Pessoal ─────────────────────────────────────────────────────
+  upsertPersonalAccount: z.object({ workspaceId: id, name: z.string().min(1, "Nome obrigatório") }).passthrough(),
+  deletePersonalAccount: simpleDelete,
+  upsertPersonalCategory: z.object({ workspaceId: id, name: z.string().min(1, "Nome obrigatório") }).passthrough(),
+  deletePersonalCategory: simpleDelete,
+  upsertPersonalTransaction: z
+    .object({ workspaceId: id, type: z.enum(["income", "expense"]), amount: z.coerce.number() })
+    .passthrough(),
+  deletePersonalTransaction: simpleDelete,
+  upsertPersonalBill: z
+    .object({ workspaceId: id, name: z.string().min(1, "Nome obrigatório"), amount: z.coerce.number() })
+    .passthrough(),
+  setPersonalBillStatus: z.object({ id, status: z.enum(["pending", "paid"]) }).passthrough(),
+  deletePersonalBill: simpleDelete,
+  upsertPersonalGoal: z
+    .object({ workspaceId: id, name: z.string().min(1, "Nome obrigatório"), targetAmount: z.coerce.number() })
+    .passthrough(),
+  deletePersonalGoal: simpleDelete,
 };
 
 export function parseMutationPayload(action: string, payload: unknown) {
