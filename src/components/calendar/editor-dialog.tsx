@@ -49,6 +49,8 @@ import {
   useCreateTaskMutation,
   useUpdateTaskMutation,
   useUpdateContentMutation,
+  useDeleteContentMutation,
+  useDeleteTaskMutation,
 } from "@/hooks/use-queries";
 
 interface EditorDialogProps {
@@ -95,6 +97,8 @@ export function EditorDialog({
   const updateTask = useUpdateTaskMutation();
   const createTaskComment = useCreateTaskCommentMutation();
   const deleteTaskComment = useDeleteTaskCommentMutation();
+  const deleteContent = useDeleteContentMutation();
+  const deleteTask = useDeleteTaskMutation();
 
   // Task comments query (only runs if task exists)
   const { data: dbComments = [], refetch: refetchComments } = useTaskComments(task?.id);
@@ -214,6 +218,25 @@ export function EditorDialog({
       onOpenChange(false);
     } catch (error: any) {
       toast.error("Erro ao salvar dados: " + (error?.message ?? error));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteContent = async () => {
+    if (!contentItem) return;
+    if (!confirm("Tem certeza que deseja excluir este vídeo?")) return;
+
+    setIsSaving(true);
+    try {
+      if (task) {
+        await deleteTask.mutateAsync(task.id);
+      }
+      await deleteContent.mutateAsync(contentItem.id);
+      toast.success("Vídeo excluído com sucesso!");
+      onOpenChange(false);
+    } catch (error: any) {
+      toast.error("Erro ao excluir vídeo: " + (error?.message ?? error));
     } finally {
       setIsSaving(false);
     }
@@ -556,13 +579,25 @@ export function EditorDialog({
         </div>
 
         {/* Action Footer */}
-        <DialogFooter className="p-4 border-t border-border/60 shrink-0 bg-card/20 flex flex-row items-center justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} disabled={isSaving}>
-            Cancelar
+        <DialogFooter className="p-4 border-t border-border/60 shrink-0 bg-card/20 flex flex-row items-center justify-between gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive gap-1.5"
+            onClick={handleDeleteContent}
+            disabled={isSaving}
+          >
+            <Trash2 className="h-4 w-4" />
+            Excluir Vídeo
           </Button>
-          <Button variant="gradient" size="sm" onClick={handleSaveData} disabled={isSaving}>
-            {isSaving ? "Salvando..." : "Salvar Alterações"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} disabled={isSaving}>
+              Cancelar
+            </Button>
+            <Button variant="gradient" size="sm" onClick={handleSaveData} disabled={isSaving}>
+              {isSaving ? "Salvando..." : "Salvar Alterações"}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

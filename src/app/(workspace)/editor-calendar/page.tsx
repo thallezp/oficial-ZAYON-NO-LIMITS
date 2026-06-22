@@ -61,6 +61,7 @@ import {
   usePersonas,
   useCreateContentMutation,
   useDeleteContentMutation,
+  useDeleteTaskMutation,
   useCreateTaskMutation,
   useUpdateTaskStatusAndPositionMutation,
   usePayroll,
@@ -156,6 +157,7 @@ export default function EditorCalendarPage() {
   // Mutations
   const createContent = useCreateContentMutation();
   const deleteContent = useDeleteContentMutation();
+  const deleteTask = useDeleteTaskMutation();
   const createTask = useCreateTaskMutation();
   const updateTaskStatus = useUpdateTaskStatusAndPositionMutation();
 
@@ -380,6 +382,10 @@ export default function EditorCalendarPage() {
     e.stopPropagation();
     if (!confirm("Tem certeza que deseja excluir este conteúdo planejador?")) return;
     try {
+      const task = getTaskForContent(id);
+      if (task) {
+        await deleteTask.mutateAsync(task.id);
+      }
       await deleteContent.mutateAsync(id);
       toast.success("Conteúdo excluído!");
     } catch (error: any) {
@@ -597,7 +603,7 @@ export default function EditorCalendarPage() {
                                   key={item.id}
                                   onClick={() => handleOpenEdit(item)}
                                   className={cn(
-                                    "p-2.5 rounded-lg border text-left cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg bg-card/65 min-w-[200px] max-w-[280px] flex-1",
+                                    "p-2.5 rounded-lg border text-left cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg bg-card/65 min-w-[200px] max-w-[280px] flex-1 group",
                                     task?.status === "done"
                                       ? "border-success/30 hover:border-success/60 bg-success/5"
                                       : task?.status === "review"
@@ -614,12 +620,21 @@ export default function EditorCalendarPage() {
                                         {item.channel}
                                       </span>
                                     </span>
-                                    {task?.dueAt && (
-                                      <span className="text-[8px] font-bold text-warning flex items-center gap-0.5">
-                                        <Clock className="h-2 w-2" />
-                                        {new Date(task.dueAt).getDate()}/{new Date(task.dueAt).getMonth() + 1}
-                                      </span>
-                                    )}
+                                    <div className="flex items-center gap-1.5">
+                                      {task?.dueAt && (
+                                        <span className="text-[8px] font-bold text-warning flex items-center gap-0.5">
+                                          <Clock className="h-2 w-2" />
+                                          {new Date(task.dueAt).getDate()}/{new Date(task.dueAt).getMonth() + 1}
+                                        </span>
+                                      )}
+                                      <button
+                                        onClick={(e) => handleDeleteContent(item.id, e)}
+                                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                                        title="Excluir vídeo"
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </button>
+                                    </div>
                                   </div>
                                   <p className="text-xs font-bold text-foreground line-clamp-1 truncate leading-tight">
                                     {item.title}
