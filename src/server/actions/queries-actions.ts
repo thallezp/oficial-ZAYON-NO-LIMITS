@@ -189,10 +189,10 @@ export async function getTaskSubtasksAction(taskId: string) {
   return queries.taskExtensions.subtasks(taskId);
 }
 
-export async function getStudyTracksAction(f?: ScopeFilter)     { await assertScope(f); return queries.study.tracks(f); }
-export async function getStudyResourcesAction(f?: ScopeFilter)  { await assertScope(f); return queries.study.resources(f); }
-export async function getStudyObjectivesAction(f?: ScopeFilter) { await assertScope(f); return queries.study.objectives(f); }
-export async function getStudyGoalsAction(f?: ScopeFilter)      { await assertScope(f); return queries.study.goals(f); }
+export async function getStudyTracksAction(f?: ScopeFilter)     { const user = await getCurrentUserOrThrow(); await assertScope(f); return queries.study.tracks({ ...f, userId: user.id }); }
+export async function getStudyResourcesAction(f?: ScopeFilter)  { const user = await getCurrentUserOrThrow(); await assertScope(f); return queries.study.resources({ ...f, userId: user.id }); }
+export async function getStudyObjectivesAction(f?: ScopeFilter) { const user = await getCurrentUserOrThrow(); await assertScope(f); return queries.study.objectives({ ...f, userId: user.id }); }
+export async function getStudyGoalsAction(f?: ScopeFilter)      { const user = await getCurrentUserOrThrow(); await assertScope(f); return queries.study.goals({ ...f, userId: user.id }); }
 export async function getFocusSessionsAction(f?: ScopeFilter) {
   const user = await getCurrentUserOrThrow();
   await assertScope(f);

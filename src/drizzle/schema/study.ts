@@ -15,6 +15,7 @@ export const studyObjectives = pgTable("study_objectives", {
   id: uuid("id").primaryKey().defaultRandom(),
   workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }).notNull(),
   personaId: uuid("persona_id").references(() => personas.id, { onDelete: "set null" }),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   description: text("description"),
   emoji: text("emoji"),
@@ -28,13 +29,17 @@ export const studyObjectives = pgTable("study_objectives", {
   createdBy: uuid("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-}, (t) => ({ workspaceIdx: index("study_objectives_workspace_idx").on(t.workspaceId) }));
+}, (t) => ({
+  workspaceIdx: index("study_objectives_workspace_idx").on(t.workspaceId),
+  userIdx: index("study_objectives_user_idx").on(t.userId),
+}));
 
 // — Trilhas —
 export const studyTracks = pgTable("study_tracks", {
   id: uuid("id").primaryKey().defaultRandom(),
   workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }).notNull(),
   personaId: uuid("persona_id").references(() => personas.id, { onDelete: "set null" }),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
   objectiveId: uuid("objective_id").references(() => studyObjectives.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   area: text("area"),
@@ -55,6 +60,7 @@ export const studyTracks = pgTable("study_tracks", {
 }, (t) => ({
   workspaceIdx: index("study_tracks_workspace_idx").on(t.workspaceId),
   objectiveIdx: index("study_tracks_objective_idx").on(t.objectiveId),
+  userIdx: index("study_tracks_user_idx").on(t.userId),
 }));
 
 // — Módulos (filha de tracks) —
@@ -77,6 +83,7 @@ export const studyResources = pgTable("study_resources", {
   id: uuid("id").primaryKey().defaultRandom(),
   workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }).notNull(),
   personaId: uuid("persona_id").references(() => personas.id, { onDelete: "set null" }),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
   trackId: uuid("track_id").references(() => studyTracks.id, { onDelete: "set null" }),
   objectiveId: uuid("objective_id").references(() => studyObjectives.id, { onDelete: "set null" }),
   title: text("title").notNull(),
@@ -111,6 +118,7 @@ export const studyResources = pgTable("study_resources", {
   workspaceIdx: index("study_resources_workspace_idx").on(t.workspaceId),
   statusIdx: index("study_resources_status_idx").on(t.status),
   trackIdx: index("study_resources_track_idx").on(t.trackId),
+  userIdx: index("study_resources_user_idx").on(t.userId),
 }));
 
 // — Submódulos (filha de modules; resourceId DEPOIS de resources p/ FK) —
@@ -134,6 +142,7 @@ export const studyGoals = pgTable("study_goals", {
   id: uuid("id").primaryKey().defaultRandom(),
   workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }).notNull(),
   personaId: uuid("persona_id").references(() => personas.id, { onDelete: "set null" }),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
   trackId: uuid("track_id").references(() => studyTracks.id, { onDelete: "set null" }),
   objectiveId: uuid("objective_id").references(() => studyObjectives.id, { onDelete: "set null" }),
   title: text("title").notNull(),
@@ -147,7 +156,10 @@ export const studyGoals = pgTable("study_goals", {
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-}, (t) => ({ workspaceIdx: index("study_goals_workspace_idx").on(t.workspaceId) }));
+}, (t) => ({
+  workspaceIdx: index("study_goals_workspace_idx").on(t.workspaceId),
+  userIdx: index("study_goals_user_idx").on(t.userId),
+}));
 
 // — Sessões de Foco (PONTE estudo↔trabalho) —
 export const focusSessions = pgTable("focus_sessions", {

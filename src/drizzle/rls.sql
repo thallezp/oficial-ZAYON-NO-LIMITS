@@ -181,7 +181,6 @@ begin
       'launch_campaigns','icp_pains','sales_copies','ai_threads','ai_actions',
       'comments','presence_sessions','activity_logs','notifications','roles',
       'invitations',
-      'study_objectives','study_tracks','study_resources','study_goals',
       'focus_sessions','study_reviews','study_plans','study_achievements','study_settings'
     ])
   loop
@@ -261,9 +260,14 @@ begin
     select unnest(array[
       'energy_daily_logs','energy_settings','porn_events',
       'personal_accounts','personal_categories','personal_transactions',
-      'personal_bills','personal_goals'
+      'personal_bills','personal_goals',
+      'study_tracks','study_resources','study_objectives','study_goals'
     ])
   loop
+    -- remove políticas antigas, inclusive as workspace-scoped de study_* que
+    -- agora passam a ser por-usuário.
+    execute format('drop policy if exists %I_workspace_select on public.%I;', t, t);
+    execute format('drop policy if exists %I_workspace_mutate on public.%I;', t, t);
     execute format('drop policy if exists %I_owner_select on public.%I;', t, t);
     execute format('drop policy if exists %I_owner_mutate on public.%I;', t, t);
 

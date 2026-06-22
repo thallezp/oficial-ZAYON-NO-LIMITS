@@ -71,6 +71,7 @@ const workspaceNav: NavItem[] = [
   { href: "/tasks", label: "Tasks", icon: ListChecks },
   { href: "/projects", label: "Projects", icon: Folders },
   { href: "/calendar", label: "Calendar", icon: Calendar },
+  { href: "/editor-calendar", label: "Editor Calendar", icon: CalendarClock },
   { href: "/documents", label: "Documents", icon: FileText },
   { href: "/materials", label: "Materials", icon: Library },
   { href: "/flows", label: "Flows", icon: Workflow },

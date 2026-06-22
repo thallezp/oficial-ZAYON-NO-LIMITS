@@ -180,6 +180,11 @@ export default function StudyPlannerPage() {
     e.preventDefault();
     if (!activePlan || !activeWorkspaceId) return;
 
+    if (blockDays.length === 0) {
+      toast.error("Por favor, selecione ao menos um dia de recorrência para salvar o bloco.");
+      return;
+    }
+
     const newBlock = {
       label: blockLabel.trim() || (blockType === "study" ? "Estudo" : "Trabalho"),
       days: blockDays,
@@ -358,7 +363,15 @@ export default function StudyPlannerPage() {
                   editable={false}
                   locale="pt-br"
                   firstDay={1} // Monday first
-                  dayHeaderFormat={{ weekday: "short" }} // seg, ter...
+                  dayHeaderContent={(arg) => {
+                    const date = arg.date;
+                    const days = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
+                    const dayName = days[date.getDay()];
+                    const dd = String(date.getDate()).padStart(2, '0');
+                    const mm = String(date.getMonth() + 1).padStart(2, '0');
+                    const yy = String(date.getFullYear()).slice(-2);
+                    return `${dayName} - ${dd}/${mm}/${yy}`;
+                  }}
                   select={(info) => handleRangeSelect(info.start, info.end)}
                   eventClick={(info) => handleEventClick(info.event.id)}
                   eventDisplay="block"

@@ -196,3 +196,111 @@
     scrollbar-width: none;
   }
 }
+
+/* FullCalendar Custom Styles */
+.zayon-fullcalendar .fc {
+  font-family: inherit;
+  --fc-border-color: hsl(var(--border) / 0.6);
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: transparent;
+  --fc-today-bg-color: hsl(var(--primary) / 0.08);
+  --fc-event-text-color: hsl(var(--foreground));
+}
+.zayon-fullcalendar .fc-toolbar-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-transform: capitalize;
+}
+.zayon-fullcalendar .fc .fc-button {
+  background: hsl(var(--card) / 0.6);
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border) / 0.6);
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  text-transform: capitalize;
+  box-shadow: none;
+}
+.zayon-fullcalendar .fc .fc-button:hover {
+  background: hsl(var(--accent));
+}
+.zayon-fullcalendar .fc .fc-button-primary:not(:disabled).fc-button-active,
+.zayon-fullcalendar .fc .fc-button-primary:not(:disabled):active {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-color: hsl(var(--primary));
+}
+.zayon-fullcalendar .fc-col-header-cell {
+  background: hsl(var(--card)) !important;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  color: hsl(var(--muted-foreground)) !important;
+  font-weight: 600;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid hsl(var(--border) / 0.6) !important;
+}
+.zayon-fullcalendar th {
+  background-color: transparent !important;
+}
+.zayon-fullcalendar .fc-timegrid-axis {
+  background: hsl(var(--card)) !important;
+}
+.zayon-fullcalendar .fc-scrollgrid-section-header,
+.zayon-fullcalendar .fc-scrollgrid-section-header > * {
+  background: transparent !important;
+}
+.zayon-fullcalendar .fc-col-header-cell-cushion {
+  color: inherit !important;
+  text-decoration: none !important;
+  display: block;
+  padding: 2px 4px;
+}
+.zayon-fullcalendar .fc-daygrid-day-number,
+.zayon-fullcalendar .fc-timegrid-axis-cushion,
+.zayon-fullcalendar .fc-timegrid-slot-label-cushion {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.7rem;
+}
+.zayon-fullcalendar .fc-day-today .fc-daygrid-day-number {
+  color: hsl(var(--primary));
+  font-weight: 600;
+}
+.zayon-fullcalendar .fc-event {
+  background: hsl(var(--card) / 0.6) !important;
+  border-style: solid !important;
+  border-width: 0 0 0 4px !important;
+  border-radius: 0.375rem !important;
+  padding: 0.35rem 0.5rem !important;
+  box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.2), 0 4px 12px -2px rgba(0, 0, 0, 0.3) !important;
+  backdrop-filter: blur(8px) !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer;
+}
+.zayon-fullcalendar .fc-event:hover {
+  background: hsl(var(--card) / 0.85) !important;
+  box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.4), 0 6px 16px -2px rgba(0, 0, 0, 0.4) !important;
+  transform: translateY(-1px);
+}
+.zayon-fullcalendar .fc-event-main {
+  color: hsl(var(--foreground)) !important;
+  font-weight: 600 !important;
+  font-size: 0.75rem !important;
+}
+.zayon-fullcalendar .fc-event-time {
+  color: hsl(var(--muted-foreground)) !important;
+  font-size: 0.65rem !important;
+  font-weight: 600 !important;
+  margin-bottom: 2px;
+}
+.zayon-fullcalendar .fc-daygrid-event-dot {
+  display: none;
+}
+.zayon-fullcalendar .fc-scrollgrid {
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+.zayon-fullcalendar .fc-timegrid-now-indicator-line {
+  border-color: hsl(var(--primary));
+}

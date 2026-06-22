@@ -818,9 +818,10 @@ export const queries = {
     },
   },
   study: {
-    tracks: async (f?: ScopeFilter) => {
+    tracks: async (f?: ScopeFilter & { userId?: string }) => {
       const conds = [];
       if (f?.workspaceId) conds.push(eq(s.studyTracks.workspaceId, f.workspaceId));
+      if (f?.userId)     conds.push(eq(s.studyTracks.userId, f.userId));
       if (f?.personaId)  conds.push(eq(s.studyTracks.personaId, f.personaId));
       const tracks = await db.select().from(s.studyTracks)
         .where(conds.length ? and(...conds) : undefined)
@@ -852,25 +853,28 @@ export const queries = {
         };
       });
     },
-    resources: async (f?: ScopeFilter) => {
+    resources: async (f?: ScopeFilter & { userId?: string }) => {
       const conds = [];
       if (f?.workspaceId) conds.push(eq(s.studyResources.workspaceId, f.workspaceId));
+      if (f?.userId)     conds.push(eq(s.studyResources.userId, f.userId));
       if (f?.personaId)  conds.push(eq(s.studyResources.personaId, f.personaId));
       return db.select().from(s.studyResources)
         .where(conds.length ? and(...conds) : undefined)
         .orderBy(desc(s.studyResources.updatedAt));
     },
-    objectives: async (f?: ScopeFilter) => {
+    objectives: async (f?: ScopeFilter & { userId?: string }) => {
       const conds = [];
       if (f?.workspaceId) conds.push(eq(s.studyObjectives.workspaceId, f.workspaceId));
+      if (f?.userId)     conds.push(eq(s.studyObjectives.userId, f.userId));
       if (f?.personaId)  conds.push(eq(s.studyObjectives.personaId, f.personaId));
       return db.select().from(s.studyObjectives)
         .where(conds.length ? and(...conds) : undefined)
         .orderBy(desc(s.studyObjectives.createdAt));
     },
-    goals: async (f?: ScopeFilter) => {
+    goals: async (f?: ScopeFilter & { userId?: string }) => {
       const conds = [];
       if (f?.workspaceId) conds.push(eq(s.studyGoals.workspaceId, f.workspaceId));
+      if (f?.userId)     conds.push(eq(s.studyGoals.userId, f.userId));
       if (f?.personaId)  conds.push(eq(s.studyGoals.personaId, f.personaId));
       return db.select().from(s.studyGoals)
         .where(conds.length ? and(...conds) : undefined)

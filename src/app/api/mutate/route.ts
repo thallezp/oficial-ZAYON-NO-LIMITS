@@ -2358,7 +2358,7 @@ export async function POST(req: Request) {
         if (payload.id) {
           q = supabase.from("study_tracks").update(row).eq("id", payload.id);
         } else {
-          q = supabase.from("study_tracks").insert({ ...row, created_by: user.id });
+          q = supabase.from("study_tracks").insert({ ...row, created_by: user.id, user_id: user.id });
         }
         const { data, error } = await q.select().single();
         if (error) throw error;
@@ -2488,7 +2488,7 @@ export async function POST(req: Request) {
         if (payload.id) {
           q = supabase.from("study_resources").update(row).eq("id", payload.id);
         } else {
-          q = supabase.from("study_resources").insert({ ...row, created_by: user.id });
+          q = supabase.from("study_resources").insert({ ...row, created_by: user.id, user_id: user.id });
         }
         const { data, error } = await q.select().single();
         if (error) throw error;
@@ -2556,7 +2556,7 @@ export async function POST(req: Request) {
         if (payload.id) {
           q = supabase.from("study_objectives").update(row).eq("id", payload.id);
         } else {
-          q = supabase.from("study_objectives").insert({ ...row, created_by: user.id });
+          q = supabase.from("study_objectives").insert({ ...row, created_by: user.id, user_id: user.id });
         }
         const { data, error } = await q.select().single();
         if (error) throw error;
@@ -2590,7 +2590,7 @@ export async function POST(req: Request) {
         if (payload.id) {
           q = supabase.from("study_goals").update(row).eq("id", payload.id);
         } else {
-          q = supabase.from("study_goals").insert(row);
+          q = supabase.from("study_goals").insert({ ...row, user_id: user.id });
         }
         const { data, error } = await q.select().single();
         if (error) throw error;
