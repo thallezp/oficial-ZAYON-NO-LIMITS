@@ -548,13 +548,9 @@ export default function EditorCalendarPage() {
               {/* Weekly Grid */}
               <div className="border border-border/60 rounded-xl overflow-hidden bg-background/40">
                 {/* Header row */}
-                <div className="grid grid-cols-11 border-b border-border/60 bg-card/35 text-[10px] font-bold text-muted-foreground uppercase tracking-wider text-center py-3">
-                  <div className="col-span-2 text-left pl-4">Dia da Semana</div>
-                  <div className="col-span-2">⏰ 13:30</div>
-                  <div className="col-span-2">⏰ 16:00</div>
-                  <div className="col-span-2">⏰ 21:00</div>
-                  <div className="col-span-2">Outros Horários</div>
-                  <div className="col-span-1">Ações</div>
+                <div className="grid grid-cols-12 border-b border-border/60 bg-card/35 text-[10px] font-bold text-muted-foreground uppercase tracking-wider text-left py-3">
+                  <div className="col-span-2 pl-4">Dia da Semana</div>
+                  <div className="col-span-10 pl-2">Vídeos Planejados</div>
                 </div>
 
                 {/* Body Rows */}
@@ -567,87 +563,11 @@ export default function EditorCalendarPage() {
                       (c: any) => c.scheduledAt && new Date(c.scheduledAt).toDateString() === dayDate.toDateString()
                     );
 
-                    // Group by slots
-                    const slot1330 = dayContents.filter(
-                      (c: any) => new Date(c.scheduledAt!).getHours() === 13 && new Date(c.scheduledAt!).getMinutes() === 30
-                    );
-                    const slot1600 = dayContents.filter(
-                      (c: any) => new Date(c.scheduledAt!).getHours() === 16 && new Date(c.scheduledAt!).getMinutes() === 0
-                    );
-                    const slot2100 = dayContents.filter(
-                      (c: any) => new Date(c.scheduledAt!).getHours() === 21 && new Date(c.scheduledAt!).getMinutes() === 0
-                    );
-
-                    // Other slots
-                    const otherSlots = dayContents.filter((c: any) => {
-                      const h = new Date(c.scheduledAt!).getHours();
-                      const m = new Date(c.scheduledAt!).getMinutes();
-                      const isStandard =
-                        (h === 13 && m === 30) || (h === 16 && m === 0) || (h === 21 && m === 0);
-                      return !isStandard;
-                    });
-
-                    // Render Card helper inside Slot
-                    const renderSlotCell = (items: any[], timeStr: string) => {
-                      if (items.length === 0) {
-                        return (
-                          <div
-                            onClick={() => handleSlotClick(dayDate, timeStr)}
-                            className="h-16 rounded-lg border border-dashed border-border/40 hover:border-primary/55 hover:bg-primary/5 transition flex items-center justify-center cursor-pointer group"
-                          >
-                            <Plus className="h-4 w-4 text-muted-foreground/35 group-hover:text-primary transition" />
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div className="space-y-1.5">
-                          {items.map((item) => {
-                            const task = getTaskForContent(item.id);
-                            return (
-                              <div
-                                key={item.id}
-                                onClick={() => handleOpenEdit(item)}
-                                className={cn(
-                                  "p-2.5 rounded-lg border text-left cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg bg-card/65",
-                                  task?.status === "done"
-                                    ? "border-success/30 hover:border-success/60 bg-success/5"
-                                    : task?.status === "review"
-                                      ? "border-warning/30 hover:border-warning/60 bg-warning/5"
-                                      : task?.status === "doing"
-                                        ? "border-primary/30 hover:border-primary/60 bg-primary/5"
-                                        : "border-border/60 hover:border-zinc-500"
-                                )}
-                              >
-                                <div className="flex items-center gap-1.5 justify-between mb-1">
-                                  <span className="flex items-center gap-1">
-                                    {channelIcons[item.channel]}
-                                    <span className="text-[9px] font-bold text-muted-foreground uppercase">
-                                      {item.channel}
-                                    </span>
-                                  </span>
-                                  {task?.dueAt && (
-                                    <span className="text-[8px] font-bold text-warning flex items-center gap-0.5">
-                                      <Clock className="h-2 w-2" />
-                                      {new Date(task.dueAt).getDate()}/{new Date(task.dueAt).getMonth() + 1}
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-xs font-bold text-foreground line-clamp-1 truncate leading-tight">
-                                  {item.title}
-                                </p>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      );
-                    };
-
                     return (
                       <div
                         key={dayIdx}
                         className={cn(
-                          "grid grid-cols-11 items-center gap-2 py-4 px-3 text-center transition-colors",
+                          "grid grid-cols-12 items-center gap-4 py-4 px-3 text-left transition-colors",
                           isToday ? "bg-primary/5/20 border-y border-primary/20" : ""
                         )}
                       >
@@ -667,31 +587,56 @@ export default function EditorCalendarPage() {
                           </span>
                         </div>
 
-                        {/* Standard slots */}
-                        <div className="col-span-2 px-1">{renderSlotCell(slot1330, "13:30")}</div>
-                        <div className="col-span-2 px-1">{renderSlotCell(slot1600, "16:00")}</div>
-                        <div className="col-span-2 px-1">{renderSlotCell(slot2100, "21:00")}</div>
-
-                        {/* Other slots (Custom schedule) */}
-                        <div className="col-span-2 px-1 text-center">
-                          {otherSlots.length === 0 ? (
-                            <span className="text-[10px] text-muted-foreground/30">Nenhum</span>
-                          ) : (
-                            renderSlotCell(otherSlots, "")
-                          )}
-                        </div>
-
-                        {/* Action buttons */}
-                        <div className="col-span-1 flex items-center justify-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 hover:bg-primary/10 hover:text-primary rounded-md"
-                            onClick={() => handleSlotClick(dayDate)}
-                            title="Planejar neste dia"
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
+                        {/* Planned Videos */}
+                        <div className="col-span-10 pl-2">
+                          <div className="flex flex-wrap gap-2.5">
+                            {dayContents.map((item: any) => {
+                              const task = getTaskForContent(item.id);
+                              return (
+                                <div
+                                  key={item.id}
+                                  onClick={() => handleOpenEdit(item)}
+                                  className={cn(
+                                    "p-2.5 rounded-lg border text-left cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg bg-card/65 min-w-[200px] max-w-[280px] flex-1",
+                                    task?.status === "done"
+                                      ? "border-success/30 hover:border-success/60 bg-success/5"
+                                      : task?.status === "review"
+                                        ? "border-warning/30 hover:border-warning/60 bg-warning/5"
+                                        : task?.status === "doing"
+                                          ? "border-primary/30 hover:border-primary/60 bg-primary/5"
+                                          : "border-border/60 hover:border-zinc-500"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-1.5 justify-between mb-1">
+                                    <span className="flex items-center gap-1">
+                                      {channelIcons[item.channel]}
+                                      <span className="text-[9px] font-bold text-muted-foreground uppercase">
+                                        {item.channel}
+                                      </span>
+                                    </span>
+                                    {task?.dueAt && (
+                                      <span className="text-[8px] font-bold text-warning flex items-center gap-0.5">
+                                        <Clock className="h-2 w-2" />
+                                        {new Date(task.dueAt).getDate()}/{new Date(task.dueAt).getMonth() + 1}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs font-bold text-foreground line-clamp-1 truncate leading-tight">
+                                    {item.title}
+                                  </p>
+                                </div>
+                              );
+                            })}
+                            
+                            {/* Inline add button */}
+                            <button
+                              onClick={() => handleSlotClick(dayDate)}
+                              className="h-[52px] px-4 rounded-lg border border-dashed border-border/40 hover:border-primary/55 hover:bg-primary/5 transition flex items-center justify-center gap-1.5 text-xs text-muted-foreground cursor-pointer min-w-[140px]"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                              <span>Novo Vídeo</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
