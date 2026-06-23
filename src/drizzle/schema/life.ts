@@ -223,3 +223,24 @@ export const personalFinanceProfiles = pgTable(
     uniqueWsUser: uniqueIndex("personal_finance_profiles_ws_user_uq").on(t.workspaceId, t.userId),
   }),
 );
+
+// — Fontes de Renda do usuário (múltiplas por workspace/user) —
+export const personalIncomeSources = pgTable(
+  "personal_income_sources",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }).notNull(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+    name: text("name").notNull(),
+    amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
+    recurrence: text("recurrence").default("monthly"), // monthly | weekly | yearly | variable
+    status: text("status").default("active"),       // active | inactive
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    workspaceIdx: index("personal_income_sources_workspace_idx").on(t.workspaceId),
+  }),
+);
+
