@@ -577,19 +577,37 @@ export const queries = {
     },
   },
   funnels: {
-    byPersonaId: async (personaId: string) => {
+    // Lista enxuta de todos os funis da persona (para o seletor na tela).
+    listByPersona: async (personaId: string) => {
+      const rows = await db
+        .select({
+          id: s.salesFunnels.id,
+          name: s.salesFunnels.name,
+          description: s.salesFunnels.description,
+          conversionRate: s.salesFunnels.conversionRate,
+          createdAt: s.salesFunnels.createdAt,
+        })
+        .from(s.salesFunnels)
+        .where(eq(s.salesFunnels.personaId, personaId))
+        .orderBy(s.salesFunnels.createdAt);
+      return rows.map((r: any) => ({ ...r, conversionRate: Number(r.conversionRate) }));
+    },
+    // Carrega UM funil. Sem funnelId → o mais recente; com funnelId → aquele
+    // específico (permite alternar entre vários funis da mesma persona).
+    byPersonaId: async (personaId: string, funnelId?: string) => {
       const rows = await db
         .select()
         .from(s.salesFunnels)
         .where(eq(s.salesFunnels.personaId, personaId))
         .orderBy(desc(s.salesFunnels.createdAt));
-      if (!rows[0]) return null;
-      const id = rows[0].id;
+      if (!rows.length) return null;
+      const chosen = (funnelId && rows.find((r: any) => r.id === funnelId)) || rows[0];
+      const id = chosen.id;
       const nodes = await db.select().from(s.funnelNodes).where(eq(s.funnelNodes.funnelId, id));
       const edges = await db.select().from(s.funnelEdges).where(eq(s.funnelEdges.funnelId, id));
       return {
-        ...rows[0],
-        conversionRate: Number(rows[0].conversionRate),
+        ...chosen,
+        conversionRate: Number(chosen.conversionRate),
         nodes: nodes.map((n: any) => ({
           id: n.id,
           // node_type no banco é enum restrito; o tipo real (product, upsell...)

@@ -125,8 +125,10 @@ export const getFollowerSnapshotsAction = (personaId: string) =>
   callQuery<ResultOf<typeof Real.getFollowerSnapshotsAction>>("followerSnapshots", {
     personaId,
   });
-export const getFunnelByPersonaIdAction = (personaId: string) =>
-  callQuery<ResultOf<typeof Real.getFunnelByPersonaIdAction>>("funnel", { personaId });
+export const getFunnelByPersonaIdAction = (personaId: string, funnelId?: string) =>
+  callQuery<ResultOf<typeof Real.getFunnelByPersonaIdAction>>("funnel", { personaId, funnelId });
+export const getFunnelsListAction = (personaId: string) =>
+  callQuery<ResultOf<typeof Real.getFunnelsListAction>>("funnels", { personaId });
 export const getIcpPainsAction = (personaId: string) =>
   callQuery<ResultOf<typeof Real.getIcpPainsAction>>("icpPains", { personaId });
 export const getPromptsAction = (personaId: string) =>

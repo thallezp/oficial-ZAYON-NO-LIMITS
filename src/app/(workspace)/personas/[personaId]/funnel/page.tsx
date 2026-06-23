@@ -14,6 +14,7 @@ import { usePersonaFromRoute } from "@/components/personas/persona-resolver";
 import { formatPercent, formatCompact, formatCurrency } from "@/lib/utils/format";
 import {
   useFunnel,
+  useFunnels,
   useSaveFunnelDataMutation,
   useCreateFunnelMutation,
   useDeleteFunnelMutation,
@@ -42,7 +43,9 @@ const TEMPLATES = FUNNEL_TEMPLATES;
 export default function FunnelPage() {
   const persona = usePersonaFromRoute();
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
-  const { data: dbFunnel, isLoading } = useFunnel(persona.id);
+  const [selectedFunnelId, setSelectedFunnelId] = React.useState<string | null>(null);
+  const { data: funnelsList = [] } = useFunnels(persona.id);
+  const { data: dbFunnel, isLoading } = useFunnel(persona.id, selectedFunnelId);
   const saveMutation = useSaveFunnelDataMutation();
   const createMutation = useCreateFunnelMutation();
   const deleteMutation = useDeleteFunnelMutation();
@@ -135,6 +138,8 @@ export default function FunnelPage() {
           conversionRate: 5.0,
         });
       }
+      // Passa a exibir o funil recém-criado (sem esconder os outros).
+      if (newFunnelId) setSelectedFunnelId(newFunnelId);
       toast.success("Funil criado com sucesso!");
       setCreateOpen(false);
       setFunnelName("");
@@ -149,6 +154,7 @@ export default function FunnelPage() {
     if (!confirm("Tem certeza que deseja excluir este funil?")) return;
     try {
       await deleteMutation.mutateAsync({ id: funnel.id, personaId: persona.id });
+      setSelectedFunnelId(null); // volta pro mais recente restante
       toast.success("Funil excluído");
     } catch (e: any) {
       toast.error("Erro ao excluir: " + e.message);
@@ -170,6 +176,18 @@ export default function FunnelPage() {
         description="Planeje funis visuais ou confira a planilha de métricas, tráfego e taxas de conversão."
         actions={
           <>
+            {funnelsList.length > 0 && (
+              <select
+                value={funnel?.id ?? ""}
+                onChange={(e) => setSelectedFunnelId(e.target.value || null)}
+                className="h-8 max-w-[200px] rounded-md border border-border/60 bg-background px-2 text-xs text-foreground outline-none focus:border-primary"
+                title="Trocar de funil"
+              >
+                {funnelsList.map((f: any) => (
+                  <option key={f.id} value={f.id}>{f.name}</option>
+                ))}
+              </select>
+            )}
             {funnel && (
               <>
                 <Button

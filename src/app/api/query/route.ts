@@ -26,6 +26,7 @@ type Params = {
   id?: string;
   taskId?: string;
   profileId?: string;
+  funnelId?: string;
 };
 
 const handlers: Record<string, (p: Params) => Promise<unknown>> = {
@@ -50,7 +51,8 @@ const handlers: Record<string, (p: Params) => Promise<unknown>> = {
   tools: (p) => qa.getToolsAction(p.workspaceId),
   flows: (p) => qa.getFlowsAction(p.workspaceId),
   flow: (p) => qa.getFlowByIdAction(p.id as string),
-  funnel: (p) => qa.getFunnelByPersonaIdAction(p.personaId as string),
+  funnel: (p) => qa.getFunnelByPersonaIdAction(p.personaId as string, p.funnelId),
+  funnels: (p) => qa.getFunnelsListAction(p.personaId as string),
   icpPains: (p) => qa.getIcpPainsAction(p.personaId as string),
   prompts: (p) => qa.getPromptsAction(p.personaId as string),
   modeling: (p) => qa.getModelingAction(p.personaId as string),

@@ -120,9 +120,14 @@ export async function getFlowByIdAction(id: string) {
   return flow;
 }
 
-export async function getFunnelByPersonaIdAction(personaId: string) {
+export async function getFunnelByPersonaIdAction(personaId: string, funnelId?: string) {
   await assertPersonaAccess(personaId);
-  return queries.funnels.byPersonaId(personaId);
+  return queries.funnels.byPersonaId(personaId, funnelId);
+}
+
+export async function getFunnelsListAction(personaId: string) {
+  await assertPersonaAccess(personaId);
+  return queries.funnels.listByPersona(personaId);
 }
 
 export async function getIcpPainsAction(personaId: string) {

@@ -173,10 +173,18 @@ export function useFlow(id?: string | null) {
   });
 }
 
-export function useFunnel(personaId?: string | null) {
+export function useFunnel(personaId?: string | null, funnelId?: string | null) {
   return useQuery({
-    queryKey: ["funnel", personaId],
-    queryFn: () => qa.getFunnelByPersonaIdAction(personaId!),
+    queryKey: ["funnel", personaId, funnelId ?? null],
+    queryFn: () => qa.getFunnelByPersonaIdAction(personaId!, funnelId ?? undefined),
+    enabled: !!personaId,
+  });
+}
+
+export function useFunnels(personaId?: string | null) {
+  return useQuery({
+    queryKey: ["funnels", personaId],
+    queryFn: () => qa.getFunnelsListAction(personaId!),
     enabled: !!personaId,
   });
 }
@@ -911,6 +919,7 @@ export function useCreateFunnelMutation() {
       callMutate("createFunnel", input),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["funnel", variables.personaId] });
+      queryClient.invalidateQueries({ queryKey: ["funnels", variables.personaId] });
     },
   });
 }
@@ -922,6 +931,7 @@ export function useDeleteFunnelMutation() {
       callMutate("deleteFunnel", { id }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["funnel", variables.personaId] });
+      queryClient.invalidateQueries({ queryKey: ["funnels", variables.personaId] });
     },
   });
 }
