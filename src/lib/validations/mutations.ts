@@ -592,6 +592,10 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
   upsertPersonalFinanceProfile: z
     .object({ workspaceId: id, investPct: z.coerce.number().min(0).max(100).optional() })
     .passthrough(),
+  upsertPersonalIncomeSource: z
+    .object({ workspaceId: id, name: z.string().min(1, "Nome obrigatório"), amount: z.coerce.number() })
+    .passthrough(),
+  deletePersonalIncomeSource: simpleDelete,
 };
 
 export function parseMutationPayload(action: string, payload: unknown) {

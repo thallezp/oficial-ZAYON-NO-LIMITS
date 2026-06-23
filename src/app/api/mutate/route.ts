@@ -3073,6 +3073,88 @@ export async function POST(req: Request) {
         break;
       }
 
+      case "upsertPersonalIncomeSource": {
+        const row = {
+          workspace_id: payload.workspaceId,
+          user_id: user.id,
+          name: payload.name,
+          amount: String(payload.amount ?? 0),
+          recurrence: payload.recurrence || "monthly",
+          status: payload.status || "active",
+          notes: payload.notes || null,
+          updated_at: new Date().toISOString(),
+        };
+        let q;
+        if (payload.id) q = supabase.from("personal_income_sources").update(row).eq("id", payload.id);
+        else q = supabase.from("personal_income_sources").insert(row);
+        const { data, error } = await q.select().single();
+        if (error) throw error;
+        
+        // Recalculate monthly_income
+        const { data: sources, error: fetchErr } = await supabase
+          .from("personal_income_sources")
+          .select("amount")
+          .eq("workspace_id", payload.workspaceId)
+          .eq("user_id", user.id)
+          .eq("status", "active");
+        if (fetchErr) throw fetchErr;
+
+        const totalIncome = (sources || []).reduce((sum: number, src: any) => sum + Number(src.amount || 0), 0);
+
+        const { error: profileErr } = await supabase
+          .from("personal_finance_profiles")
+          .upsert({
+            workspace_id: payload.workspaceId,
+            user_id: user.id,
+            monthly_income: String(totalIncome),
+            updated_at: new Date().toISOString(),
+          }, { onConflict: "workspace_id,user_id" });
+        if (profileErr) throw profileErr;
+
+        result = data;
+        break;
+      }
+
+      case "deletePersonalIncomeSource": {
+        // Fetch first to get workspace_id
+        const { data: existing, error: getErr } = await supabase
+          .from("personal_income_sources")
+          .select("workspace_id")
+          .eq("id", payload.id)
+          .single();
+        
+        if (existing) {
+          const workspaceId = existing.workspace_id;
+          await deleteOrThrow(supabase, "personal_income_sources", payload.id);
+          
+          // Recalculate monthly_income
+          const { data: sources, error: fetchErr } = await supabase
+            .from("personal_income_sources")
+            .select("amount")
+            .eq("workspace_id", workspaceId)
+            .eq("user_id", user.id)
+            .eq("status", "active");
+          if (fetchErr) throw fetchErr;
+
+          const totalIncome = (sources || []).reduce((sum: number, src: any) => sum + Number(src.amount || 0), 0);
+
+          const { error: profileErr } = await supabase
+            .from("personal_finance_profiles")
+            .upsert({
+              workspace_id: workspaceId,
+              user_id: user.id,
+              monthly_income: String(totalIncome),
+              updated_at: new Date().toISOString(),
+            }, { onConflict: "workspace_id,user_id" });
+          if (profileErr) throw profileErr;
+        } else {
+          await deleteOrThrow(supabase, "personal_income_sources", payload.id);
+        }
+        
+        result = { id: payload.id };
+        break;
+      }
+
       default:
         return NextResponse.json({ error: `Ação desconhecida: ${action}` }, { status: 400 });
     }

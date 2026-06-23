@@ -7,6 +7,8 @@ import {
   usePersonalFinance,
   useUpsertPersonalFinanceProfile,
   useUpsertPersonalCategory,
+  useUpsertPersonalIncomeSource,
+  useDeletePersonalIncomeSource,
 } from "@/hooks/use-queries";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
@@ -16,6 +18,14 @@ import { Input } from "@/components/ui/input";
 import { PieChart } from "@/components/charts/pie-chart";
 import { GaugeChart } from "@/components/charts/gauge-chart";
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
   PiggyBank,
   Lock,
   LineChart,
@@ -24,6 +34,11 @@ import {
   Sparkles,
   AlertTriangle,
   ArrowLeftRight,
+  Plus,
+  Trash2,
+  Pencil,
+  Coins,
+  Wallet,
 } from "lucide-react";
 import { brl, num, currentMonthKey } from "@/lib/utils/life";
 import {
@@ -46,16 +61,85 @@ export default function MoneyDashboardPage() {
   const transactions: any[] = data?.transactions ?? [];
   const goals: any[] = data?.goals ?? [];
   const profile: any = data?.profile ?? null;
+  const incomeSources: any[] = data?.incomeSources ?? [];
+
+  const upsertIncomeSource = useUpsertPersonalIncomeSource();
+  const deleteIncomeSource = useDeletePersonalIncomeSource();
+
+  // Fontes de Renda Dialog
+  const [sourcesOpen, setSourcesOpen] = React.useState(false);
+  const [sourceEditing, setSourceEditing] = React.useState<any | null>(null);
+  const [sourceName, setSourceName] = React.useState("");
+  const [sourceAmount, setSourceAmount] = React.useState("");
+  const [sourceRecurrence, setSourceRecurrence] = React.useState("monthly");
+  const [sourceStatus, setSourceStatus] = React.useState("active");
+  const [sourceNotes, setSourceNotes] = React.useState("");
+
+  const activeSourcesSum = React.useMemo(() => {
+    return incomeSources
+      .filter((s) => s.status === "active")
+      .reduce((a, s) => a + num(s.amount), 0);
+  }, [incomeSources]);
 
   // Estado local da renda e do % (sincroniza com o profile do banco).
   const [income, setIncome] = React.useState(0);
   const [pct, setPct] = React.useState(25);
   React.useEffect(() => {
     if (profile) {
-      setIncome(num(profile.monthlyIncome));
+      // Se houver fontes cadastradas, a renda mensal é a soma delas.
+      // Senão, é a renda do perfil (manual).
+      const finalIncome = incomeSources.length > 0 ? activeSourcesSum : num(profile.monthlyIncome);
+      setIncome(finalIncome);
       setPct(num(profile.investPct) || 25);
     }
-  }, [profile]);
+  }, [profile, incomeSources, activeSourcesSum]);
+
+  const openNewSource = () => {
+    setSourceEditing(null);
+    setSourceName("");
+    setSourceAmount("");
+    setSourceRecurrence("monthly");
+    setSourceStatus("active");
+    setSourceNotes("");
+  };
+
+  const openEditSource = (src: any) => {
+    setSourceEditing(src);
+    setSourceName(src.name);
+    setSourceAmount(String(num(src.amount)));
+    setSourceRecurrence(src.recurrence || "monthly");
+    setSourceStatus(src.status || "active");
+    setSourceNotes(src.notes || "");
+  };
+
+  const saveSource = async () => {
+    if (!ws || !sourceName.trim() || !sourceAmount) return;
+    try {
+      await upsertIncomeSource.mutateAsync({
+        id: sourceEditing?.id,
+        workspaceId: ws,
+        name: sourceName.trim(),
+        amount: Number(sourceAmount),
+        recurrence: sourceRecurrence,
+        status: sourceStatus,
+        notes: sourceNotes.trim() || null,
+      });
+      // Clear form
+      openNewSource();
+      toast.success(sourceEditing ? "Fonte de renda atualizada" : "Fonte de renda adicionada");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao salvar fonte de renda");
+    }
+  };
+
+  const removeSource = async (id: string) => {
+    try {
+      await deleteIncomeSource.mutateAsync(id);
+      toast.success("Fonte de renda excluída");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao excluir fonte de renda");
+    }
+  };
 
   const month = currentMonthKey();
   const invest = (income * pct) / 100;
@@ -190,19 +274,71 @@ export default function MoneyDashboardPage() {
       <Card variant="elevated" className="overflow-hidden">
         <CardContent className="grid gap-6 p-5 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-5">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Renda mensal
-              </label>
-              <Input
-                type="number"
-                inputMode="decimal"
-                value={income || ""}
-                onChange={(e) => setIncome(Number(e.target.value) || 0)}
-                onBlur={() => num(profile?.monthlyIncome) !== income && saveProfile({ monthlyIncome: income })}
-                placeholder="0,00"
-                className="h-11 text-lg font-semibold"
-              />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Coins className="h-3.5 w-3.5 text-primary" /> Renda mensal
+                </label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-primary hover:text-primary-active flex items-center gap-1 h-fit p-1"
+                  onClick={() => setSourcesOpen(true)}
+                >
+                  <Wallet className="h-3 w-3" /> Gerenciar Fontes ({incomeSources.length})
+                </Button>
+              </div>
+
+              {incomeSources.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-baseline justify-between rounded-lg border border-border/40 bg-muted/20 px-3.5 py-2.5">
+                    <span className="font-mono text-2xl font-bold text-foreground">{brl(income)}</span>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
+                      Soma das Fontes Ativas
+                    </span>
+                  </div>
+                  {/* Mini-breakdown das fontes */}
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {incomeSources.map((s) => (
+                      <Badge
+                        key={s.id}
+                        variant={s.status === "active" ? "default" : "outline"}
+                        className={cn(
+                          "text-[10px] font-medium px-2 py-0.5 rounded-full",
+                          s.status === "inactive" && "opacity-50 line-through"
+                        )}
+                      >
+                        {s.name}: {brl(num(s.amount))}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    value={income || ""}
+                    onChange={(e) => setIncome(Number(e.target.value) || 0)}
+                    onBlur={() => num(profile?.monthlyIncome) !== income && saveProfile({ monthlyIncome: income })}
+                    placeholder="0,00"
+                    className="h-11 text-lg font-semibold"
+                  />
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground px-1">
+                    <span>Defina a renda manual ou</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSourcesOpen(true);
+                        openNewSource();
+                      }}
+                      className="text-primary hover:underline font-semibold"
+                    >
+                      + Cadastrar Fontes de Renda
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Bloco PAGUE-SE PRIMEIRO — reservado antes de qualquer gasto */}
@@ -377,6 +513,172 @@ export default function MoneyDashboardPage() {
           </Link>
         ))}
       </div>
+
+      {/* ── Modal de Gerenciamento de Fontes de Renda ────────────────────── */}
+      <Dialog open={sourcesOpen} onOpenChange={setSourcesOpen}>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Coins className="h-5 w-5 text-primary" /> Fontes de Renda
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6 py-2">
+            {/* Lista de Fontes Existentes */}
+            <div className="space-y-2.5">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Fontes Cadastradas
+              </h3>
+              {incomeSources.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4 bg-muted/10 rounded-lg border border-dashed border-border/50">
+                  Nenhuma fonte de renda cadastrada.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {incomeSources.map((s) => (
+                    <div
+                      key={s.id}
+                      className={cn(
+                        "flex items-center justify-between rounded-lg border p-3 bg-card transition-all",
+                        s.status === "inactive" ? "border-border/30 opacity-60" : "border-border/60"
+                      )}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm truncate">{s.name}</span>
+                          <Badge variant={s.status === "active" ? "success" : "outline"} size="sm">
+                            {s.status === "active" ? "Ativa" : "Inativa"}
+                          </Badge>
+                        </div>
+                        <div className="flex gap-2 text-xs text-muted-foreground mt-0.5 font-medium">
+                          <span>{brl(num(s.amount))}</span>
+                          <span>•</span>
+                          <span className="capitalize">{s.recurrence === "monthly" ? "Mensal" : s.recurrence === "yearly" ? "Anual" : s.recurrence === "weekly" ? "Semanal" : "Variável"}</span>
+                        </div>
+                        {s.notes && <p className="text-[11px] text-muted-foreground mt-1 truncate">{s.notes}</p>}
+                      </div>
+                      <div className="flex items-center gap-1.5 ml-3">
+                        <button
+                          onClick={() => openEditSource(s)}
+                          className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => removeSource(s.id)}
+                          className="p-1.5 text-muted-foreground hover:text-destructive rounded-md hover:bg-destructive/10 transition"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Formulário de Adicionar/Editar */}
+            <div className="rounded-xl border border-border/60 bg-muted/15 p-4 space-y-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                {sourceEditing ? <Pencil className="h-3.5 w-3.5 text-primary" /> : <Plus className="h-3.5 w-3.5 text-primary" />}
+                {sourceEditing ? "Editar Fonte" : "Nova Fonte"}
+              </h3>
+
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Nome da Fonte</Label>
+                  <Input
+                    value={sourceName}
+                    onChange={(e) => setSourceName(e.target.value)}
+                    placeholder="Ex: Salário CLT, Dividendos, Prolabore..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Valor esperado</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={sourceAmount}
+                      onChange={(e) => setSourceAmount(e.target.value)}
+                      placeholder="0,00"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Recorrência</Label>
+                    <select
+                      value={sourceRecurrence}
+                      onChange={(e) => setSourceRecurrence(e.target.value)}
+                      className="flex h-9 w-full rounded-lg border border-border bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="monthly">Mensal</option>
+                      <option value="weekly">Semanal</option>
+                      <option value="yearly">Anual</option>
+                      <option value="variable">Variável</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 items-center pt-1">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs text-muted-foreground">Status:</Label>
+                    <div className="flex gap-1">
+                      {(["active", "inactive"] as const).map((st) => (
+                        <button
+                          key={st}
+                          type="button"
+                          onClick={() => setSourceStatus(st)}
+                          className={cn(
+                            "rounded px-2.5 py-1 text-[10px] font-bold uppercase transition",
+                            sourceStatus === st
+                              ? "bg-primary/15 text-primary border border-primary/30"
+                              : "border border-border/50 text-muted-foreground hover:bg-muted"
+                          )}
+                        >
+                          {st === "active" ? "Ativa" : "Inativa"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Notas (opcional)</Label>
+                  <Input
+                    value={sourceNotes}
+                    onChange={(e) => setSourceNotes(e.target.value)}
+                    placeholder="Notas adicionais sobre esta fonte..."
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                {sourceEditing && (
+                  <Button variant="outline" size="sm" onClick={openNewSource}>
+                    Cancelar Edição
+                  </Button>
+                )}
+                <Button
+                  variant="gradient"
+                  size="sm"
+                  onClick={saveSource}
+                  disabled={upsertIncomeSource.isPending || !sourceName.trim() || !sourceAmount}
+                >
+                  {sourceEditing ? "Salvar Alterações" : "Adicionar Fonte"}
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-4 col-span-2">
+            <Button variant="outline" className="w-full" onClick={() => setSourcesOpen(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

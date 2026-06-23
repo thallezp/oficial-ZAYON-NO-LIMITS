@@ -2088,3 +2088,19 @@ export function useUpsertPersonalFinanceProfile() {
   });
 }
 
+export function useUpsertPersonalIncomeSource() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("upsertPersonalIncomeSource", p),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["personalFinance"] }),
+  });
+}
+
+export function useDeletePersonalIncomeSource() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => callMutate("deletePersonalIncomeSource", { id }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["personalFinance"] }),
+  });
+}
+

@@ -143,6 +143,8 @@ alter table public.personal_categories       enable row level security;
 alter table public.personal_transactions     enable row level security;
 alter table public.personal_bills            enable row level security;
 alter table public.personal_goals            enable row level security;
+alter table public.personal_income_sources   enable row level security;
+alter table public.personal_finance_profiles enable row level security;
 
 drop policy if exists users_insert_self on public.users;
 create policy users_insert_self on public.users
@@ -260,7 +262,7 @@ begin
     select unnest(array[
       'energy_daily_logs','energy_settings','porn_events',
       'personal_accounts','personal_categories','personal_transactions',
-      'personal_bills','personal_goals',
+      'personal_bills','personal_goals','personal_income_sources','personal_finance_profiles',
       'study_tracks','study_resources','study_objectives','study_goals'
     ])
   loop
