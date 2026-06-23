@@ -125,6 +125,9 @@ export const personalCategories = pgTable(
     userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
     name: text("name").notNull(),
     kind: text("kind").default("expense"),       // income | expense
+    // Pilar do método "Pague-se Primeiro" (AUVP). null = não classificada.
+    // custo_fixo | conforto | metas | prazeres | conhecimento
+    pillar: text("pillar"),
     color: text("color"),
     icon: text("icon"),
     // Orçamento mensal por categoria (null = sem limite). Cobre a aba "Orçamento".
@@ -195,4 +198,28 @@ export const personalGoals = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({ workspaceIdx: index("personal_goals_workspace_idx").on(t.workspaceId) }),
+);
+
+// — Perfil do método "Pague-se Primeiro" (1 linha por workspace+user) —
+// Renda mensal, % que sai PRIMEIRO p/ investir (default 25), taxa real anual
+// usada na projeção de juros compostos e a meta do "número mágico".
+export const personalFinanceProfiles = pgTable(
+  "personal_finance_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }).notNull(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+    monthlyIncome: numeric("monthly_income", { precision: 14, scale: 2 }).default("0"),
+    investPct: numeric("invest_pct", { precision: 5, scale: 2 }).default("25"),
+    annualRate: numeric("annual_rate", { precision: 5, scale: 2 }).default("9"),
+    magicNumber: numeric("magic_number", { precision: 14, scale: 2 }),
+    currency: text("currency").default("BRL"),
+    startDate: date("start_date"),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    uniqueWsUser: uniqueIndex("personal_finance_profiles_ws_user_uq").on(t.workspaceId, t.userId),
+  }),
 );

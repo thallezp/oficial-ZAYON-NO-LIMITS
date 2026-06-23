@@ -23,6 +23,7 @@ import {
 import { Plus, Trash2, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { brl, num, currentMonthKey } from "@/lib/utils/life";
+import { PILLARS } from "@/lib/utils/finance";
 import { toast } from "sonner";
 
 const COLORS = ["#6366f1", "#22c55e", "#ef4444", "#f59e0b", "#0ea5e9", "#ec4899", "#8b5cf6", "#14b8a6"];
@@ -51,6 +52,7 @@ export default function BudgetPage() {
   const [kind, setKind] = React.useState<"expense" | "income">("expense");
   const [budget, setBudget] = React.useState("");
   const [color, setColor] = React.useState(COLORS[0]);
+  const [pillar, setPillar] = React.useState<string>("none");
 
   const openNew = () => {
     setEditing(null);
@@ -58,6 +60,7 @@ export default function BudgetPage() {
     setKind("expense");
     setBudget("");
     setColor(COLORS[0]);
+    setPillar("none");
     setOpen(true);
   };
   const openEdit = (c: any) => {
@@ -66,6 +69,7 @@ export default function BudgetPage() {
     setKind(c.kind);
     setBudget(c.monthlyBudget != null ? String(num(c.monthlyBudget)) : "");
     setColor(c.color || COLORS[0]);
+    setPillar(c.pillar || "none");
     setOpen(true);
   };
 
@@ -78,6 +82,7 @@ export default function BudgetPage() {
         name: name.trim(),
         kind,
         color,
+        pillar: kind === "expense" && pillar !== "none" ? pillar : null,
         monthlyBudget: kind === "expense" && budget ? Number(budget) : null,
       });
       setOpen(false);
@@ -207,6 +212,37 @@ export default function BudgetPage() {
               <div className="space-y-1.5">
                 <label className="text-xs text-muted-foreground">Limite mensal (opcional)</label>
                 <Input type="number" step="0.01" value={budget} onChange={(e) => setBudget(e.target.value)} placeholder="0,00" />
+              </div>
+            )}
+            {kind === "expense" && (
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Pilar (Pague-se Primeiro)</label>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setPillar("none")}
+                    className={cn(
+                      "rounded-lg border px-2.5 py-1 text-xs font-medium transition",
+                      pillar === "none" ? "border-primary bg-primary/15 text-primary" : "border-border/60 text-muted-foreground hover:bg-accent",
+                    )}
+                  >
+                    Nenhum
+                  </button>
+                  {PILLARS.map((p) => (
+                    <button
+                      key={p.key}
+                      type="button"
+                      onClick={() => setPillar(p.key)}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition",
+                        pillar === p.key ? "border-primary bg-primary/15 text-primary" : "border-border/60 text-muted-foreground hover:bg-accent",
+                      )}
+                    >
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: p.color }} />
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             <div className="space-y-1.5">
