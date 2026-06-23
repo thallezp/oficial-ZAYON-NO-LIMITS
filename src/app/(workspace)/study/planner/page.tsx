@@ -658,7 +658,7 @@ export default function StudyPlannerPage() {
                   <SelectContent>
                     <SelectItem value="none">Nenhum Projeto (Geral)</SelectItem>
                     {projects.map((p: any) => (
-                      <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

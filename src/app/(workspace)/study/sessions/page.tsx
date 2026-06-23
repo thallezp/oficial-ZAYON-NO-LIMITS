@@ -569,7 +569,7 @@ function FocusSessionsContent() {
                             <SelectContent>
                               <SelectItem value="none">Nenhum Projeto</SelectItem>
                               {projects.map((p: any) => (
-                                <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
+                                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -863,7 +863,7 @@ function FocusSessionsContent() {
                     <SelectTrigger className="text-xs"><SelectValue placeholder="Selecione o projeto..." /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Nenhum Projeto</SelectItem>
-                      {projects.map((p: any) => (<SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>))}
+                      {projects.map((p: any) => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
                     </SelectContent>
                   </Select>
                 </div>
