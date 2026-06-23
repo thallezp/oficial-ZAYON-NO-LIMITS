@@ -2070,3 +2070,11 @@ export function useDeletePersonalGoal() {
   });
 }
 
+export function useUpsertPersonalFinanceProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("upsertPersonalFinanceProfile", p),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["personalFinance"] }),
+  });
+}
+

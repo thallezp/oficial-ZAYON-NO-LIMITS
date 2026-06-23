@@ -2927,6 +2927,7 @@ export async function POST(req: Request) {
           user_id: user.id,
           name: payload.name,
           kind: payload.kind || "expense",
+          pillar: payload.pillar || null,
           color: payload.color || null,
           icon: payload.icon || null,
           monthly_budget:
@@ -2939,6 +2940,30 @@ export async function POST(req: Request) {
         if (payload.id) q = supabase.from("personal_categories").update(row).eq("id", payload.id);
         else q = supabase.from("personal_categories").insert(row);
         const { data, error } = await q.select().single();
+        if (error) throw error;
+        result = data;
+        break;
+      }
+
+      case "upsertPersonalFinanceProfile": {
+        const patch: Record<string, any> = {
+          workspace_id: payload.workspaceId,
+          user_id: user.id,
+          updated_at: new Date().toISOString(),
+        };
+        if (payload.monthlyIncome !== undefined) patch.monthly_income = String(payload.monthlyIncome ?? 0);
+        if (payload.investPct !== undefined) patch.invest_pct = String(payload.investPct ?? 25);
+        if (payload.annualRate !== undefined) patch.annual_rate = String(payload.annualRate ?? 9);
+        if (payload.magicNumber !== undefined)
+          patch.magic_number = payload.magicNumber != null ? String(payload.magicNumber) : null;
+        if (payload.currency !== undefined) patch.currency = payload.currency || "BRL";
+        if (payload.startDate !== undefined) patch.start_date = payload.startDate || null;
+        if (payload.metadata !== undefined) patch.metadata = payload.metadata || null;
+        const { data, error } = await supabase
+          .from("personal_finance_profiles")
+          .upsert(patch, { onConflict: "workspace_id,user_id" })
+          .select()
+          .single();
         if (error) throw error;
         result = data;
         break;

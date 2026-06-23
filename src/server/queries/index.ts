@@ -1044,7 +1044,7 @@ export const queries = {
         if (userId) c.push(eq(colUser, userId));
         return c.length ? and(...c) : undefined;
       };
-      const [accounts, categories, transactions, bills, goals] = await Promise.all([
+      const [accounts, categories, transactions, bills, goals, profileRows] = await Promise.all([
         db.select().from(s.personalAccounts)
           .where(scope(s.personalAccounts.workspaceId, s.personalAccounts.userId))
           .orderBy(s.personalAccounts.sortOrder),
@@ -1057,8 +1057,11 @@ export const queries = {
           .where(scope(s.personalBills.workspaceId, s.personalBills.userId)),
         db.select().from(s.personalGoals)
           .where(scope(s.personalGoals.workspaceId, s.personalGoals.userId)),
+        db.select().from(s.personalFinanceProfiles)
+          .where(scope(s.personalFinanceProfiles.workspaceId, s.personalFinanceProfiles.userId))
+          .limit(1),
       ]);
-      return { accounts, categories, transactions, bills, goals };
+      return { accounts, categories, transactions, bills, goals, profile: profileRows[0] ?? null };
     },
   },
 };

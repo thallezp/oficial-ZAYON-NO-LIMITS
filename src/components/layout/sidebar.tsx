@@ -40,6 +40,7 @@ import {
   Sparkles,
   Target,
   Timer,
+  LineChart,
   Users,
   Utensils,
   Wallet,
@@ -99,6 +100,7 @@ const energyNav: NavItem[] = [
 
 const moneyNav: NavItem[] = [
   { href: "/money", label: "Dashboard", icon: Wallet },
+  { href: "/money/projection", label: "Projeção", icon: LineChart },
   { href: "/money/transactions", label: "Transações", icon: ArrowLeftRight },
   { href: "/money/budget", label: "Orçamento", icon: PiggyBank },
   { href: "/money/bills", label: "Contas & Assinaturas", icon: Receipt },
