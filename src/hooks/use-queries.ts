@@ -2104,3 +2104,11 @@ export function useDeletePersonalIncomeSource() {
   });
 }
 
+export function useUpsertPeriodLog() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: any) => callMutate("upsertPeriodLog", p),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["personalFinance"] }),
+  });
+}
+

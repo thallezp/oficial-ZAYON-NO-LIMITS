@@ -50,6 +50,20 @@
       "when": 1782211049819,
       "tag": "0006_ambitious_jamie_braddock",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1782258425676,
+      "tag": "0007_fluffy_pretty_boy",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1782280388490,
+      "tag": "0008_smiling_william_stryker",
+      "breakpoints": true
     }
   ]
 }

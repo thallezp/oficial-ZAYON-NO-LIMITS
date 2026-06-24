@@ -589,6 +589,9 @@ export const mutationPayloadSchemas: Record<string, z.ZodTypeAny> = {
     .object({ workspaceId: id, name: z.string().min(1, "Nome obrigatório"), targetAmount: z.coerce.number() })
     .passthrough(),
   deletePersonalGoal: simpleDelete,
+  upsertPeriodLog: z
+    .object({ workspaceId: id, periodType: z.enum(["day", "week", "month"]), periodKey: z.string().min(1) })
+    .passthrough(),
   upsertPersonalFinanceProfile: z
     .object({ workspaceId: id, investPct: z.coerce.number().min(0).max(100).optional() })
     .passthrough(),

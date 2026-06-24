@@ -27,9 +27,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, Pencil, Wallet } from "lucide-react";
+import { Plus, Trash2, Pencil, Wallet, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { brl, num, todayISO } from "@/lib/utils/life";
+import { periodRange, inPeriod, shiftPeriod, isCurrentPeriod, type Period } from "@/lib/utils/finance";
+import { PeriodTabs } from "@/components/life/period-tabs";
 import { toast } from "sonner";
 
 const ACCOUNT_TYPES = [
@@ -53,6 +55,14 @@ export default function TransactionsPage() {
   const transactions: any[] = data?.transactions ?? [];
   const acctById = new Map(accounts.map((a) => [a.id, a]));
   const catById = new Map(categories.map((c) => [c.id, c]));
+
+  // Filtro por período (Dia/Semana/Mês), navegável
+  const [period, setPeriod] = React.useState<Period>("month");
+  const [refDate, setRefDate] = React.useState(() => new Date());
+  const range = periodRange(period, refDate);
+  const periodTx = transactions.filter((t) => inPeriod(t.occurredAt, range));
+  const periodIn = periodTx.filter((t) => t.type === "income").reduce((a, t) => a + num(t.amount), 0);
+  const periodOut = periodTx.filter((t) => t.type === "expense").reduce((a, t) => a + num(t.amount), 0);
 
   // Transaction dialog
   const [txOpen, setTxOpen] = React.useState(false);
@@ -184,17 +194,57 @@ export default function TransactionsPage() {
 
       {/* Lista de transações */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Histórico</CardTitle>
+        <CardHeader className="flex-row items-center justify-between gap-3">
+          <div>
+            <CardTitle className="text-base">Histórico</CardTitle>
+            <p className="text-xs capitalize text-muted-foreground">{range.label}</p>
+          </div>
+          <PeriodTabs value={period} onChange={(p) => { setPeriod(p); setRefDate(new Date()); }} />
         </CardHeader>
         <CardContent>
+          <div className="mb-3 flex items-center justify-between rounded-lg border border-border/40 px-2 py-1.5">
+            <Button variant="ghost" size="icon-sm" onClick={() => setRefDate((d) => shiftPeriod(d, period, -1))} aria-label="Período anterior">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="text-center">
+              <p className="text-sm font-medium capitalize">{range.label}</p>
+              {isCurrentPeriod(refDate, period) ? (
+                <span className="text-[11px] text-muted-foreground">período atual</span>
+              ) : (
+                <button onClick={() => setRefDate(new Date())} className="text-[11px] text-primary hover:underline">voltar pra hoje</button>
+              )}
+            </div>
+            <Button variant="ghost" size="icon-sm" onClick={() => setRefDate((d) => shiftPeriod(d, period, 1))} aria-label="Próximo período">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="mb-3 grid grid-cols-3 gap-2">
+            <div className="rounded-lg border border-border/40 p-2 text-center">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Entradas</p>
+              <p className="num text-sm font-semibold text-success">{brl(periodIn)}</p>
+            </div>
+            <div className="rounded-lg border border-border/40 p-2 text-center">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Saídas</p>
+              <p className="num text-sm font-semibold text-destructive">{brl(periodOut)}</p>
+            </div>
+            <div className="rounded-lg border border-border/40 p-2 text-center">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Saldo</p>
+              <p className={cn("num text-sm font-semibold", periodIn - periodOut >= 0 ? "text-foreground" : "text-destructive")}>
+                {brl(periodIn - periodOut)}
+              </p>
+            </div>
+          </div>
           {transactions.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
               Nenhuma transação ainda. Clique em “Nova transação”.
             </p>
+          ) : periodTx.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Nenhuma transação neste período.
+            </p>
           ) : (
             <div className="space-y-1.5">
-              {transactions.map((t) => (
+              {periodTx.map((t) => (
                 <div key={t.id} className="group flex items-center justify-between gap-3 rounded-lg border border-border/40 px-3 py-2 text-sm">
                   <div className="min-w-0">
                     <p className="truncate font-medium">{t.description || catById.get(t.categoryId)?.name || "Sem descrição"}</p>

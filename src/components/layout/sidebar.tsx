@@ -13,6 +13,7 @@ import {
   CalendarClock,
   CircleDollarSign,
   ClipboardList,
+  Coins,
   Cog,
   Compass,
   FileText,
@@ -100,6 +101,7 @@ const energyNav: NavItem[] = [
 
 const moneyNav: NavItem[] = [
   { href: "/money", label: "Dashboard", icon: Wallet },
+  { href: "/money/income", label: "Fontes de Renda", icon: Coins },
   { href: "/money/projection", label: "Projeção", icon: LineChart },
   { href: "/money/transactions", label: "Transações", icon: ArrowLeftRight },
   { href: "/money/budget", label: "Orçamento", icon: PiggyBank },

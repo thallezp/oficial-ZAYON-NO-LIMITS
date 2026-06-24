@@ -3014,6 +3014,7 @@ export async function POST(req: Request) {
           due_day: payload.dueDay ?? null,
           recurrence: payload.recurrence || "monthly",
           category: payload.category || null,
+          income_source_id: payload.incomeSourceId || null,
           status: payload.status || "pending",
           autopay: payload.autopay ?? false,
           notes: payload.notes || null,
@@ -3152,6 +3153,28 @@ export async function POST(req: Request) {
         }
         
         result = { id: payload.id };
+        break;
+      }
+
+      case "upsertPeriodLog": {
+        const row: Record<string, any> = {
+          workspace_id: payload.workspaceId,
+          user_id: user.id,
+          period_type: payload.periodType,
+          period_key: payload.periodKey,
+          updated_at: new Date().toISOString(),
+        };
+        if (payload.cap !== undefined) row.cap = payload.cap != null && payload.cap !== "" ? String(payload.cap) : null;
+        if (payload.planned !== undefined) row.planned = payload.planned != null && payload.planned !== "" ? String(payload.planned) : null;
+        if (payload.note !== undefined) row.note = payload.note || null;
+        if (payload.closed !== undefined) row.closed = payload.closed ?? false;
+        const { data, error } = await supabase
+          .from("personal_period_logs")
+          .upsert(row, { onConflict: "workspace_id,user_id,period_type,period_key" })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
         break;
       }
 

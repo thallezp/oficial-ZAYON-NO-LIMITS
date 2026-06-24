@@ -9,6 +9,7 @@ import {
   useUpsertPersonalCategory,
   useUpsertPersonalIncomeSource,
   useDeletePersonalIncomeSource,
+  useUpsertPeriodLog,
 } from "@/hooks/use-queries";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,8 @@ import {
   Pencil,
   Coins,
   Wallet,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { brl, num, currentMonthKey } from "@/lib/utils/life";
 import {
@@ -46,8 +49,18 @@ import {
   SPENDING_PILLARS,
   DEFAULT_LIFE_SHARE,
   PILLAR_BY_KEY,
+  periodRange,
+  inPeriod,
+  effectiveCap,
+  periodKey,
+  shiftPeriod,
+  isCurrentPeriod,
   type PillarKey,
+  type Period,
+  type SpendingCaps,
 } from "@/lib/utils/finance";
+import { PeriodTabs } from "@/components/life/period-tabs";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils/cn";
 import { toast } from "sonner";
 
@@ -56,6 +69,7 @@ export default function MoneyDashboardPage() {
   const { data } = usePersonalFinance(ws);
   const upsertProfile = useUpsertPersonalFinanceProfile();
   const upsertCategory = useUpsertPersonalCategory();
+  const upsertPeriodLog = useUpsertPeriodLog();
 
   const categories: any[] = data?.categories ?? [];
   const transactions: any[] = data?.transactions ?? [];
@@ -144,6 +158,68 @@ export default function MoneyDashboardPage() {
   const month = currentMonthKey();
   const invest = (income * pct) / 100;
   const life = income - invest;
+
+  // ── Controle por período (Dia/Semana/Mês), navegável e persistido ─────────
+  const [period, setPeriod] = React.useState<Period>("month");
+  const [refDate, setRefDate] = React.useState(() => new Date());
+  const [capsOpen, setCapsOpen] = React.useState(false);
+  const caps: SpendingCaps = ((profile?.metadata as any)?.caps as SpendingCaps) ?? {};
+  const [capDay, setCapDay] = React.useState("");
+  const [capWeek, setCapWeek] = React.useState("");
+  const [capMonth, setCapMonth] = React.useState("");
+  React.useEffect(() => {
+    const c = ((profile?.metadata as any)?.caps as SpendingCaps) ?? {};
+    setCapDay(c.day != null ? String(c.day) : "");
+    setCapWeek(c.week != null ? String(c.week) : "");
+    setCapMonth(c.month != null ? String(c.month) : "");
+  }, [profile]);
+
+  const range = periodRange(period, refDate);
+  const pKey = periodKey(period, range);
+  const periodLogs: any[] = data?.periodLogs ?? [];
+  const periodLog = periodLogs.find((l) => l.periodType === period && l.periodKey === pKey);
+
+  const periodTx = transactions.filter((t) => inPeriod(t.occurredAt, range));
+  const periodIn = periodTx.filter((t) => t.type === "income").reduce((a, t) => a + num(t.amount), 0);
+  const periodOut = periodTx.filter((t) => t.type === "expense").reduce((a, t) => a + num(t.amount), 0);
+  // Teto específico do período tem prioridade sobre o teto padrão (global).
+  const perCap = periodLog?.cap != null ? num(periodLog.cap) : null;
+  const periodCap = perCap != null && perCap > 0 ? perCap : effectiveCap(caps, period);
+  const capPct = periodCap && periodCap > 0 ? Math.min(100, (periodOut / periodCap) * 100) : 0;
+  const overCap = periodCap != null && periodOut > periodCap;
+
+  // Rascunho do controle deste período (teto + nota), sincroniza ao navegar.
+  const [capDraft, setCapDraft] = React.useState("");
+  const [noteDraft, setNoteDraft] = React.useState("");
+  React.useEffect(() => {
+    setCapDraft(periodLog?.cap != null ? String(num(periodLog.cap)) : "");
+    setNoteDraft(periodLog?.note ?? "");
+  }, [periodLog?.id, pKey, period]);
+
+  const savePeriodLog = (patch: Record<string, any>) => {
+    if (!ws) return;
+    upsertPeriodLog.mutate(
+      { workspaceId: ws, periodType: period, periodKey: pKey, ...patch },
+      { onSuccess: () => toast.success("Controle do período salvo") },
+    );
+  };
+
+  const saveCaps = () => {
+    if (!ws) return;
+    const nextCaps: SpendingCaps = {};
+    if (capDay) nextCaps.day = Number(capDay);
+    if (capWeek) nextCaps.week = Number(capWeek);
+    if (capMonth) nextCaps.month = Number(capMonth);
+    upsertProfile.mutate(
+      { workspaceId: ws, metadata: { ...((profile?.metadata as any) ?? {}), caps: nextCaps } },
+      {
+        onSuccess: () => {
+          setCapsOpen(false);
+          toast.success("Tetos atualizados");
+        },
+      },
+    );
+  };
 
   const saveProfile = (patch: Record<string, any>) => {
     if (!ws) return;
@@ -387,6 +463,114 @@ export default function MoneyDashboardPage() {
         </CardContent>
       </Card>
 
+      {/* ── Controle por período (Dia/Semana/Mês) ─────────────────────────── */}
+      <Card variant="elevated">
+        <CardContent className="space-y-4 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <Wallet className="h-4 w-4 text-primary" /> Controle por período
+            </h2>
+            <div className="flex items-center gap-2">
+              <PeriodTabs value={period} onChange={(p) => { setPeriod(p); setRefDate(new Date()); }} />
+              <Button variant="outline" size="sm" onClick={() => setCapsOpen(true)}>Tetos padrão</Button>
+            </div>
+          </div>
+
+          {/* Navegação: mês a mês / semana a semana / dia a dia */}
+          <div className="flex items-center justify-between rounded-lg border border-border/40 px-2 py-1.5">
+            <Button variant="ghost" size="icon-sm" onClick={() => setRefDate((d) => shiftPeriod(d, period, -1))} aria-label="Período anterior">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="text-center">
+              <p className="text-sm font-medium capitalize">{range.label}</p>
+              {isCurrentPeriod(refDate, period) ? (
+                <span className="text-[11px] text-muted-foreground">período atual</span>
+              ) : (
+                <button onClick={() => setRefDate(new Date())} className="text-[11px] text-primary hover:underline">
+                  voltar pra hoje
+                </button>
+              )}
+            </div>
+            <Button variant="ghost" size="icon-sm" onClick={() => setRefDate((d) => shiftPeriod(d, period, 1))} aria-label="Próximo período">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border border-border/40 p-3">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Entradas</p>
+              <p className="num text-lg font-semibold text-success">{brl(periodIn)}</p>
+            </div>
+            <div className="rounded-lg border border-border/40 p-3">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Saídas</p>
+              <p className="num text-lg font-semibold text-destructive">{brl(periodOut)}</p>
+            </div>
+            <div className="rounded-lg border border-border/40 p-3">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Saldo</p>
+              <p className={cn("num text-lg font-semibold", periodIn - periodOut >= 0 ? "text-foreground" : "text-destructive")}>
+                {brl(periodIn - periodOut)}
+              </p>
+            </div>
+          </div>
+
+          {periodCap != null ? (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-1.5 text-muted-foreground">
+                  Teto do período
+                  {overCap && <Badge variant="danger" size="sm">estourou</Badge>}
+                </span>
+                <span className={cn("num", overCap && "font-semibold text-destructive")}>
+                  {brl(periodOut)} / {brl(periodCap)}
+                </span>
+              </div>
+              <Progress value={capPct} />
+              <p className="text-[11px] text-muted-foreground">
+                {overCap
+                  ? `Passou ${brl(periodOut - periodCap)} do teto.`
+                  : `${brl(Math.max(0, periodCap - periodOut))} disponíveis neste período.`}
+              </p>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Nenhum teto definido.{" "}
+              <button onClick={() => setCapsOpen(true)} className="text-primary hover:underline">Configurar tetos</button>.
+            </p>
+          )}
+
+          {/* Controle persistido deste período: teto específico + nota + fechamento */}
+          <div className="space-y-2 rounded-lg border border-border/40 p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Controle deste período</span>
+              <button
+                onClick={() => savePeriodLog({ closed: !periodLog?.closed })}
+                className={cn(
+                  "rounded-md border px-2 py-0.5 text-[11px] font-medium transition",
+                  periodLog?.closed ? "border-success bg-success/15 text-success" : "border-border/60 text-muted-foreground hover:bg-accent",
+                )}
+              >
+                {periodLog?.closed ? "✓ Fechado" : "Fechar período"}
+              </button>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-[170px_1fr]">
+              <div className="space-y-1">
+                <label className="text-[11px] text-muted-foreground">Teto deste período (R$)</label>
+                <Input type="number" step="0.01" value={capDraft} onChange={(e) => setCapDraft(e.target.value)} placeholder="usa o teto padrão" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] text-muted-foreground">Nota / fechamento</label>
+                <Input value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} placeholder="Ex: mês apertado, meta batida..." />
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button variant="gradient" size="sm" onClick={() => savePeriodLog({ cap: capDraft, note: noteDraft })} disabled={upsertPeriodLog.isPending}>
+                Salvar controle
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* ── 4 pilares dos 75% + Metas ─────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">Os 5 pilares</h2>
@@ -513,6 +697,36 @@ export default function MoneyDashboardPage() {
           </Link>
         ))}
       </div>
+
+      {/* ── Modal de Tetos de Gasto por Período ───────────────────────────── */}
+      <Dialog open={capsOpen} onOpenChange={setCapsOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wallet className="h-5 w-5 text-primary" /> Tetos de gasto
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-xs text-muted-foreground">
+              Limite de gasto por período. Deixe em branco para ratear o teto mensal automaticamente (ex.: teto diário = mensal ÷ dias do mês).
+            </p>
+            {[
+              { label: "Teto diário", v: capDay, set: setCapDay },
+              { label: "Teto semanal", v: capWeek, set: setCapWeek },
+              { label: "Teto mensal", v: capMonth, set: setCapMonth },
+            ].map((f) => (
+              <div key={f.label} className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">{f.label} (R$)</label>
+                <Input type="number" step="0.01" value={f.v} onChange={(e) => f.set(e.target.value)} placeholder="0,00" />
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCapsOpen(false)}>Cancelar</Button>
+            <Button variant="gradient" onClick={saveCaps} disabled={upsertProfile.isPending}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Modal de Gerenciamento de Fontes de Renda ────────────────────── */}
       <Dialog open={sourcesOpen} onOpenChange={setSourcesOpen}>

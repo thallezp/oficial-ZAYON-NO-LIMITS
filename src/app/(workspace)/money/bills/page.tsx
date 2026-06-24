@@ -49,6 +49,8 @@ export default function BillsPage() {
   const remove = useDeletePersonalBill();
 
   const bills: any[] = data?.bills ?? [];
+  const incomeSources: any[] = data?.incomeSources ?? [];
+  const srcById = new Map(incomeSources.map((s) => [s.id, s]));
   const sorted = [...bills].sort((a, b) => (a.dueDay ?? 99) - (b.dueDay ?? 99));
   const monthlyTotal = bills
     .filter((b) => b.recurrence === "monthly")
@@ -63,10 +65,12 @@ export default function BillsPage() {
   const [recurrence, setRecurrence] = React.useState("monthly");
   const [category, setCategory] = React.useState("");
   const [autopay, setAutopay] = React.useState(false);
+  const [incomeSourceId, setIncomeSourceId] = React.useState("none");
 
   const openNew = () => {
     setEditing(null);
     setName(""); setAmount(""); setDueDay(""); setRecurrence("monthly"); setCategory(""); setAutopay(false);
+    setIncomeSourceId("none");
     setOpen(true);
   };
   const openEdit = (b: any) => {
@@ -77,6 +81,7 @@ export default function BillsPage() {
     setRecurrence(b.recurrence || "monthly");
     setCategory(b.category ?? "");
     setAutopay(!!b.autopay);
+    setIncomeSourceId(b.incomeSourceId ?? "none");
     setOpen(true);
   };
 
@@ -92,6 +97,7 @@ export default function BillsPage() {
         dueDay: dueDay ? Number(dueDay) : null,
         recurrence,
         category: category || null,
+        incomeSourceId: incomeSourceId === "none" ? null : incomeSourceId,
         autopay,
         status: editing?.status ?? "pending",
       });
@@ -148,6 +154,7 @@ export default function BillsPage() {
                         <p className={cn("truncate font-medium", paid && "text-muted-foreground line-through")}>{b.name}</p>
                         <p className="text-xs text-muted-foreground">
                           {recLabel(b.recurrence)}{b.dueDay ? ` · vence dia ${b.dueDay}` : ""}{b.category ? ` · ${b.category}` : ""}
+                          {srcById.get(b.incomeSourceId) ? ` · 💰 ${srcById.get(b.incomeSourceId).name}` : ""}
                         </p>
                       </div>
                     </div>
@@ -203,6 +210,23 @@ export default function BillsPage() {
                 <label className="text-xs text-muted-foreground">Categoria</label>
                 <Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Moradia..." />
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Paga com qual fonte de renda?</label>
+              <Select value={incomeSourceId} onValueChange={setIncomeSourceId}>
+                <SelectTrigger><SelectValue placeholder="Nenhuma" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhuma</SelectItem>
+                  {incomeSources.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {incomeSources.length === 0 && (
+                <p className="text-[11px] text-muted-foreground">
+                  Cadastre fontes em <b>Fontes de Renda</b> para vincular.
+                </p>
+              )}
             </div>
             <button
               type="button"

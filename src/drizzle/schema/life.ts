@@ -173,6 +173,8 @@ export const personalBills = pgTable(
     dueDay: integer("due_day"),                  // dia do mês (1..31)
     recurrence: text("recurrence").default("monthly"), // monthly | weekly | yearly | once
     category: text("category"),
+    // Fonte de renda que banca esta conta (ex.: monetização TikTok → aluguel).
+    incomeSourceId: uuid("income_source_id").references(() => personalIncomeSources.id, { onDelete: "set null" }),
     status: text("status").default("pending"),   // pending | paid
     autopay: boolean("autopay").default(false),
     notes: text("notes"),
@@ -241,6 +243,31 @@ export const personalIncomeSources = pgTable(
   },
   (t) => ({
     workspaceIdx: index("personal_income_sources_workspace_idx").on(t.workspaceId),
+  }),
+);
+
+// — Controle por período: 1 registro por (período, chave) com teto, nota e
+//   fechamento. Permite controle real mês a mês / semana a semana / dia a dia.
+//   period_type: day | week | month. period_key: 2026-06-23 | 2026-06-22 (início
+//   da semana) | 2026-06.
+export const personalPeriodLogs = pgTable(
+  "personal_period_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }).notNull(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+    periodType: text("period_type").notNull(),
+    periodKey: text("period_key").notNull(),
+    cap: numeric("cap", { precision: 14, scale: 2 }),
+    planned: numeric("planned", { precision: 14, scale: 2 }),
+    note: text("note"),
+    closed: boolean("closed").default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    workspaceIdx: index("personal_period_logs_workspace_idx").on(t.workspaceId),
+    uq: uniqueIndex("personal_period_logs_uq").on(t.workspaceId, t.userId, t.periodType, t.periodKey),
   }),
 );
 

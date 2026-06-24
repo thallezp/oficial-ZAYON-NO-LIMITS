@@ -104,4 +104,95 @@ export function earlyYearsImpact(opts: {
   return { pct, earlyContribFinalValue, finalValue };
 }
 
+// ── Controle por período (Dia / Semana / Mês) ───────────────────────────────
+export type Period = "day" | "week" | "month";
+
+export const PERIODS: { key: Period; label: string }[] = [
+  { key: "day", label: "Dia" },
+  { key: "week", label: "Semana" },
+  { key: "month", label: "Mês" },
+];
+
+/** Intervalo [start, end) do período + rótulo, no fuso local. Semana começa na segunda. */
+export function periodRange(period: Period, ref: Date = new Date()) {
+  const d = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
+  let start: Date;
+  let end: Date;
+  let label: string;
+  if (period === "day") {
+    start = d;
+    end = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+    label = ref.toLocaleDateString("pt-BR", { day: "2-digit", month: "long" });
+  } else if (period === "week") {
+    const dow = d.getDay(); // 0=Dom..6=Sáb
+    const diffToMon = dow === 0 ? 6 : dow - 1;
+    start = new Date(d.getFullYear(), d.getMonth(), d.getDate() - diffToMon);
+    end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7);
+    label = `Semana de ${start.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}`;
+  } else {
+    start = new Date(d.getFullYear(), d.getMonth(), 1);
+    end = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    label = ref.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  }
+  return { start, end, label, period };
+}
+
+/** True se `occurredAt` (date "YYYY-MM-DD" ou ISO) cai em [range.start, range.end). */
+export function inPeriod(occurredAt: string | Date, range: { start: Date; end: Date }): boolean {
+  const t =
+    typeof occurredAt === "string"
+      ? new Date(occurredAt.length <= 10 ? `${occurredAt}T12:00:00` : occurredAt)
+      : occurredAt;
+  return t >= range.start && t < range.end;
+}
+
+/** Fração do mês que o período representa (p/ ratear um teto/meta mensal). */
+export function periodFractionOfMonth(period: Period, ref: Date = new Date()): number {
+  const daysInMonth = new Date(ref.getFullYear(), ref.getMonth() + 1, 0).getDate();
+  if (period === "day") return 1 / daysInMonth;
+  if (period === "week") return 7 / daysInMonth;
+  return 1;
+}
+
+export type SpendingCaps = { day?: number; week?: number; month?: number };
+
+/**
+ * Teto efetivo do período: usa o teto específico se definido; senão rateia o
+ * teto mensal pela fração do período. Retorna null se não houver teto aplicável.
+ */
+export function effectiveCap(
+  caps: SpendingCaps | undefined | null,
+  period: Period,
+  ref: Date = new Date(),
+): number | null {
+  if (!caps) return null;
+  const direct = caps[period];
+  if (direct != null && Number(direct) > 0) return Number(direct);
+  if (caps.month != null && Number(caps.month) > 0) {
+    return Number(caps.month) * periodFractionOfMonth(period, ref);
+  }
+  return null;
+}
+
+/** Chave estável do período p/ persistir o controle. month→YYYY-MM, dia/semana→YYYY-MM-DD. */
+export function periodKey(period: Period, range: { start: Date }): string {
+  const d = range.start;
+  const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return period === "month" ? ymd.slice(0, 7) : ymd;
+}
+
+/** Move a data de referência um período pra trás (-1) ou frente (+1). */
+export function shiftPeriod(ref: Date, period: Period, dir: -1 | 1): Date {
+  const d = new Date(ref);
+  if (period === "day") d.setDate(d.getDate() + dir);
+  else if (period === "week") d.setDate(d.getDate() + 7 * dir);
+  else d.setMonth(d.getMonth() + dir);
+  return d;
+}
+
+/** True se a data de referência cai no período atual (hoje / esta semana / este mês). */
+export function isCurrentPeriod(ref: Date, period: Period): boolean {
+  return periodRange(period, ref).start.getTime() === periodRange(period, new Date()).start.getTime();
+}
+
 export { brl };
