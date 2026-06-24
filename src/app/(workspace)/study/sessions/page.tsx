@@ -14,6 +14,7 @@ import {
   useTickFocusSession,
   useEndFocusSession,
   useLogManualSession,
+  useStudyDashboard,
 } from "@/hooks/use-queries";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRealtimeFocusSession } from "@/hooks/use-realtime";
@@ -88,6 +89,13 @@ function FocusSessionsContent() {
   const { data: projects = [] } = useProjects(activeWorkspaceId);
   const { data: tasks = [] } = useTasks(activeWorkspaceId);
   const { data: sessions = [], isLoading: loadingSessions } = useFocusSessions(activeWorkspaceId);
+  const { data: dashboard } = useStudyDashboard(activeWorkspaceId);
+
+  const settingsData = dashboard?.settings?.data as any;
+  const pomodoroWork = settingsData?.pomodoroWork ? parseInt(settingsData.pomodoroWork, 10) : 25;
+  const pomodoroShortBreak = settingsData?.pomodoroShortBreak ? parseInt(settingsData.pomodoroShortBreak, 10) : 5;
+  const deepWorkWork = settingsData?.deepWorkWork ? parseInt(settingsData.deepWorkWork, 10) : 50;
+  const deepWorkBreak = settingsData?.deepWorkBreak ? parseInt(settingsData.deepWorkBreak, 10) : 10;
 
   // Realtime updates
   useRealtimeFocusSession(activeWorkspaceId ?? undefined);
@@ -192,9 +200,13 @@ function FocusSessionsContent() {
       setElapsed(currentElapsed);
 
       // Check technique limits
+      const activeSessionObj = sessions.find((x: any) => x.id === store.sessionId);
       let limitSeconds = 0;
-      if (store.technique === "pomodoro") limitSeconds = 25 * 60;
-      else if (store.technique === "deep_work") limitSeconds = 50 * 60;
+      if (store.technique === "pomodoro") {
+        limitSeconds = (activeSessionObj?.plannedMinutes || pomodoroWork) * 60;
+      } else if (store.technique === "deep_work") {
+        limitSeconds = (activeSessionObj?.plannedMinutes || deepWorkWork) * 60;
+      }
 
       if (limitSeconds > 0 && currentElapsed >= limitSeconds) {
         // Complete pomodoro
@@ -214,7 +226,7 @@ function FocusSessionsContent() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [store.sessionId, store.startedAt, store.paused, store.baseSeconds, store.technique, tickSessionMutation]);
+  }, [store.sessionId, store.startedAt, store.paused, store.baseSeconds, store.technique, tickSessionMutation, sessions, pomodoroWork, deepWorkWork]);
 
   const handleStart = async () => {
     if (!activeWorkspaceId) {
@@ -223,8 +235,8 @@ function FocusSessionsContent() {
     }
 
     let plannedMin = 0;
-    if (timerType === "pomodoro") plannedMin = 25;
-    else if (timerType === "deep_work") plannedMin = 50;
+    if (timerType === "pomodoro") plannedMin = pomodoroWork;
+    else if (timerType === "deep_work") plannedMin = deepWorkWork;
 
     const targetPayload = {
       trackId: targetType === "study" && selectedTrackId !== "none" ? selectedTrackId : undefined,
@@ -389,10 +401,14 @@ function FocusSessionsContent() {
   // Quando ocioso, usa a técnica selecionada localmente (timerType) para que o
   // mostrador reflita a escolha (ex.: "Livre" zera o relógio). Quando há sessão
   // ativa, usa a técnica gravada na sessão.
+  const activeSessionObj = store.sessionId ? sessions.find((x: any) => x.id === store.sessionId) : null;
   const activeTechnique = store.sessionId ? store.technique : timerType;
   let targetTotal = 0;
-  if (activeTechnique === "pomodoro") targetTotal = 25 * 60;
-  else if (activeTechnique === "deep_work") targetTotal = 50 * 60;
+  if (activeTechnique === "pomodoro") {
+    targetTotal = (activeSessionObj?.plannedMinutes || pomodoroWork) * 60;
+  } else if (activeTechnique === "deep_work") {
+    targetTotal = (activeSessionObj?.plannedMinutes || deepWorkWork) * 60;
+  }
 
   const displayTime = targetTotal > 0 && elapsed <= targetTotal
     ? formatTime(targetTotal - elapsed)
@@ -601,8 +617,8 @@ function FocusSessionsContent() {
                           <SelectValue placeholder="Estilo..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="pomodoro">Pomodoro (25/5 min)</SelectItem>
-                          <SelectItem value="deep_work">Deep Work (50/10 min)</SelectItem>
+                          <SelectItem value="pomodoro">Pomodoro ({pomodoroWork}/{pomodoroShortBreak} min)</SelectItem>
+                          <SelectItem value="deep_work">Deep Work ({deepWorkWork}/{deepWorkBreak} min)</SelectItem>
                           <SelectItem value="free">Livre (Cronômetro)</SelectItem>
                         </SelectContent>
                       </Select>

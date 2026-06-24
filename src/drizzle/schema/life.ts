@@ -146,6 +146,8 @@ export const personalTransactions = pgTable(
     userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
     accountId: uuid("account_id").references(() => personalAccounts.id, { onDelete: "set null" }),
     categoryId: uuid("category_id").references(() => personalCategories.id, { onDelete: "set null" }),
+    // Fonte de renda da entrada (ex.: cada venda de mentoria vai pra fonte "Mentorias").
+    incomeSourceId: uuid("income_source_id").references(() => personalIncomeSources.id, { onDelete: "set null" }),
     type: text("type").notNull(),                // income | expense
     amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
     description: text("description"),
@@ -159,6 +161,7 @@ export const personalTransactions = pgTable(
     workspaceIdx: index("personal_transactions_workspace_idx").on(t.workspaceId),
     userIdx: index("personal_transactions_user_idx").on(t.userId),
     occurredIdx: index("personal_transactions_occurred_idx").on(t.occurredAt),
+    incomeSourceIdx: index("personal_transactions_income_source_idx").on(t.incomeSourceId),
   }),
 );
 

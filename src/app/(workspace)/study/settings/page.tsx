@@ -24,6 +24,8 @@ export default function StudySettingsPage() {
   const [pomodoroWork, setPomodoroWork] = React.useState("25");
   const [pomodoroShortBreak, setPomodoroShortBreak] = React.useState("5");
   const [pomodoroLongBreak, setPomodoroLongBreak] = React.useState("15");
+  const [deepWorkWork, setDeepWorkWork] = React.useState("50");
+  const [deepWorkBreak, setDeepWorkBreak] = React.useState("10");
   const [dailyTargetHours, setDailyTargetHours] = React.useState("4");
   const [submitting, setSubmitting] = React.useState(false);
 
@@ -34,6 +36,8 @@ export default function StudySettingsPage() {
       if (data.pomodoroWork) setPomodoroWork(String(data.pomodoroWork));
       if (data.pomodoroShortBreak) setPomodoroShortBreak(String(data.pomodoroShortBreak));
       if (data.pomodoroLongBreak) setPomodoroLongBreak(String(data.pomodoroLongBreak));
+      if (data.deepWorkWork) setDeepWorkWork(String(data.deepWorkWork));
+      if (data.deepWorkBreak) setDeepWorkBreak(String(data.deepWorkBreak));
       if (data.dailyTargetHours) setDailyTargetHours(String(data.dailyTargetHours));
     }
   }, [dashboard]);
@@ -45,9 +49,18 @@ export default function StudySettingsPage() {
     const work = parseInt(pomodoroWork, 10);
     const short = parseInt(pomodoroShortBreak, 10);
     const long = parseInt(pomodoroLongBreak, 10);
+    const deepWorkVal = parseInt(deepWorkWork, 10);
+    const deepBreakVal = parseInt(deepWorkBreak, 10);
     const target = parseInt(dailyTargetHours, 10);
 
-    if (isNaN(work) || work <= 0 || isNaN(short) || short <= 0 || isNaN(long) || long <= 0 || isNaN(target) || target <= 0) {
+    if (
+      isNaN(work) || work <= 0 ||
+      isNaN(short) || short <= 0 ||
+      isNaN(long) || long <= 0 ||
+      isNaN(deepWorkVal) || deepWorkVal <= 0 ||
+      isNaN(deepBreakVal) || deepBreakVal <= 0 ||
+      isNaN(target) || target <= 0
+    ) {
       toast.error("Valores configurados devem ser números maiores que 0.");
       return;
     }
@@ -60,6 +73,8 @@ export default function StudySettingsPage() {
           pomodoroWork: work,
           pomodoroShortBreak: short,
           pomodoroLongBreak: long,
+          deepWorkWork: deepWorkVal,
+          deepWorkBreak: deepBreakVal,
           dailyTargetHours: target,
         },
       });
@@ -101,42 +116,76 @@ export default function StudySettingsPage() {
               <div className="text-center text-xs text-muted-foreground py-6">Carregando configurações...</div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="pomWork">Foco Pomodoro (min)</Label>
-                    <Input
-                      id="pomWork"
-                      type="number"
-                      value={pomodoroWork}
-                      onChange={(e) => setPomodoroWork(e.target.value)}
-                      min={1}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="pomShort">Pausa Curta (min)</Label>
-                    <Input
-                      id="pomShort"
-                      type="number"
-                      value={pomodoroShortBreak}
-                      onChange={(e) => setPomodoroShortBreak(e.target.value)}
-                      min={1}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="pomLong">Pausa Longa (min)</Label>
-                    <Input
-                      id="pomLong"
-                      type="number"
-                      value={pomodoroLongBreak}
-                      onChange={(e) => setPomodoroLongBreak(e.target.value)}
-                      min={1}
-                      required
-                    />
+                {/* Pomodoro */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-primary/80">Técnica Pomodoro</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="pomWork">Foco Pomodoro (min)</Label>
+                      <Input
+                        id="pomWork"
+                        type="number"
+                        value={pomodoroWork}
+                        onChange={(e) => setPomodoroWork(e.target.value)}
+                        min={1}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="pomShort">Pausa Curta (min)</Label>
+                      <Input
+                        id="pomShort"
+                        type="number"
+                        value={pomodoroShortBreak}
+                        onChange={(e) => setPomodoroShortBreak(e.target.value)}
+                        min={1}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="pomLong">Pausa Longa (min)</Label>
+                      <Input
+                        id="pomLong"
+                        type="number"
+                        value={pomodoroLongBreak}
+                        onChange={(e) => setPomodoroLongBreak(e.target.value)}
+                        min={1}
+                        required
+                      />
+                    </div>
                   </div>
                 </div>
 
+                {/* Deep Work */}
+                <div className="space-y-3 border-t border-border/20 pt-4">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-primary/80">Técnica Deep Work</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="deepWork">Foco Deep Work (min)</Label>
+                      <Input
+                        id="deepWork"
+                        type="number"
+                        value={deepWorkWork}
+                        onChange={(e) => setDeepWorkWork(e.target.value)}
+                        min={1}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="deepBreak">Descanso Deep Work (min)</Label>
+                      <Input
+                        id="deepBreak"
+                        type="number"
+                        value={deepWorkBreak}
+                        onChange={(e) => setDeepWorkBreak(e.target.value)}
+                        min={1}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Meta de Foco */}
                 <div className="space-y-1.5 border-t border-border/20 pt-4">
                   <Label htmlFor="dailyTarget">Meta de Foco Diário (horas)</Label>
                   <Input

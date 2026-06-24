@@ -2981,6 +2981,7 @@ export async function POST(req: Request) {
           user_id: user.id,
           account_id: payload.accountId || null,
           category_id: payload.categoryId || null,
+          income_source_id: payload.incomeSourceId || null,
           type: payload.type || "expense",
           amount: String(payload.amount ?? 0),
           description: payload.description || null,

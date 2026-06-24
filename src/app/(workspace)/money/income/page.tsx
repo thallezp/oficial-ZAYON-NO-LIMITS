@@ -7,6 +7,8 @@ import {
   usePersonalFinance,
   useUpsertPersonalIncomeSource,
   useDeletePersonalIncomeSource,
+  useUpsertPersonalTransaction,
+  useDeletePersonalTransaction,
 } from "@/hooks/use-queries";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
@@ -30,9 +32,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, Pencil, Coins, Receipt, TrendingUp, Wallet } from "lucide-react";
+import { Plus, Trash2, Pencil, Coins, Receipt, TrendingUp, Wallet, CircleDollarSign } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
-import { brl, num } from "@/lib/utils/life";
+import { brl, num, todayISO, currentMonthKey } from "@/lib/utils/life";
 import { toast } from "sonner";
 
 const RECURRENCES = [
@@ -48,9 +50,13 @@ export default function IncomeSourcesPage() {
   const { data } = usePersonalFinance(ws);
   const upsert = useUpsertPersonalIncomeSource();
   const remove = useDeletePersonalIncomeSource();
+  const upsertTx = useUpsertPersonalTransaction();
+  const deleteTx = useDeletePersonalTransaction();
 
   const sources: any[] = data?.incomeSources ?? [];
   const bills: any[] = data?.bills ?? [];
+  const transactions: any[] = data?.transactions ?? [];
+  const month = currentMonthKey();
 
   // contas vinculadas por fonte
   const billsBySource = React.useMemo(() => {
@@ -63,11 +69,30 @@ export default function IncomeSourcesPage() {
     return m;
   }, [bills]);
 
-  const activeIncome = sources.filter((s) => s.status === "active").reduce((a, s) => a + num(s.amount), 0);
+  // entradas (transações de receita) por fonte
+  const entriesBySource = React.useMemo(() => {
+    const m = new Map<string, any[]>();
+    transactions
+      .filter((t) => t.type === "income" && t.incomeSourceId)
+      .forEach((t) => {
+        if (!m.has(t.incomeSourceId)) m.set(t.incomeSourceId, []);
+        m.get(t.incomeSourceId)!.push(t);
+      });
+    return m;
+  }, [transactions]);
+
+  const receivedThisMonth = (sourceId: string) =>
+    (entriesBySource.get(sourceId) ?? [])
+      .filter((t) => String(t.occurredAt).startsWith(month))
+      .reduce((a, t) => a + num(t.amount), 0);
+
+  const estimatedIncome = sources.filter((s) => s.status === "active").reduce((a, s) => a + num(s.amount), 0);
+  const receivedTotal = sources.reduce((a, s) => a + receivedThisMonth(s.id), 0);
   const committed = bills.filter((b) => b.incomeSourceId).reduce((a, b) => a + num(b.amount), 0);
   const unlinked = bills.filter((b) => !b.incomeSourceId);
   const unlinkedTotal = unlinked.reduce((a, b) => a + num(b.amount), 0);
 
+  // ── Dialog de fonte ────────────────────────────────────────────────────────
   const [open, setOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<any | null>(null);
   const [name, setName] = React.useState("");
@@ -90,7 +115,6 @@ export default function IncomeSourcesPage() {
     setNotes(s.notes ?? "");
     setOpen(true);
   };
-
   const save = async () => {
     if (!ws || !name.trim()) return;
     if (!amount || Number(amount) <= 0) return toast.error("Informe um valor válido");
@@ -111,11 +135,44 @@ export default function IncomeSourcesPage() {
     }
   };
 
+  // ── Dialog de entrada (registra uma receita na fonte) ───────────────────────
+  const [entryOpen, setEntryOpen] = React.useState(false);
+  const [entrySource, setEntrySource] = React.useState<any | null>(null);
+  const [entryAmount, setEntryAmount] = React.useState("");
+  const [entryDate, setEntryDate] = React.useState(todayISO());
+  const [entryDesc, setEntryDesc] = React.useState("");
+
+  const openEntry = (s: any) => {
+    setEntrySource(s);
+    setEntryAmount("");
+    setEntryDate(todayISO());
+    setEntryDesc("");
+    setEntryOpen(true);
+  };
+  const saveEntry = async () => {
+    if (!ws || !entrySource) return;
+    if (!entryAmount || Number(entryAmount) <= 0) return toast.error("Informe um valor válido");
+    try {
+      await upsertTx.mutateAsync({
+        workspaceId: ws,
+        type: "income",
+        amount: Number(entryAmount),
+        occurredAt: entryDate,
+        description: entryDesc.trim() || entrySource.name,
+        incomeSourceId: entrySource.id,
+      });
+      setEntryOpen(false);
+      toast.success("Entrada registrada");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao registrar entrada");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Fontes de Renda"
-        description="Modo empresário autônomo: cadastre cada fonte de renda e vincule quais contas cada uma banca (ex.: monetização do TikTok paga o aluguel)."
+        description="Modo empresário autônomo: cadastre cada fonte, registre cada entrada (ex.: cada venda de mentoria) e vincule quais contas cada fonte banca."
         actions={
           <Button variant="gradient" size="sm" onClick={openNew}>
             <Plus className="h-4 w-4" /> Nova fonte
@@ -123,10 +180,11 @@ export default function IncomeSourcesPage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Renda ativa (mês)" value={brl(activeIncome)} accent="success" icon={<TrendingUp className="h-4 w-4" />} />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Estimado (mês)" value={brl(estimatedIncome)} accent="info" icon={<TrendingUp className="h-4 w-4" />} hint="soma das fontes ativas" />
+        <StatCard label="Recebido (mês)" value={brl(receivedTotal)} accent="success" icon={<CircleDollarSign className="h-4 w-4" />} hint="entradas registradas" />
         <StatCard label="Comprometido em contas" value={brl(committed)} accent="warning" icon={<Receipt className="h-4 w-4" />} />
-        <StatCard label="Livre" value={brl(activeIncome - committed)} accent={activeIncome - committed >= 0 ? "primary" : "danger"} icon={<Wallet className="h-4 w-4" />} />
+        <StatCard label="Livre (estimado)" value={brl(estimatedIncome - committed)} accent={estimatedIncome - committed >= 0 ? "primary" : "danger"} icon={<Wallet className="h-4 w-4" />} />
       </div>
 
       {sources.length === 0 ? (
@@ -134,7 +192,7 @@ export default function IncomeSourcesPage() {
           <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
             <Coins className="h-10 w-10 text-muted-foreground/40" />
             <p className="text-sm font-medium">Nenhuma fonte de renda ainda</p>
-            <p className="text-xs text-muted-foreground">Cadastre sua primeira fonte (salário, freela, TikTok, vendas...).</p>
+            <p className="text-xs text-muted-foreground">Cadastre sua primeira fonte (mentorias, freela, TikTok, vendas...).</p>
             <Button variant="gradient" size="sm" onClick={openNew} className="mt-2">
               <Plus className="h-3.5 w-3.5" /> Criar fonte
             </Button>
@@ -145,9 +203,10 @@ export default function IncomeSourcesPage() {
           {sources.map((s) => {
             const linked = billsBySource.get(s.id) ?? [];
             const used = linked.reduce((a, b) => a + num(b.amount), 0);
-            const amt = num(s.amount);
-            const pct = amt > 0 ? Math.min(100, Math.round((used / amt) * 100)) : 0;
-            const over = used > amt && amt > 0;
+            const estimated = num(s.amount);
+            const received = receivedThisMonth(s.id);
+            const recvPct = estimated > 0 ? Math.min(100, Math.round((received / estimated) * 100)) : 0;
+            const entries = (entriesBySource.get(s.id) ?? []).slice(0, 5);
             const inactive = s.status !== "active";
             return (
               <Card key={s.id} variant="elevated" className={cn("group", inactive && "opacity-70")}>
@@ -158,9 +217,7 @@ export default function IncomeSourcesPage() {
                     </CardTitle>
                     <div className="mt-1 flex items-center gap-1.5">
                       <Badge variant="outline" size="sm">{recLabel(s.recurrence)}</Badge>
-                      {inactive
-                        ? <Badge variant="ghost" size="sm">Inativa</Badge>
-                        : <Badge variant="success" size="sm">Ativa</Badge>}
+                      {inactive ? <Badge variant="ghost" size="sm">Inativa</Badge> : <Badge variant="success" size="sm">Ativa</Badge>}
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
@@ -176,22 +233,48 @@ export default function IncomeSourcesPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  {/* Recebido no mês vs estimado */}
                   <div className="flex items-end justify-between">
-                    <span className="text-2xl font-semibold num">{brl(amt)}</span>
-                    <span className={cn("text-sm num", over ? "text-destructive" : "text-muted-foreground")}>
-                      {brl(used)} comprometido
-                    </span>
+                    <div>
+                      <p className="text-2xl font-semibold num text-success">{brl(received)}</p>
+                      <p className="text-[11px] text-muted-foreground">recebido no mês</p>
+                    </div>
+                    <span className="text-sm text-muted-foreground num">estimado {brl(estimated)}</span>
                   </div>
-                  <Progress value={pct} />
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{linked.length} {linked.length === 1 ? "conta vinculada" : "contas vinculadas"}</span>
-                    <span className={over ? "font-medium text-destructive" : ""}>
-                      {over ? `excede em ${brl(used - amt)}` : `${brl(amt - used)} livre`}
-                    </span>
-                  </div>
+                  {estimated > 0 && <Progress value={recvPct} />}
 
+                  <Button variant="outline" size="sm" className="w-full" onClick={() => openEntry(s)}>
+                    <Plus className="h-3.5 w-3.5" /> Registrar entrada
+                  </Button>
+
+                  {/* Entradas recentes */}
+                  {entries.length > 0 && (
+                    <div className="space-y-1 border-t border-border/40 pt-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Entradas recentes</p>
+                      {entries.map((t) => (
+                        <div key={t.id} className="group/e flex items-center justify-between text-sm">
+                          <span className="flex items-center gap-1.5 text-muted-foreground">
+                            <CircleDollarSign className="h-3 w-3" />
+                            {new Date(t.occurredAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                            {t.description ? ` · ${t.description}` : ""}
+                          </span>
+                          <span className="flex items-center gap-2">
+                            <b className="num text-success">{brl(num(t.amount))}</b>
+                            <button onClick={() => deleteTx.mutate(t.id)} className="text-muted-foreground opacity-0 transition group-hover/e:opacity-100 hover:text-destructive">
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Contas vinculadas */}
                   {linked.length > 0 && (
                     <div className="space-y-1 border-t border-border/40 pt-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Banca {linked.length} {linked.length === 1 ? "conta" : "contas"} · {brl(used)}
+                      </p>
                       {linked.map((b) => (
                         <div key={b.id} className="flex items-center justify-between text-sm">
                           <span className="flex items-center gap-1.5 text-muted-foreground">
@@ -232,7 +315,7 @@ export default function IncomeSourcesPage() {
         </Card>
       )}
 
-      {/* Dialog */}
+      {/* Dialog de fonte */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
@@ -241,11 +324,11 @@ export default function IncomeSourcesPage() {
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground">Nome</label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Monetização TikTok, Freela, Salário..." autoFocus />
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Mentorias, Freela, TikTok..." autoFocus />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">Valor (R$)</label>
+                <label className="text-xs text-muted-foreground">Valor estimado (R$)</label>
                 <Input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" />
               </div>
               <div className="space-y-1.5">
@@ -281,12 +364,44 @@ export default function IncomeSourcesPage() {
             </div>
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground">Notas</label>
-              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Ex: cai todo dia 15, valor varia..." />
+              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Ex: estimativa varia, cai todo dia 15..." />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
             <Button variant="gradient" onClick={save} disabled={upsert.isPending}>{editing ? "Salvar" : "Adicionar"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de entrada */}
+      <Dialog open={entryOpen} onOpenChange={setEntryOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Registrar entrada{entrySource ? ` · ${entrySource.name}` : ""}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Valor (R$)</label>
+                <Input type="number" step="0.01" value={entryAmount} onChange={(e) => setEntryAmount(e.target.value)} placeholder="0,00" autoFocus />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Data</label>
+                <Input type="date" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Descrição</label>
+              <Input value={entryDesc} onChange={(e) => setEntryDesc(e.target.value)} placeholder="Ex: Mentoria João, venda #12..." />
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              A entrada vira uma transação de receita e entra no controle por período automaticamente.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEntryOpen(false)}>Cancelar</Button>
+            <Button variant="gradient" onClick={saveEntry} disabled={upsertTx.isPending}>Registrar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

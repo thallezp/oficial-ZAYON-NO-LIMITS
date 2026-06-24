@@ -53,8 +53,10 @@ export default function TransactionsPage() {
   const accounts: any[] = data?.accounts ?? [];
   const categories: any[] = data?.categories ?? [];
   const transactions: any[] = data?.transactions ?? [];
+  const incomeSources: any[] = data?.incomeSources ?? [];
   const acctById = new Map(accounts.map((a) => [a.id, a]));
   const catById = new Map(categories.map((c) => [c.id, c]));
+  const sourceById = new Map(incomeSources.map((s) => [s.id, s]));
 
   // Filtro por período (Dia/Semana/Mês), navegável
   const [period, setPeriod] = React.useState<Period>("month");
@@ -72,6 +74,7 @@ export default function TransactionsPage() {
   const [description, setDescription] = React.useState("");
   const [accountId, setAccountId] = React.useState("none");
   const [categoryId, setCategoryId] = React.useState("none");
+  const [incomeSourceId, setIncomeSourceId] = React.useState("none");
   const [occurredAt, setOccurredAt] = React.useState(todayISO());
 
   // Account dialog
@@ -87,6 +90,7 @@ export default function TransactionsPage() {
     setDescription("");
     setAccountId(accounts[0]?.id ?? "none");
     setCategoryId("none");
+    setIncomeSourceId("none");
     setOccurredAt(todayISO());
     setTxOpen(true);
   };
@@ -98,6 +102,7 @@ export default function TransactionsPage() {
     setDescription(t.description ?? "");
     setAccountId(t.accountId ?? "none");
     setCategoryId(t.categoryId ?? "none");
+    setIncomeSourceId(t.incomeSourceId ?? "none");
     setOccurredAt(String(t.occurredAt).slice(0, 10));
     setTxOpen(true);
   };
@@ -114,6 +119,7 @@ export default function TransactionsPage() {
         description: description || null,
         accountId: accountId === "none" ? null : accountId,
         categoryId: categoryId === "none" ? null : categoryId,
+        incomeSourceId: type === "income" && incomeSourceId !== "none" ? incomeSourceId : null,
         occurredAt,
       });
       setTxOpen(false);
@@ -252,6 +258,7 @@ export default function TransactionsPage() {
                       {new Date(t.occurredAt).toLocaleDateString("pt-BR")}
                       {acctById.get(t.accountId) && ` · ${acctById.get(t.accountId)!.name}`}
                       {catById.get(t.categoryId) && ` · ${catById.get(t.categoryId)!.name}`}
+                      {t.type === "income" && sourceById.get(t.incomeSourceId) && ` · ${sourceById.get(t.incomeSourceId)!.name}`}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -334,6 +341,20 @@ export default function TransactionsPage() {
                 </Select>
               </div>
             </div>
+            {type === "income" && incomeSources.length > 0 && (
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Fonte de Renda (opcional)</label>
+                <Select value={incomeSourceId} onValueChange={setIncomeSourceId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione a fonte" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem fonte</SelectItem>
+                    {incomeSources.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             {filteredCats.length === 0 && (
               <p className="text-[11px] text-muted-foreground">
                 Crie categorias na aba <b>Orçamento</b> para classificar suas transações.
